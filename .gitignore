@@ -4,3 +4,4 @@
 .DS_Store
 pull-secret.txt
 openshift_pull.json
+manifests/generated/
