@@ -1,64 +1,105 @@
-# Configuration
-export CLUSTER_NAME ?= doca-cluster
-export BASE_DOMAIN ?= karmalabs.corp
-export OPENSHIFT_VERSION ?= 4.17.12
+# OpenShift DPF Deployment
 
-# Directory structure
-PRE_INSTALL_DIR := pre-installation
-DPF_INSTALL_DIR := dpf-installation
-DPF_PROVISION_DIR := dpf-provisioning
+Complete automation for deploying and managing NVIDIA DPF (Data Processing Framework) on OpenShift clusters.
 
-# Required files
-OPENSHIFT_PULL_SECRET := openshift_pull.json
-DPF_PULL_SECRET := pull-secret.txt
+> **Note:** This project is under active development. Currently, only the pre-installation module is implemented and working. DPF installation and provisioning modules are in progress.
 
-.PHONY: all clean verify pre-install install-dpf provision-dpf help
+## Project Structure
 
-all: verify pre-install install-dpf provision-dpf
+```
+openshift-dpf/
+├── Makefile                    # Main orchestration Makefile
+├── pre-installation/          # Pre-installation configuration (Implemented)
+│   ├── Makefile              # Pre-installation automation
+│   ├── manifests/            # OpenShift manifests
+│   │   ├── ovn-values.yaml   # OVN configuration
+│   │   └── *.yaml           # Other required manifests
+│   └── README.md             # Pre-installation documentation
+├── dpf-installation/         # DPF operator installation (In Progress)
+├── dpf-provisioning/         # DPF provisioning and configuration (In Progress)
+└── README.md                 # Main project documentation
+```
 
-verify:
-	@test -f $(OPENSHIFT_PULL_SECRET) || (echo "Error: $(OPENSHIFT_PULL_SECRET) not found" && exit 1)
-	@test -f $(DPF_PULL_SECRET) || (echo "Error: $(DPF_PULL_SECRET) not found" && exit 1)
+## Prerequisites
 
-pre-install: verify
-	@echo "Running pre-installation..."
-	@$(MAKE) -C $(PRE_INSTALL_DIR) all
+- OpenShift CLI (`oc`)
+- Assisted Installer CLI (`aicli`)
+- Helm
+- Access to Red Hat Console
+- NVIDIA DPU hardware
+- Required pull secrets:
+  - OpenShift pull secret (`openshift_pull.json`)
+  - DPF pull secret (`pull-secret.txt`)
 
-install-dpf: pre-install
-	@echo "Installing DPF operator..."
-	@$(MAKE) -C $(DPF_INSTALL_DIR) all
+## Current Functionality
 
-provision-dpf: install-dpf
-	@echo "Provisioning DPF..."
-	@$(MAKE) -C $(DPF_PROVISION_DIR) all
+### Pre-Installation (Implemented)
+The pre-installation module automates:
+- OpenShift cluster creation with assisted installer
+- OVN network configuration
+- Required manifest generation and application
 
-clean:
-	@echo "Cleaning up..."
-	@$(MAKE) -C $(PRE_INSTALL_DIR) clean
-	@$(MAKE) -C $(DPF_INSTALL_DIR) clean
-	@$(MAKE) -C $(DPF_PROVISION_DIR) clean
+To use the pre-installation module:
+```bash
+# Run pre-installation
+make pre-install
 
-clean-pre-install:
-	@$(MAKE) -C $(PRE_INSTALL_DIR) clean
+# Clean up pre-installation
+make clean-pre-install
+```
 
-clean-dpf-install:
-	@$(MAKE) -C $(DPF_INSTALL_DIR) clean
+### Upcoming Features (In Progress)
+1. DPF Installation Module
+   - Operator deployment
+   - Component configuration
+   - Validation checks
 
-clean-dpf-provision:
-	@$(MAKE) -C $(DPF_PROVISION_DIR) clean
+2. DPF Provisioning Module
+   - DPU configuration
+   - Network setup
+   - Validation and testing
 
-help:
-	@echo "Available targets:"
-	@echo "  all                - Run complete deployment"
-	@echo "  pre-install        - Run pre-installation only"
-	@echo "  install-dpf        - Install DPF operator"
-	@echo "  provision-dpf      - Provision DPF"
-	@echo "  clean              - Clean all stages"
-	@echo "  clean-pre-install  - Clean pre-installation"
-	@echo "  clean-dpf-install  - Clean DPF installation"
-	@echo "  clean-dpf-provision- Clean DPF provisioning"
-	@echo ""
-	@echo "Configuration options:"
-	@echo "  CLUSTER_NAME      - Set cluster name (default: $(CLUSTER_NAME))"
-	@echo "  BASE_DOMAIN       - Set base DNS domain (default: $(BASE_DOMAIN))"
-	@echo "  OPENSHIFT_VERSION - Set OpenShift version (default: $(OPENSHIFT_VERSION))"
+## Getting Started
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/openshift-dpf.git
+cd openshift-dpf
+```
+
+2. Configure your environment:
+   - Place your OpenShift pull secret in `openshift_pull.json`
+   - Place your DPF pull secret in `pull-secret.txt`
+
+3. Run pre-installation:
+```bash
+make pre-install
+```
+
+## Configuration
+
+Pre-installation configuration options:
+```bash
+make pre-install CLUSTER_NAME=my-cluster BASE_DOMAIN=my.domain OPENSHIFT_VERSION=4.17.12
+```
+
+Default values:
+- CLUSTER_NAME: doca-cluster
+- BASE_DOMAIN: karmalabs.corp
+- OPENSHIFT_VERSION: 4.17.12
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## License
+
+This project is licensed under the Apache License 2.0 - see the LICENSE file for details.
+
+## Support
+
+For issues and feature requests, please open an issue in the GitHub repository.
