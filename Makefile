@@ -19,7 +19,25 @@ DPU_INTERFACE ?= enp1s0
 OPENSHIFT_PULL_SECRET := openshift_pull.json
 DPF_PULL_SECRET := pull-secret.txt
 
-.PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files
+# vms
+VM_PREFIX ?= vm-dpf
+VM_COUNT ?= 3
+
+# Retrieve the default physical NIC once if not set
+PHYSICAL_NIC ?= $(shell ip route | awk '/default/ {print $$5; exit}')
+
+# Set memory, vCPUs, and disk sizes if not already set
+RAM ?= 16384
+VCPUS ?= 8
+DISK_SIZE1 ?= 120
+DISK_SIZE2 ?= 40
+
+# Paths
+DISK_PATH ?= /var/lib/libvirt/images
+ISO_FOLDER ?= $(DISK_PATH)
+
+.PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
+        download-iso download-cert-manager fix-yaml-spacing create-vms delete-vms
 
 all: verify-files check-cluster prepare-manifests
 
@@ -28,7 +46,7 @@ verify-files:
 	@test -f $(DPF_PULL_SECRET) || (echo "Error: $(DPF_PULL_SECRET) not found" && exit 1)
 	@test -f $(MANIFESTS_DIR)/ovn-values.yaml || (echo "Error: $(MANIFESTS_DIR)/ovn-values.yaml not found" && exit 1)
 
-clean:
+clean: 
 	@rm -rf $(GENERATED_DIR)
 	@aicli delete cluster $(CLUSTER_NAME) || true
 
@@ -48,19 +66,22 @@ create-cluster: $(OPENSHIFT_PULL_SECRET)
 		-P openshift_version=$(OPENSHIFT_VERSION) \
 		-P base_dns_domain=$(BASE_DOMAIN) \
 		$(CLUSTER_NAME)
+	@echo "Cluster '$(CLUSTER_NAME)' has been created."
 
 prepare-manifests: $(DPF_PULL_SECRET)
 	@echo "Preparing manifests..."
 	@rm -rf $(GENERATED_DIR)
 	@mkdir -p $(GENERATED_DIR)
 	@echo "Copying static manifests..."
-	@find $(MANIFESTS_DIR) -maxdepth 1 -type f -name "*.yaml" -o -name "*.yml" | grep -v "ovn-values.yaml" | xargs -I {} cp {} $(GENERATED_DIR)/
+	@find $(MANIFESTS_DIR) -maxdepth 1 -type f -name "*.yaml" -o -name "*.yml" \
+        | grep -v "ovn-values.yaml" \
+        | xargs -I {} cp {} $(GENERATED_DIR)/
 	@echo "Updating network type for cluster $(CLUSTER_NAME)..."
 	@aicli update installconfig $(CLUSTER_NAME) -P network_type=NVIDIA-OVN
-	@make download-cert-manager
-	@make generate-ovn
-	@make update-paths
-	@make fix-yaml-spacing
+	@$(MAKE) download-cert-manager
+	@$(MAKE) generate-ovn
+	@$(MAKE) update-paths
+	@$(MAKE) fix-yaml-spacing
 	@aicli create manifests --dir $(GENERATED_DIR) $(CLUSTER_NAME)
 
 download-cert-manager:
@@ -91,30 +112,57 @@ generate-ovn:
 		> $(GENERATED_DIR)/ovn-manifests.yaml
 	@rm -rf $(GENERATED_DIR)/temp
 
-# Add a new target to fix YAML spacing in all generated files
 fix-yaml-spacing:
 	@echo "Fixing YAML spacing in generated files..."
-	@find $(GENERATED_DIR) -type f -name "*.yaml" -o -name "*.yml" | while read file; do \
-		sed -i -E 's/:[[:space:]]+/: /g' "$$file"; \
-	done
+	@find $(GENERATED_DIR) -type f -name '*.yaml' -o -name '*.yml' \
+		| while read file; do \
+			sed -i -E 's/:[[:space:]]+/: /g' \"$$file\"; \
+		done
 
 update-paths:
 	@echo "Updating paths in manifests..."
 	@sed -i 's|path: /etc/cni/net.d|path: /run/multus/cni/net.d|g' $(GENERATED_DIR)/ovn-manifests.yaml
 	@sed -i 's|path: /opt/cni/bin/|path:/var/lib/cni/bin/|g' $(GENERATED_DIR)/ovn-manifests.yaml
 
+# New target to download the ISO for the cluster
+download-iso:
+	@echo "Downloading ISO for cluster '$(CLUSTER_NAME)' to $(ISO_FOLDER)"
+	@aicli download iso $(CLUSTER_NAME) -p "$(ISO_FOLDER)"
+
+create-vms: download-iso
+	@echo "Running create_vms.sh with environment variables from Makefile..."
+	@env \
+		VM_PREFIX="$(VM_PREFIX)" \
+		VM_COUNT="$(VM_COUNT)" \
+		PHYSICAL_NIC="$(PHYSICAL_NIC)" \
+		RAM="$(RAM)" \
+		VCPUS="$(VCPUS)" \
+		DISK_SIZE1="$(DISK_SIZE1)" \
+		DISK_SIZE2="$(DISK_SIZE2)" \
+		DISK_PATH="$(DISK_PATH)" \
+		ISO_PATH="$(ISO_FOLDER)/$(CLUSTER_NAME).iso" \
+		OS_VARIANT="rhel9.4" \
+		scripts/create_vms.sh
+
+delete-vms:
+	@echo "Deleting all VMs with prefix: $(VM_PREFIX)"
+	@env \
+		VM_PREFIX="$(VM_PREFIX)" \
+		scripts/delete_vms.sh
+
 help:
 	@echo "Available targets:"
-	@echo "  all              - Run complete setup (check cluster and prepare manifests)"
-	@echo "  create-cluster   - Create a new cluster"
-	@echo "  prepare-manifests- Prepare all required manifests"
-	@echo "  delete-cluster   - Delete the cluster"
-	@echo "  clean            - Remove generated files and delete cluster"
+	@echo "  all               - Run complete setup (check cluster and prepare manifests)"
+	@echo "  create-cluster    - Create a new cluster"
+	@echo "  prepare-manifests - Prepare all required manifests"
+	@echo "  delete-cluster    - Delete the cluster"
+	@echo "  clean             - Remove generated files and delete cluster"
+	@echo "  download-iso      - Download the ISO for the created cluster"
 	@echo ""
 	@echo "Configuration options:"
 	@echo "  CLUSTER_NAME      - Set cluster name (default: $(CLUSTER_NAME))"
 	@echo "  BASE_DOMAIN       - Set base DNS domain (default: $(BASE_DOMAIN))"
 	@echo "  OPENSHIFT_VERSION - Set OpenShift version (default: $(OPENSHIFT_VERSION))"
-	@echo "  POD_CIDR         - Set pod CIDR (default: $(POD_CIDR))"
-	@echo "  SERVICE_CIDR     - Set service CIDR (default: $(SERVICE_CIDR))"
-	@echo "  DPU_INTERFACE    - Set DPU interface (default: $(DPU_INTERFACE))"
+	@echo "  POD_CIDR          - Set pod CIDR (default: $(POD_CIDR))"
+	@echo "  SERVICE_CIDR      - Set service CIDR (default: $(SERVICE_CIDR))"
+	@echo "  DPU_INTERFACE     - Set DPU interface (default: $(DPU_INTERFACE))"
