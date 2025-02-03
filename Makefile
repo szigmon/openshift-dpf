@@ -27,26 +27,34 @@ VM_COUNT ?= 3
 PHYSICAL_NIC ?= $(shell ip route | awk '/default/ {print $$5; exit}')
 
 # Set memory, vCPUs, and disk sizes if not already set
-RAM ?= 16384
-VCPUS ?= 8
+RAM ?= 41768
+VCPUS ?= 12
 DISK_SIZE1 ?= 120
 DISK_SIZE2 ?= 40
+
+# Network configuration
+API_VIP ?=
+INGRESS_VIP ?=
+
+# Convert single VIPs to lists
+API_VIPS = $(if $(API_VIP),['$(API_VIP)'],[''])
+INGRESS_VIPS = $(if $(INGRESS_VIP),['$(INGRESS_VIP)'],[''])
 
 # Paths
 DISK_PATH ?= /var/lib/libvirt/images
 ISO_FOLDER ?= $(DISK_PATH)
 
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
-        download-iso download-cert-manager fix-yaml-spacing create-vms delete-vms
+        download-iso download-cert-manager fix-yaml-spacing create-vms delete-vms enable-storage cluster-install
 
-all: verify-files check-cluster prepare-manifests
+all: verify-files check-cluster create-vms prepare-manifests
 
 verify-files:
 	@test -f $(OPENSHIFT_PULL_SECRET) || (echo "Error: $(OPENSHIFT_PULL_SECRET) not found" && exit 1)
 	@test -f $(DPF_PULL_SECRET) || (echo "Error: $(DPF_PULL_SECRET) not found" && exit 1)
 	@test -f $(MANIFESTS_DIR)/ovn-values.yaml || (echo "Error: $(MANIFESTS_DIR)/ovn-values.yaml not found" && exit 1)
 
-clean: 
+clean:
 	@rm -rf $(GENERATED_DIR)
 	@aicli delete cluster $(CLUSTER_NAME) || true
 
@@ -62,11 +70,21 @@ check-cluster:
 
 create-cluster: $(OPENSHIFT_PULL_SECRET)
 	@echo "Creating new cluster '$(CLUSTER_NAME)'..."
-	@aicli create cluster \
-		-P openshift_version=$(OPENSHIFT_VERSION) \
-		-P base_dns_domain=$(BASE_DOMAIN) \
-		$(CLUSTER_NAME)
-	@echo "Cluster '$(CLUSTER_NAME)' has been created."
+	@if [ "$(VM_COUNT)" -eq 1 ]; then \
+		echo "Detected VM_COUNT=1; creating a Single-Node OpenShift (SNO) cluster."; \
+		aicli create cluster \
+			-P openshift_version=$(OPENSHIFT_VERSION) \
+			-P base_dns_domain=$(BASE_DOMAIN) \
+			-P high_availability_mode=none \
+			$(CLUSTER_NAME); \
+	else \
+		aicli create cluster \
+			-P openshift_version=$(OPENSHIFT_VERSION) \
+			-P base_dns_domain=$(BASE_DOMAIN) \
+			-P api_vips=$(API_VIPS) \
+			-P ingress_vips=$(INGRESS_VIPS) \
+			$(CLUSTER_NAME); \
+	fi
 
 prepare-manifests: $(DPF_PULL_SECRET)
 	@echo "Preparing manifests..."
@@ -74,15 +92,15 @@ prepare-manifests: $(DPF_PULL_SECRET)
 	@mkdir -p $(GENERATED_DIR)
 	@echo "Copying static manifests..."
 	@find $(MANIFESTS_DIR) -maxdepth 1 -type f -name "*.yaml" -o -name "*.yml" \
-        | grep -v "ovn-values.yaml" \
-        | xargs -I {} cp {} $(GENERATED_DIR)/
+		| grep -v "ovn-values.yaml" \
+		| xargs -I {} cp {} $(GENERATED_DIR)/
 	@echo "Updating network type for cluster $(CLUSTER_NAME)..."
 	@aicli update installconfig $(CLUSTER_NAME) -P network_type=NVIDIA-OVN
 	@$(MAKE) download-cert-manager
 	@$(MAKE) generate-ovn
 	@$(MAKE) update-paths
-	@$(MAKE) fix-yaml-spacing
 	@aicli create manifests --dir $(GENERATED_DIR) $(CLUSTER_NAME)
+	@$(MAKE) enable-storage
 
 download-cert-manager:
 	@echo "Downloading cert-manager CRDs..."
@@ -100,9 +118,6 @@ generate-ovn:
 		-e "s|gatewayOpts:.*|gatewayOpts: --gateway-interface=$(DPU_INTERFACE)|" \
 		$(MANIFESTS_DIR)/ovn-values.yaml > $(GENERATED_DIR)/temp/values.yaml
 	@sed -i -E 's/:[[:space:]]+/: /g' $(GENERATED_DIR)/temp/values.yaml
-	@sed -i -E 's/net_cidr:[[:space:]]+/net_cidr: /g' $(GENERATED_DIR)/temp/values.yaml
-	@sed -i -E 's/svc_cidr:[[:space:]]+/svc_cidr: /g' $(GENERATED_DIR)/temp/values.yaml
-	@sed -i -E 's/mtu:[[:space:]]+/mtu: /g' $(GENERATED_DIR)/temp/values.yaml
 	@helm pull oci://ghcr.io/nvidia/ovn-kubernetes-chart \
 		--version $(HELM_CHART_VERSION) \
 		--untar -d $(GENERATED_DIR)/temp
@@ -112,19 +127,11 @@ generate-ovn:
 		> $(GENERATED_DIR)/ovn-manifests.yaml
 	@rm -rf $(GENERATED_DIR)/temp
 
-fix-yaml-spacing:
-	@echo "Fixing YAML spacing in generated files..."
-	@find $(GENERATED_DIR) -type f -name '*.yaml' -o -name '*.yml' \
-		| while read file; do \
-			sed -i -E 's/:[[:space:]]+/: /g' \"$$file\"; \
-		done
-
 update-paths:
 	@echo "Updating paths in manifests..."
 	@sed -i 's|path: /etc/cni/net.d|path: /run/multus/cni/net.d|g' $(GENERATED_DIR)/ovn-manifests.yaml
-	@sed -i 's|path: /opt/cni/bin/|path:/var/lib/cni/bin/|g' $(GENERATED_DIR)/ovn-manifests.yaml
+	@sed -i 's|path: /opt/cni/bin|path: /var/lib/cni/bin/|g' $(GENERATED_DIR)/ovn-manifests.yaml
 
-# New target to download the ISO for the cluster
 download-iso:
 	@echo "Downloading ISO for cluster '$(CLUSTER_NAME)' to $(ISO_FOLDER)"
 	@aicli download iso $(CLUSTER_NAME) -p "$(ISO_FOLDER)"
@@ -146,9 +153,21 @@ create-vms: download-iso
 
 delete-vms:
 	@echo "Deleting all VMs with prefix: $(VM_PREFIX)"
-	@env \
-		VM_PREFIX="$(VM_PREFIX)" \
-		scripts/delete_vms.sh
+	@env VM_PREFIX="$(VM_PREFIX)" scripts/delete_vms.sh
+
+cluster-install:
+	@echo "Installing cluster $(CLUSTER_NAME)"
+	@aicli start cluster $(CLUSTER_NAME)
+
+enable-storage:
+	@echo "Enable storage operator"
+	@if [ "$(VM_COUNT)" -eq 1 ]; then \
+		echo "Enable LVM operator"; \
+		aicli update cluster $(CLUSTER_NAME) -P olm_operators='[{"name": "lvm"}]'; \
+	else \
+		echo "Enable ODF operator"; \
+		aicli update cluster $(CLUSTER_NAME) -P olm_operators='[{"name": "odf"}]'; \
+	fi
 
 help:
 	@echo "Available targets:"
@@ -158,11 +177,16 @@ help:
 	@echo "  delete-cluster    - Delete the cluster"
 	@echo "  clean             - Remove generated files and delete cluster"
 	@echo "  download-iso      - Download the ISO for the created cluster"
+	@echo "  create-vms        - Create virtual machines for the cluster"
+	@echo "  delete-vms        - Delete virtual machines"
+	@echo "  cluster-install   - Start cluster installation"
 	@echo ""
 	@echo "Configuration options:"
 	@echo "  CLUSTER_NAME      - Set cluster name (default: $(CLUSTER_NAME))"
 	@echo "  BASE_DOMAIN       - Set base DNS domain (default: $(BASE_DOMAIN))"
 	@echo "  OPENSHIFT_VERSION - Set OpenShift version (default: $(OPENSHIFT_VERSION))"
-	@echo "  POD_CIDR          - Set pod CIDR (default: $(POD_CIDR))"
-	@echo "  SERVICE_CIDR      - Set service CIDR (default: $(SERVICE_CIDR))"
-	@echo "  DPU_INTERFACE     - Set DPU interface (default: $(DPU_INTERFACE))"
+	@echo "  POD_CIDR         - Set pod CIDR (default: $(POD_CIDR))"
+	@echo "  SERVICE_CIDR     - Set service CIDR (default: $(SERVICE_CIDR))"
+	@echo "  DPU_INTERFACE    - Set DPU interface (default: $(DPU_INTERFACE))"
+	@echo "  API_VIP          - Set API VIP address"
+	@echo "  INGRESS_VIP      - Set Ingress VIP address"
