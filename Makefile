@@ -1,6 +1,6 @@
 # Configuration for cluster
 CLUSTER_NAME ?= doca-cluster
-BASE_DOMAIN ?= karmalabs.corp
+BASE_DOMAIN ?= okoyl.xyz
 OPENSHIFT_VERSION ?= 4.17.12
 
 # Directory structure
@@ -27,7 +27,7 @@ VM_COUNT ?= 3
 PHYSICAL_NIC ?= $(shell ip route | awk '/default/ {print $$5; exit}')
 
 # Set memory, vCPUs, and disk sizes if not already set
-RAM ?= 41768
+RAM ?= 41984
 VCPUS ?= 12
 DISK_SIZE1 ?= 120
 DISK_SIZE2 ?= 40
@@ -40,14 +40,19 @@ INGRESS_VIP ?=
 API_VIPS = $(if $(API_VIP),['$(API_VIP)'],[''])
 INGRESS_VIPS = $(if $(INGRESS_VIP),['$(INGRESS_VIP)'],[''])
 
+# Wait configuration
+MAX_RETRIES ?= 90
+SLEEP_TIME ?= 60
+
 # Paths
 DISK_PATH ?= /var/lib/libvirt/images
 ISO_FOLDER ?= $(DISK_PATH)
 
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
-        download-iso download-cert-manager fix-yaml-spacing create-vms delete-vms enable-storage cluster-install
+        download-iso download-cert-manager fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
+        wait-for-installed wait-for-status cluster-start clean-all
 
-all: verify-files check-cluster create-vms prepare-manifests
+all: verify-files check-cluster create-vms prepare-manifests wait-for-ready cluster-install wait-for-installed
 
 verify-files:
 	@test -f $(OPENSHIFT_PULL_SECRET) || (echo "Error: $(OPENSHIFT_PULL_SECRET) not found" && exit 1)
@@ -155,9 +160,20 @@ delete-vms:
 	@echo "Deleting all VMs with prefix: $(VM_PREFIX)"
 	@env VM_PREFIX="$(VM_PREFIX)" scripts/delete_vms.sh
 
-cluster-install:
+cluster-start:
 	@echo "Installing cluster $(CLUSTER_NAME)"
 	@aicli start cluster $(CLUSTER_NAME)
+
+cluster-install: cluster-start wait-for-ready
+
+wait-for-status:
+	@scripts/wait-cluster.sh -c $(CLUSTER_NAME) -s $(STATUS) $(if $(MAX_RETRIES),-r $(MAX_RETRIES)) $(if $(SLEEP_TIME),-t $(SLEEP_TIME))
+
+wait-for-ready: STATUS=ready
+wait-for-ready: wait-for-status
+
+wait-for-installed: STATUS=installed
+wait-for-installed: wait-for-status
 
 enable-storage:
 	@echo "Enable storage operator"
@@ -169,8 +185,12 @@ enable-storage:
 		aicli update cluster $(CLUSTER_NAME) -P olm_operators='[{"name": "odf"}]'; \
 	fi
 
-help:
-	@echo "Available targets:"
+clean-all:
+	@echo "Cleaning up cluster and VMs..."
+	@$(MAKE) delete-cluster || true
+	@$(MAKE) delete-vms || true
+	@$(MAKE) clean || true
+	@echo "Cleanup complete"
 	@echo "  all               - Run complete setup (check cluster and prepare manifests)"
 	@echo "  create-cluster    - Create a new cluster"
 	@echo "  prepare-manifests - Prepare all required manifests"
@@ -179,14 +199,38 @@ help:
 	@echo "  download-iso      - Download the ISO for the created cluster"
 	@echo "  create-vms        - Create virtual machines for the cluster"
 	@echo "  delete-vms        - Delete virtual machines"
-	@echo "  cluster-install   - Start cluster installation"
+	@echo "  cluster-install   - Start cluster installation and wait for ready status"
+	@echo "  wait-for-status   - Wait for specific cluster status (use STATUS=desired_status)"
+	@echo "  wait-for-ready    - Wait for cluster ready status"
+	@echo "  wait-for-installed - Wait for cluster installed status"
+	@echo ""
+	help:
+	@echo "Available targets:"
+	@echo "  all               - Run complete setup (check cluster and prepare manifests)"
+	@echo "  create-cluster    - Create a new cluster"
+	@echo "  prepare-manifests - Prepare all required manifests"
+	@echo "  delete-cluster    - Delete the cluster"
+	@echo "  clean            - Remove generated files and delete cluster"
+	@echo "  clean-all        - Delete cluster, VMs, and clean generated files"
+	@echo "  download-iso      - Download the ISO for the created cluster"
+	@echo "  create-vms        - Create virtual machines for the cluster"
+	@echo "  delete-vms        - Delete virtual machines"
+	@echo "  cluster-install   - Start cluster installation and wait for ready status"
+	@echo "  wait-for-status   - Wait for specific cluster status (use STATUS=desired_status)"
+	@echo "  wait-for-ready    - Wait for cluster ready status"
+	@echo "  wait-for-installed - Wait for cluster installed status"
 	@echo ""
 	@echo "Configuration options:"
 	@echo "  CLUSTER_NAME      - Set cluster name (default: $(CLUSTER_NAME))"
-	@echo "  BASE_DOMAIN       - Set base DNS domain (default: $(BASE_DOMAIN))"
+	@echo "  BASE_DOMAIN      - Set base DNS domain (default: $(BASE_DOMAIN))"
 	@echo "  OPENSHIFT_VERSION - Set OpenShift version (default: $(OPENSHIFT_VERSION))"
 	@echo "  POD_CIDR         - Set pod CIDR (default: $(POD_CIDR))"
 	@echo "  SERVICE_CIDR     - Set service CIDR (default: $(SERVICE_CIDR))"
 	@echo "  DPU_INTERFACE    - Set DPU interface (default: $(DPU_INTERFACE))"
 	@echo "  API_VIP          - Set API VIP address"
 	@echo "  INGRESS_VIP      - Set Ingress VIP address"
+	@echo "  VM_COUNT         - Number of VMs to create (default: $(VM_COUNT))"
+	@echo "  RAM              - RAM in MB for VMs (default: $(RAM))"
+	@echo "  VCPUS            - Number of vCPUs for VMs (default: $(VCPUS))"
+	@echo "  MAX_RETRIES      - Maximum number of retries for status checks (default: $(MAX_RETRIES))"
+	@echo "  SLEEP_TIME       - Sleep time in seconds between retries (default: $(SLEEP_TIME))"
