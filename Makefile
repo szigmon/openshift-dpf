@@ -4,7 +4,7 @@ export BASE_DOMAIN ?= karmalabs.corp
 export OPENSHIFT_VERSION ?= 4.17.12
 
 # Directory structure
-PRE_INSTALL_DIR := pre-installation
+CLUSTER_INSTALL_DIR := cluster-installation
 DPF_INSTALL_DIR := dpf-installation
 DPF_PROVISION_DIR := dpf-provisioning
 
@@ -12,20 +12,20 @@ DPF_PROVISION_DIR := dpf-provisioning
 OPENSHIFT_PULL_SECRET := openshift_pull.json
 DPF_PULL_SECRET := pull-secret.txt
 
-.PHONY: all clean verify pre-install install-dpf provision-dpf help
+.PHONY: all clean verify cluster-install install-dpf provision-dpf help
 
-# Note: Currently only pre-install is implemented
-all: verify pre-install
-	@echo "Note: Only pre-installation is currently implemented."
+# Note: Currently only cluster-install is implemented
+all: verify cluster-install
+	@echo "Note: Only cluster-installation is currently implemented."
 	@echo "DPF installation and provisioning modules are in progress."
 
 verify:
 	@test -f $(OPENSHIFT_PULL_SECRET) || (echo "Error: $(OPENSHIFT_PULL_SECRET) not found" && exit 1)
 	@test -f $(DPF_PULL_SECRET) || (echo "Error: $(DPF_PULL_SECRET) not found" && exit 1)
 
-pre-install: verify
-	@echo "Running pre-installation..."
-	@$(MAKE) -C $(PRE_INSTALL_DIR) all
+cluster-install: verify
+	@echo "Running cluster-installation..."
+	@$(MAKE) -C $(CLUSTER_INSTALL_DIR) all
 
 # Placeholder targets for upcoming modules
 install-dpf:
@@ -36,10 +36,10 @@ provision-dpf:
 	@echo "DPF provisioning module is not yet implemented."
 	@exit 1
 
-clean: clean-pre-install
+clean: clean-cluster-install
 
-clean-pre-install:
-	@$(MAKE) -C $(PRE_INSTALL_DIR) clean
+clean-cluster-install:
+	@$(MAKE) -C $(CLUSTER_INSTALL_DIR) clean-all
 
 # Placeholder clean targets for upcoming modules
 clean-dpf-install:
@@ -50,8 +50,8 @@ clean-dpf-provision:
 
 help:
 	@echo "Available targets:"
-	@echo "  pre-install        - Run pre-installation (Implemented)"
-	@echo "  clean-pre-install  - Clean pre-installation"
+	@echo "  cluster-install        - Run cluster-installation (Implemented)"
+	@echo "  clean-cluster-install  - Clean cluster-installation"
 	@echo ""
 	@echo "Upcoming features (In Progress):"
 	@echo "  install-dpf        - Install DPF operator"
