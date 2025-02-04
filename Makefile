@@ -1,6 +1,6 @@
 # Configuration
 export CLUSTER_NAME ?= doca-cluster
-export BASE_DOMAIN ?= karmalabs.corp
+export BASE_DOMAIN ?= okoyl.xyz
 export OPENSHIFT_VERSION ?= 4.17.12
 
 # Directory structure
