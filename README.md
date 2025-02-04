@@ -41,10 +41,10 @@ The pre-installation module automates:
 
 To use the pre-installation module:
 ```bash
-# Run pre-installation
+# Run cluster-installation
 make pre-install
 
-# Clean up pre-installation
+# Clean up cluster-installation
 make clean-pre-install
 ```
 
