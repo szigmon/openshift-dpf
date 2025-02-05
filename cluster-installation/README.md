@@ -1,27 +1,23 @@
-# NVIDIA DPF Deployment for OpenShift
-Complete automation for deploying and managing NVIDIA DPF (Data Processing Framework) on OpenShift clusters. This project provides end-to-end automation for pre-installation configuration, DPF installation, and DPF provisioning.
+# OpenShift DPF Deployment
+
+Complete automation for deploying and managing NVIDIA DPF (Data Processing Framework) on OpenShift clusters.
+
+> **Note:** This project is under active development. Currently, only the pre-installation module is implemented and working. DPF installation and provisioning modules are in progress.
 
 ## Project Structure
 
 ```
 openshift-dpf/
 ├── Makefile                    # Main orchestration Makefile
-├── pre-installation/          # Pre-installation configuration
+├── pre-installation/          # Pre-installation configuration (Implemented)
 │   ├── Makefile              # Pre-installation automation
 │   ├── manifests/            # OpenShift manifests
 │   │   ├── ovn-values.yaml   # OVN configuration
 │   │   └── *.yaml           # Other required manifests
 │   └── README.md             # Pre-installation documentation
-├── dpf-installation/         # DPF operator installation
-│   ├── Makefile              # Installation automation
-│   ├── manifests/            # DPF operator manifests
-│   └── README.md             # Installation documentation
-├── dpf-provisioning/         # DPF provisioning and configuration
-│   ├── Makefile              # Provisioning automation
-│   ├── configs/              # Provisioning configurations
-│   └── README.md             # Provisioning documentation
+├── dpf-installation/         # DPF operator installation (In Progress)
+├── dpf-provisioning/         # DPF provisioning and configuration (In Progress)
 └── README.md                 # Main project documentation
-
 ```
 
 ## Prerequisites
@@ -35,6 +31,34 @@ openshift-dpf/
   - OpenShift pull secret (`openshift_pull.json`)
   - DPF pull secret (`pull-secret.txt`)
 
+## Current Functionality
+
+### Pre-Installation (Implemented)
+The pre-installation module automates:
+- OpenShift cluster creation with assisted installer
+- OVN network configuration
+- Required manifest generation and application
+
+To use the pre-installation module:
+```bash
+# Run cluster-installation
+make pre-install
+
+# Clean up cluster-installation
+make clean-pre-install
+```
+
+### Upcoming Features (In Progress)
+1. DPF Installation Module
+   - Operator deployment
+   - Component configuration
+   - Validation checks
+
+2. DPF Provisioning Module
+   - DPU configuration
+   - Network setup
+   - Validation and testing
+
 ## Getting Started
 
 1. Clone the repository:
@@ -47,68 +71,22 @@ cd openshift-dpf
    - Place your OpenShift pull secret in `openshift_pull.json`
    - Place your DPF pull secret in `pull-secret.txt`
 
-3. Run the complete deployment:
-```bash
-make all
-```
-
-## Deployment Stages
-
-### 1. Pre-Installation
-Configures the OpenShift cluster with required networking components:
+3. Run pre-installation:
 ```bash
 make pre-install
-```
-
-### 2. DPF Installation
-Installs the DPF operator and required components:
-```bash
-make install-dpf
-```
-
-### 3. DPF Provisioning
-Configures and provisions DPF components:
-```bash
-make provision-dpf
 ```
 
 ## Configuration
 
-Each stage has its own configuration options. See the respective README files in each directory for detailed configuration options:
-
-- [Pre-Installation Configuration](pre-installation/README.md)
-- [DPF Installation Configuration](dpf-installation/README.md)
-- [DPF Provisioning Configuration](dpf-provisioning/README.md)
-
-## Usage Examples
-
-1. Complete deployment with default settings:
+Pre-installation configuration options:
 ```bash
-make all
+make pre-install CLUSTER_NAME=my-cluster BASE_DOMAIN=my.domain OPENSHIFT_VERSION=4.17.12
 ```
 
-2. Run specific stages:
-```bash
-# Pre-installation only
-make pre-install
-
-# DPF installation only
-make install-dpf
-
-# DPF provisioning only
-make provision-dpf
-```
-
-3. Clean up:
-```bash
-# Clean everything
-make clean
-
-# Clean specific stage
-make clean-pre-install
-make clean-dpf-install
-make clean-dpf-provision
-```
+Default values:
+- CLUSTER_NAME: doca-cluster
+- BASE_DOMAIN: karmalabs.corp
+- OPENSHIFT_VERSION: 4.17.12
 
 ## Contributing
 
