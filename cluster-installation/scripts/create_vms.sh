@@ -33,4 +33,23 @@ for i in $(seq 1 "$VM_COUNT"); do
 
 done
 
-echo "All VMs have been created successfully."
+# Wait for all VMs to be running using retry mechanism
+MAX_RETRIES=24  # 2 minutes (24 retries * 5s)
+INTERVAL=5      # Check every 5 seconds
+
+for i in $(seq 1 "$VM_COUNT"); do
+    VM_NAME="${VM_PREFIX}${i}"
+    retries=0
+    until [[ "$(virsh domstate "$VM_NAME" 2>/dev/null || true )" == "running" ]]; do
+        if [[ $retries -ge $MAX_RETRIES ]]; then
+            echo "Error: VM $VM_NAME did not reach running state within 2 minutes."
+            exit 1
+        fi
+        echo "Waiting for VM $VM_NAME to start... (Attempt: $((retries + 1))/$MAX_RETRIES)"
+        sleep $INTERVAL
+        ((retries+=1))
+    done
+    echo "VM $VM_NAME is running."
+done
+
+echo "All VMs created and running successfully"

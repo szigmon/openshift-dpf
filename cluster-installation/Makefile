@@ -83,7 +83,8 @@ create-cluster: $(OPENSHIFT_PULL_SECRET)
 			-P openshift_version=$(OPENSHIFT_VERSION) \
 			-P base_dns_domain=$(BASE_DOMAIN) \
 			-P pull_secret=$(OPENSHIFT_PULL_SECRET) \
-			-P high_availability_mode=none \
+			-P high_availability_mode=None \
+			-P user_managed_networking=True \
 			$(CLUSTER_NAME); \
 	else \
 		aicli create cluster \
