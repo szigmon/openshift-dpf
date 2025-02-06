@@ -100,7 +100,6 @@ create-cluster: $(OPENSHIFT_PULL_SECRET)
 			-P api_vips=$(API_VIPS) \
 			-P pull_secret=$(OPENSHIFT_PULL_SECRET) \
 			-P ingress_vips=$(INGRESS_VIPS) \
-			-P user_managed_networking=True \
 			$(CLUSTER_NAME); \
 	fi
 
@@ -218,11 +217,11 @@ prepare-dpf-manifests: $(DPF_PULL_SECRET)
 	@find $(MANIFESTS_DIR)/dpf-installation -maxdepth 1 -type f -name "*.yaml" \
 		| xargs -I {} cp {} $(GENERATED_DIR)/
 	@sed -i 's|value: api.doca-cluster.karmalabs.corp|value: $(HOST_CLUSTER_API)|g' \
-		$(GENERATED_DIR)/dpf-operator-manifests.yaml
+		$(GENERATED_DIR)/dpf-operator-manifests-*.yaml
 	@sed -i 's|value: "6443"|value: "$(HOST_CLUSTER_PORT)"|g' \
-		$(GENERATED_DIR)/dpf-operator-manifests.yaml
+		$(GENERATED_DIR)/dpf-operator-manifests-*.yaml
 	@sed -i 's|storageClassName: lvms-vg1|storageClassName: $(ETCD_STORAGE_CLASS)|g' \
-		$(GENERATED_DIR)/dpf-operator-manifests.yaml
+		$(GENERATED_DIR)/dpf-operator-manifests-*.yaml
 	@sed -i 's|storageClassName: ""|storageClassName: "$(BFB_STORAGE_CLASS)"|g' \
 		$(GENERATED_DIR)/bfb-pvc.yaml
 	@NGC_API_KEY=$$(jq -r '.auths."nvcr.io".password' $(DPF_PULL_SECRET)); \
@@ -231,7 +230,7 @@ prepare-dpf-manifests: $(DPF_PULL_SECRET)
 	@sed -i 's|interface: br-ex|interface: $(DPU_INTERFACE)|g' $(GENERATED_DIR)/kamaji-manifests.yaml
 	@sed -i 's|vip: 10.1.178.225|vip: $(KAMAJI_VIP)|g' $(GENERATED_DIR)/kamaji-manifests.yaml
 	@PULL_SECRET=$$(cat $(DPF_PULL_SECRET) | base64 -w 0); \
-	sed -i "s|.dockerconfigjson: = xxx|.dockerconfigjson: $$PULL_SECRET|g" $(GENERATED_DIR)/dpf-operator-manifests.yaml
+	sed -i "s|.dockerconfigjson: = xxx|.dockerconfigjson: $$PULL_SECRET|g" $(GENERATED_DIR)/dpf-operator-manifests-*.yaml
 
 fix-jobs:
 	@echo "Setting up etcd certificates..."
@@ -286,6 +285,11 @@ clean-all:
 	@$(MAKE) delete-vms || true
 	@$(MAKE) clean || true
 	@echo "Cleanup complete"
+
+install-helm:
+	@curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+	@chmod 700 get_helm.sh
+	@./get_helm.sh
 
 help:
 	@echo "Available targets:"

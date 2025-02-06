@@ -1,0 +1,4161 @@
+---
+# Source: dpf-operator/charts/argo-cd/templates/argocd-server/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dpf-operator-argocd-server
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: server
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+      - configmaps
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - argoproj.io
+    resources:
+      - applications
+      - applicationsets
+      - appprojects
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+      - delete
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - list
+---
+# Source: dpf-operator/charts/kamaji/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kamaji-leader-election-role
+  namespace: dpf-operator-system
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+---
+# Source: dpf-operator/charts/maintenance-operator-chart/templates/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dpf-operator-maintenance-operator-manager-role
+  namespace: dpf-operator-system
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: maintenance-operator
+    app.kubernetes.io/part-of: maintenance-operator
+    helm.sh/chart: maintenance-operator-chart-0.1.1
+    app.kubernetes.io/name: maintenance-operator
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.1.1"
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+---
+# Source: dpf-operator/charts/node-feature-discovery/templates/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dpf-operator-node-feature-discovery-worker
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: node-feature-discovery-0.16.5
+    app.kubernetes.io/name: node-feature-discovery
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.16.5"
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups:
+      - nfd.k8s-sigs.io
+    resources:
+      - nodefeatures
+    verbs:
+      - create
+      - get
+      - update
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - delete
+---
+# Source: dpf-operator/templates/leader-election-rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dpf-operator-leader-election-role
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: dpf-operator
+    app.kubernetes.io/part-of: dpf-operator
+    dpu.nvidia.com/component: dpf-operator-controller-manager
+    helm.sh/chart: dpf-operator-v24.10.0-rc.6
+    app.kubernetes.io/name: dpf-operator
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+---
+# Source: dpf-operator/charts/argo-cd/templates/argocd-application-controller/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dpf-operator-argocd-application-controller
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: application-controller
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dpf-operator-argocd-application-controller
+subjects:
+  - kind: ServiceAccount
+    name: argocd-application-controller
+    namespace: dpf-operator-system
+---
+# Source: dpf-operator/charts/argo-cd/templates/argocd-applicationset/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dpf-operator-argocd-applicationset-controller
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-applicationset-controller
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: applicationset-controller
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dpf-operator-argocd-applicationset-controller
+subjects:
+  - kind: ServiceAccount
+    name: argocd-applicationset-controller
+    namespace: dpf-operator-system
+---
+# Source: dpf-operator/charts/argo-cd/templates/argocd-repo-server/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dpf-operator-argocd-repo-server
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: repo-server
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dpf-operator-argocd-repo-server
+subjects:
+  - kind: ServiceAccount
+    name: dpf-operator-argocd-repo-server
+    namespace: dpf-operator-system
+---
+# Source: dpf-operator/charts/argo-cd/templates/argocd-server/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dpf-operator-argocd-server
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: server
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dpf-operator-argocd-server
+subjects:
+  - kind: ServiceAccount
+    name: argocd-server
+    namespace: dpf-operator-system
+---
+# Source: dpf-operator/charts/kamaji/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kamaji-leader-election-rolebinding
+  namespace: dpf-operator-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kamaji-leader-election-role
+subjects:
+  - kind: ServiceAccount
+    name: kamaji-controller-manager
+    namespace: dpf-operator-system
+---
+# Source: dpf-operator/charts/maintenance-operator-chart/templates/role_binding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dpf-operator-maintenance-operator-manager-rolebinding
+  namespace: dpf-operator-system
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: maintenance-operator
+    app.kubernetes.io/part-of: maintenance-operator
+    helm.sh/chart: maintenance-operator-chart-0.1.1
+    app.kubernetes.io/name: maintenance-operator
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.1.1"
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: 'dpf-operator-maintenance-operator-manager-role'
+subjects:
+  - kind: ServiceAccount
+    name: 'dpf-operator-maintenance-operator-controller-manager'
+    namespace: dpf-operator-system
+---
+# Source: dpf-operator/charts/node-feature-discovery/templates/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dpf-operator-node-feature-discovery-worker
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: node-feature-discovery-0.16.5
+    app.kubernetes.io/name: node-feature-discovery
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.16.5"
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dpf-operator-node-feature-discovery-worker
+subjects:
+  - kind: ServiceAccount
+    name: dpf-operator-node-feature-discovery-worker
+    namespace: dpf-operator-system
+---
+# Source: dpf-operator/templates/leader-election-rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dpf-operator-leader-election-rolebinding
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: dpf-operator
+    app.kubernetes.io/part-of: dpf-operator
+    dpu.nvidia.com/component: dpf-operator-controller-manager
+    helm.sh/chart: dpf-operator-v24.10.0-rc.6
+    app.kubernetes.io/name: dpf-operator
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: 'dpf-operator-leader-election-role'
+subjects:
+  - kind: ServiceAccount
+    name: 'dpf-operator-controller-manager'
+    namespace: 'dpf-operator-system'
+---
+# Source: dpf-operator/charts/argo-cd/templates/argocd-applicationset/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dpf-operator-argocd-applicationset-controller
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-applicationset-controller
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: applicationset-controller
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+spec:
+  type: ClusterIP
+  ports:
+    - name: http-webhook
+      port: 7000
+      targetPort: webhook
+  selector:
+    app.kubernetes.io/name: argocd-applicationset-controller
+    app.kubernetes.io/instance: dpf-operator
+---
+# Source: dpf-operator/charts/argo-cd/templates/argocd-repo-server/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: repo-server
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+  name: dpf-operator-argocd-repo-server
+  namespace: dpf-operator-system
+spec:
+  ports:
+    - name: tcp-repo-server
+      protocol: TCP
+      port: 8081
+      targetPort: repo-server
+  selector:
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/instance: dpf-operator
+---
+# Source: dpf-operator/charts/argo-cd/templates/argocd-server/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dpf-operator-argocd-server
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: server
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+spec:
+  type: ClusterIP
+  sessionAffinity: None
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+    - name: https
+      protocol: TCP
+      port: 443
+      targetPort: 8080
+  selector:
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/instance: dpf-operator
+---
+# Source: dpf-operator/charts/argo-cd/templates/redis/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dpf-operator-argocd-redis
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-redis
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: redis
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+spec:
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis
+  selector:
+    app.kubernetes.io/name: argocd-redis
+    app.kubernetes.io/instance: dpf-operator
+---
+# Source: dpf-operator/charts/kamaji-etcd/templates/etcd_service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    helm.sh/chart: kamaji-etcd-0.9.0
+    app.kubernetes.io/name: kamaji-etcd
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "3.5.6"
+    app.kubernetes.io/managed-by: Helm
+  name: dpf-operator-kamaji-etcd
+  namespace: dpf-operator-system
+spec:
+  clusterIP: None
+  ports:
+    - port: 2379
+      name: client
+    - port: 2380
+      name: peer
+    - port: 2381
+      name: metrics
+  selector:
+    app.kubernetes.io/name: kamaji-etcd
+    app.kubernetes.io/instance: dpf-operator
+---
+# Source: dpf-operator/charts/kamaji/templates/service_metrics.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    helm.sh/chart: kamaji-1.0.0
+    app.kubernetes.io/name: kamaji
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/version: "v1.0.0"
+    app.kubernetes.io/managed-by: Helm
+  name: dpf-operator-kamaji-metrics-service
+  namespace: dpf-operator-system
+spec:
+  ports:
+    - port: 8080
+      name: metrics
+      protocol: TCP
+      targetPort: metrics
+  selector:
+    app.kubernetes.io/name: kamaji
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: controller-manager
+---
+# Source: dpf-operator/charts/kamaji/templates/service_webhook.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    helm.sh/chart: kamaji-1.0.0
+    app.kubernetes.io/name: kamaji
+    app.kubernetes.io/instance: webhook-service
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/version: "v1.0.0"
+    app.kubernetes.io/managed-by: Helm
+  name: dpf-operator-kamaji-webhook-service
+  namespace: dpf-operator-system
+spec:
+  ports:
+    - port: 443
+      protocol: TCP
+      name: webhook-server
+      targetPort: webhook-server
+  selector:
+    app.kubernetes.io/name: kamaji
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: controller-manager
+---
+# Source: dpf-operator/charts/maintenance-operator-chart/templates/metrics-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: maintenance-operator-metrics-service
+  namespace: dpf-operator-system
+  labels:
+    app.kubernetes.io/component: kube-rbac-proxy
+    app.kubernetes.io/created-by: maintenance-operator
+    app.kubernetes.io/part-of: maintenance-operator
+    control-plane: dpf-operator-controller-manager
+    helm.sh/chart: maintenance-operator-chart-0.1.1
+    app.kubernetes.io/name: maintenance-operator
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.1.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  selector:
+    control-plane: dpf-operator-controller-manager
+    app.kubernetes.io/name: maintenance-operator
+    app.kubernetes.io/instance: dpf-operator
+  ports:
+    - name: https
+      port: 8443
+      protocol: TCP
+      targetPort: https
+---
+# Source: dpf-operator/charts/maintenance-operator-chart/templates/webhook.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dpf-operator-maintenance-operator-webhook-service
+  namespace: dpf-operator-system
+  labels:
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/created-by: maintenance-operator
+    app.kubernetes.io/part-of: maintenance-operator
+    helm.sh/chart: maintenance-operator-chart-0.1.1
+    app.kubernetes.io/name: maintenance-operator
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.1.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  selector:
+    control-plane: dpf-operator-controller-manager
+    app.kubernetes.io/name: maintenance-operator
+    app.kubernetes.io/instance: dpf-operator
+  ports:
+    - port: 443
+      protocol: TCP
+      targetPort: 9443
+---
+# Source: dpf-operator/charts/node-feature-discovery/templates/worker.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name:  dpf-operator-node-feature-discovery-worker
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: node-feature-discovery-0.16.5
+    app.kubernetes.io/name: node-feature-discovery
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.16.5"
+    app.kubernetes.io/managed-by: Helm
+    role: worker
+spec:
+  revisionHistoryLimit:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-feature-discovery
+      app.kubernetes.io/instance: dpf-operator
+      role: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: node-feature-discovery
+        app.kubernetes.io/instance: dpf-operator
+        role: worker
+    spec:
+      dnsPolicy: Default
+      serviceAccountName: dpf-operator-node-feature-discovery-worker
+      securityContext:
+        {}
+      hostNetwork: true
+      containers:
+        - name: worker
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          image: "quay.io/itsoiref/nfd:latest"
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            grpc:
+              port: 8082
+            initialDelaySeconds: 10
+          readinessProbe:
+            failureThreshold: 10
+            grpc:
+              port: 8082
+            initialDelaySeconds: 5
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_UID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.uid
+            - name: KUBERNETES_SERVICE_HOST
+              value: api.doca-ovn-test.okoyl.xyz
+            - name: KUBERNETES_SERVICE_PORT
+              value: "6443"
+          resources:
+            limits:
+              memory: 512Mi
+            requests:
+              cpu: 5m
+              memory: 64Mi
+          command:
+            - "nfd-worker"
+          args:
+            # Go over featureGate and add the feature-gate flag
+            - "-feature-gates=NodeFeatureAPI=true"
+            - "-feature-gates=NodeFeatureGroupAPI=false"
+            - "-metrics=8081"
+            - "-grpc-health=8082"
+          ports:
+            - containerPort: 8081
+              name: metrics
+            - containerPort: 8082
+              name: health
+          volumeMounts:
+            - name: host-boot
+              mountPath: "/host-boot"
+              readOnly: true
+            - name: host-os-release
+              mountPath: "/host-etc/os-release"
+              readOnly: true
+            - name: host-sys
+              mountPath: "/host-sys"
+              readOnly: true
+            - name: host-usr-lib
+              mountPath: "/host-usr/lib"
+              readOnly: true
+            - name: host-lib
+              mountPath: "/host-lib"
+              readOnly: true
+            - name: host-proc-swaps
+              mountPath: "/host-proc/swaps"
+              readOnly: true
+            - name: source-d
+              mountPath: "/etc/kubernetes/node-feature-discovery/source.d/"
+              readOnly: true
+            - name: features-d
+              mountPath: "/etc/kubernetes/node-feature-discovery/features.d/"
+              readOnly: true
+            - name: nfd-worker-conf
+              mountPath: "/etc/kubernetes/node-feature-discovery"
+              readOnly: true
+      volumes:
+        - name: host-boot
+          hostPath:
+            path: "/boot"
+        - name: host-os-release
+          hostPath:
+            path: "/etc/os-release"
+        - name: host-sys
+          hostPath:
+            path: "/sys"
+        - name: host-usr-lib
+          hostPath:
+            path: "/usr/lib"
+        - name: host-lib
+          hostPath:
+            path: "/lib"
+        - name: host-proc-swaps
+          hostPath:
+            path: "/proc/swaps"
+        - name: source-d
+          hostPath:
+            path: "/etc/kubernetes/node-feature-discovery/source.d/"
+        - name: features-d
+          hostPath:
+            path: "/etc/kubernetes/node-feature-discovery/features.d/"
+        - name: nfd-worker-conf
+          configMap:
+            name: dpf-operator-node-feature-discovery-worker-conf
+            items:
+              - key: nfd-worker.conf
+                path: nfd-worker.conf
+      tolerations:
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+---
+# Source: dpf-operator/charts/argo-cd/templates/argocd-applicationset/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dpf-operator-argocd-applicationset-controller
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-applicationset-controller
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: applicationset-controller
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-applicationset-controller
+      app.kubernetes.io/instance: dpf-operator
+  template:
+    metadata:
+      annotations:
+        checksum/cmd-params: 793bf4e058c9bab5e90be0ed2d475439b2d668bf40eadcff662c37c2688a6986
+      labels:
+        helm.sh/chart: argo-cd-7.6.8
+        app.kubernetes.io/name: argocd-applicationset-controller
+        app.kubernetes.io/instance: dpf-operator
+        app.kubernetes.io/component: applicationset-controller
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: argocd
+        app.kubernetes.io/version: "v2.12.4"
+        ovn.dpu.nvidia.com/skip-injection: ""
+    spec:
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: argocd-applicationset-controller
+      automountServiceAccountToken: true
+      containers:
+        - name: applicationset-controller
+          image: quay.io/argoproj/argocd:v2.12.4
+          imagePullPolicy: IfNotPresent
+          args:
+            - /usr/local/bin/argocd-applicationset-controller
+            - --metrics-addr=:8080
+            - --probe-addr=:8081
+            - --webhook-addr=:7000
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_GLOBAL_PRESERVED_ANNOTATIONS
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.global.preserved.annotations
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_GLOBAL_PRESERVED_LABELS
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.global.preserved.labels
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_ENABLE_LEADER_ELECTION
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.enable.leader.election
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_REPO_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  key: repo.server
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_POLICY
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.policy
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_ENABLE_POLICY_OVERRIDE
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.enable.policy.override
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_DEBUG
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.debug
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_LOGFORMAT
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.log.format
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_LOGLEVEL
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.log.level
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_DRY_RUN
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.dryrun
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_GIT_MODULES_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.enable.git.submodule
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_ENABLE_PROGRESSIVE_SYNCS
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.enable.progressive.syncs
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_ENABLE_NEW_GIT_FILE_GLOBBING
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.enable.new.git.file.globbing
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_REPO_SERVER_PLAINTEXT
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: applicationsetcontroller.repo.server.plaintext
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_REPO_SERVER_STRICT_TLS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: applicationsetcontroller.repo.server.strict.tls
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_REPO_SERVER_TIMEOUT_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: applicationsetcontroller.repo.server.timeout.seconds
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_CONCURRENT_RECONCILIATIONS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: applicationsetcontroller.concurrent.reconciliations.max
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_NAMESPACES
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.namespaces
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_SCM_ROOT_CA_PATH
+              valueFrom:
+                configMapKeyRef:
+                  key: applicationsetcontroller.scm.root.ca.path
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_ALLOWED_SCM_PROVIDERS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: applicationsetcontroller.allowed.scm.providers
+                  optional: true
+            - name: ARGOCD_APPLICATIONSET_CONTROLLER_ENABLE_SCM_PROVIDERS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: applicationsetcontroller.enable.scm.providers
+                  optional: true
+          ports:
+            - name: metrics
+              containerPort: 8080
+              protocol: TCP
+            - name: probe
+              containerPort: 8081
+              protocol: TCP
+            - name: webhook
+              containerPort: 7000
+              protocol: TCP
+          resources:
+            {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /app/config/ssh
+              name: ssh-known-hosts
+            - mountPath: /app/config/tls
+              name: tls-certs
+            - mountPath: /app/config/gpg/source
+              name: gpg-keys
+            - mountPath: /app/config/gpg/keys
+              name: gpg-keyring
+            - mountPath: /app/config/reposerver/tls
+              name: argocd-repo-server-tls
+            - mountPath: /tmp
+              name: tmp
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: argocd-applicationset-controller
+                topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      volumes:
+        - name: ssh-known-hosts
+          configMap:
+            name: argocd-ssh-known-hosts-cm
+        - name: tls-certs
+          configMap:
+            name: argocd-tls-certs-cm
+        - name: gpg-keys
+          configMap:
+            name: argocd-gpg-keys-cm
+        - name: gpg-keyring
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: argocd-repo-server-tls
+          secret:
+            secretName: argocd-repo-server-tls
+            optional: true
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+              - key: ca.crt
+                path: ca.crt
+      dnsPolicy: ClusterFirst
+---
+# Source: dpf-operator/charts/argo-cd/templates/argocd-repo-server/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dpf-operator-argocd-repo-server
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: repo-server
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-repo-server
+      app.kubernetes.io/instance: dpf-operator
+  template:
+    metadata:
+      annotations:
+        checksum/cmd-params: 793bf4e058c9bab5e90be0ed2d475439b2d668bf40eadcff662c37c2688a6986
+        checksum/cm: 3019b7f3c5cdda92773e90715584efd926551cd9a290ee0b55c92064786e756d
+      labels:
+        helm.sh/chart: argo-cd-7.6.8
+        app.kubernetes.io/name: argocd-repo-server
+        app.kubernetes.io/instance: dpf-operator
+        app.kubernetes.io/component: repo-server
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: argocd
+        app.kubernetes.io/version: "v2.12.4"
+        ovn.dpu.nvidia.com/skip-injection: ""
+    spec:
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: dpf-operator-argocd-repo-server
+      automountServiceAccountToken: true
+      containers:
+        - name: repo-server
+          image: quay.io/argoproj/argocd:v2.12.4
+          imagePullPolicy: IfNotPresent
+          args:
+            - /usr/local/bin/argocd-repo-server
+            - --port=8081
+            - --metrics-port=8084
+          env:
+            - name: ARGOCD_REPO_SERVER_NAME
+              value: dpf-operator-argocd-repo-server
+            - name: ARGOCD_RECONCILIATION_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cm
+                  key: timeout.reconciliation
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_LOGFORMAT
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.log.format
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_LOGLEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.log.level
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_PARALLELISM_LIMIT
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.parallelism.limit
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_LISTEN_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.listen.address
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_LISTEN_METRICS_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.metrics.listen.address
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_DISABLE_TLS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.disable.tls
+                  optional: true
+            - name: ARGOCD_TLS_MIN_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.tls.minversion
+                  optional: true
+            - name: ARGOCD_TLS_MAX_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.tls.maxversion
+                  optional: true
+            - name: ARGOCD_TLS_CIPHERS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.tls.ciphers
+                  optional: true
+            - name: ARGOCD_REPO_CACHE_EXPIRATION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.repo.cache.expiration
+                  optional: true
+            - name: REDIS_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: redis.server
+                  optional: true
+            - name: REDIS_COMPRESSION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: redis.compression
+                  optional: true
+            - name: REDISDB
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: redis.db
+                  optional: true
+            - name: REDIS_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: argocd-redis
+                  key: redis-username
+                  optional: true
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: argocd-redis
+                  key: auth
+            - name: REDIS_SENTINEL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dpf-operator-argocd-redis
+                  key: redis-sentinel-username
+                  optional: true
+            - name: REDIS_SENTINEL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dpf-operator-argocd-redis
+                  key: redis-sentinel-password
+                  optional: true
+            - name: ARGOCD_DEFAULT_CACHE_EXPIRATION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.default.cache.expiration
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_OTLP_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: otlp.address
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_OTLP_INSECURE
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: otlp.insecure
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_OTLP_HEADERS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: otlp.headers
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_MAX_COMBINED_DIRECTORY_MANIFESTS_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.max.combined.directory.manifests.size
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_PLUGIN_TAR_EXCLUSIONS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.plugin.tar.exclusions
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_ALLOW_OUT_OF_BOUNDS_SYMLINKS
+              valueFrom:
+                configMapKeyRef:
+                  key: reposerver.allow.oob.symlinks
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_STREAMED_MANIFEST_MAX_TAR_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  key: reposerver.streamed.manifest.max.tar.size
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_STREAMED_MANIFEST_MAX_EXTRACTED_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  key: reposerver.streamed.manifest.max.extracted.size
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_HELM_MANIFEST_MAX_EXTRACTED_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  key: reposerver.helm.manifest.max.extracted.size
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_DISABLE_HELM_MANIFEST_MAX_EXTRACTED_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: reposerver.disable.helm.manifest.max.extracted.size
+                  optional: true
+            - name: ARGOCD_GIT_MODULES_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  key: reposerver.enable.git.submodule
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_GIT_LS_REMOTE_PARALLELISM_LIMIT
+              valueFrom:
+                configMapKeyRef:
+                  key: reposerver.git.lsremote.parallelism.limit
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_GIT_REQUEST_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  key: reposerver.git.request.timeout
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_REVISION_CACHE_LOCK_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  key: reposerver.revision.cache.lock.timeout
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: ARGOCD_REPO_SERVER_INCLUDE_HIDDEN_DIRECTORIES
+              valueFrom:
+                configMapKeyRef:
+                  key: reposerver.include.hidden.directories
+                  name: argocd-cmd-params-cm
+                  optional: true
+            - name: HELM_CACHE_HOME
+              value: /helm-working-dir
+            - name: HELM_CONFIG_HOME
+              value: /helm-working-dir
+            - name: HELM_DATA_HOME
+              value: /helm-working-dir
+          volumeMounts:
+            - mountPath: /app/config/ssh
+              name: ssh-known-hosts
+            - mountPath: /app/config/tls
+              name: tls-certs
+            - mountPath: /app/config/gpg/source
+              name: gpg-keys
+            - mountPath: /app/config/gpg/keys
+              name: gpg-keyring
+            - mountPath: /app/config/reposerver/tls
+              name: argocd-repo-server-tls
+            - mountPath: /helm-working-dir
+              name: helm-working-dir
+            - mountPath: /home/argocd/cmp-server/plugins
+              name: plugins
+            - mountPath: /tmp
+              name: tmp
+          ports:
+            - name: repo-server
+              containerPort: 8081
+              protocol: TCP
+            - name: metrics
+              containerPort: 8084
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz?full=true
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+      initContainers:
+        - command:
+            - /bin/cp
+            - -n
+            - /usr/local/bin/argocd
+            - /var/run/argocd/argocd-cmp-server
+          image: quay.io/argoproj/argocd:v2.12.4
+          imagePullPolicy: IfNotPresent
+          name: copyutil
+          resources:
+            {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /var/run/argocd
+              name: var-files
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: argocd-repo-server
+                topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      volumes:
+        - name: helm-working-dir
+          emptyDir: {}
+        - name: plugins
+          emptyDir: {}
+        - name: var-files
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: ssh-known-hosts
+          configMap:
+            name: argocd-ssh-known-hosts-cm
+        - name: tls-certs
+          configMap:
+            name: argocd-tls-certs-cm
+        - name: gpg-keys
+          configMap:
+            name: argocd-gpg-keys-cm
+        - name: gpg-keyring
+          emptyDir: {}
+        - name: argocd-repo-server-tls
+          secret:
+            secretName: argocd-repo-server-tls
+            optional: true
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+              - key: ca.crt
+                path: ca.crt
+      dnsPolicy: ClusterFirst
+---
+# Source: dpf-operator/charts/argo-cd/templates/argocd-server/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dpf-operator-argocd-server
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: server
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-server
+      app.kubernetes.io/instance: dpf-operator
+  template:
+    metadata:
+      annotations:
+        checksum/cmd-params: 793bf4e058c9bab5e90be0ed2d475439b2d668bf40eadcff662c37c2688a6986
+        checksum/cm: 3019b7f3c5cdda92773e90715584efd926551cd9a290ee0b55c92064786e756d
+      labels:
+        helm.sh/chart: argo-cd-7.6.8
+        app.kubernetes.io/name: argocd-server
+        app.kubernetes.io/instance: dpf-operator
+        app.kubernetes.io/component: server
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: argocd
+        app.kubernetes.io/version: "v2.12.4"
+        ovn.dpu.nvidia.com/skip-injection: ""
+    spec:
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: argocd-server
+      automountServiceAccountToken: true
+      containers:
+        - name: server
+          image: quay.io/argoproj/argocd:v2.12.4
+          imagePullPolicy: IfNotPresent
+          args:
+            - /usr/local/bin/argocd-server
+            - --port=8080
+            - --metrics-port=8083
+          env:
+            - name: ARGOCD_SERVER_NAME
+              value: dpf-operator-argocd-server
+            - name: ARGOCD_SERVER_INSECURE
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.insecure
+                  optional: true
+            - name: ARGOCD_SERVER_BASEHREF
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.basehref
+                  optional: true
+            - name: ARGOCD_SERVER_ROOTPATH
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.rootpath
+                  optional: true
+            - name: ARGOCD_SERVER_LOGFORMAT
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.log.format
+                  optional: true
+            - name: ARGOCD_SERVER_LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.log.level
+                  optional: true
+            - name: ARGOCD_SERVER_REPO_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: repo.server
+                  optional: true
+            - name: ARGOCD_SERVER_DEX_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.dex.server
+                  optional: true
+            - name: ARGOCD_SERVER_DISABLE_AUTH
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.disable.auth
+                  optional: true
+            - name: ARGOCD_SERVER_ENABLE_GZIP
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.enable.gzip
+                  optional: true
+            - name: ARGOCD_SERVER_REPO_SERVER_TIMEOUT_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.repo.server.timeout.seconds
+                  optional: true
+            - name: ARGOCD_SERVER_X_FRAME_OPTIONS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.x.frame.options
+                  optional: true
+            - name: ARGOCD_SERVER_CONTENT_SECURITY_POLICY
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.content.security.policy
+                  optional: true
+            - name: ARGOCD_SERVER_REPO_SERVER_PLAINTEXT
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.repo.server.plaintext
+                  optional: true
+            - name: ARGOCD_SERVER_REPO_SERVER_STRICT_TLS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.repo.server.strict.tls
+                  optional: true
+            - name: ARGOCD_SERVER_DEX_SERVER_PLAINTEXT
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.dex.server.plaintext
+                  optional: true
+            - name: ARGOCD_SERVER_DEX_SERVER_STRICT_TLS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.dex.server.strict.tls
+                  optional: true
+            - name: ARGOCD_TLS_MIN_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.tls.minversion
+                  optional: true
+            - name: ARGOCD_TLS_MAX_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.tls.maxversion
+                  optional: true
+            - name: ARGOCD_TLS_CIPHERS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.tls.ciphers
+                  optional: true
+            - name: ARGOCD_SERVER_CONNECTION_STATUS_CACHE_EXPIRATION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.connection.status.cache.expiration
+                  optional: true
+            - name: ARGOCD_SERVER_OIDC_CACHE_EXPIRATION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.oidc.cache.expiration
+                  optional: true
+            - name: ARGOCD_SERVER_LOGIN_ATTEMPTS_EXPIRATION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.login.attempts.expiration
+                  optional: true
+            - name: ARGOCD_SERVER_STATIC_ASSETS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.staticassets
+                  optional: true
+            - name: ARGOCD_APP_STATE_CACHE_EXPIRATION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.app.state.cache.expiration
+                  optional: true
+            - name: REDIS_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: redis.server
+                  optional: true
+            - name: REDIS_COMPRESSION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: redis.compression
+                  optional: true
+            - name: REDISDB
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: redis.db
+                  optional: true
+            - name: REDIS_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: argocd-redis
+                  key: redis-username
+                  optional: true
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: argocd-redis
+                  key: auth
+            - name: REDIS_SENTINEL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dpf-operator-argocd-redis
+                  key: redis-sentinel-username
+                  optional: true
+            - name: REDIS_SENTINEL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dpf-operator-argocd-redis
+                  key: redis-sentinel-password
+                  optional: true
+            - name: ARGOCD_DEFAULT_CACHE_EXPIRATION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.default.cache.expiration
+                  optional: true
+            - name: ARGOCD_MAX_COOKIE_NUMBER
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.http.cookie.maxnumber
+                  optional: true
+            - name: ARGOCD_SERVER_LISTEN_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.listen.address
+                  optional: true
+            - name: ARGOCD_SERVER_METRICS_LISTEN_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.metrics.listen.address
+                  optional: true
+            - name: ARGOCD_SERVER_OTLP_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: otlp.address
+                  optional: true
+            - name: ARGOCD_SERVER_OTLP_INSECURE
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: otlp.insecure
+                  optional: true
+            - name: ARGOCD_SERVER_OTLP_HEADERS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: otlp.headers
+                  optional: true
+            - name: ARGOCD_APPLICATION_NAMESPACES
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: application.namespaces
+                  optional: true
+            - name: ARGOCD_SERVER_ENABLE_PROXY_EXTENSION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.enable.proxy.extension
+                  optional: true
+            - name: ARGOCD_K8SCLIENT_RETRY_MAX
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.k8sclient.retry.max
+                  optional: true
+            - name: ARGOCD_K8SCLIENT_RETRY_BASE_BACKOFF
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.k8sclient.retry.base.backoff
+                  optional: true
+            - name: ARGOCD_API_CONTENT_TYPES
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: server.api.content.types
+                  optional: true
+          volumeMounts:
+            - mountPath: /app/config/ssh
+              name: ssh-known-hosts
+            - mountPath: /app/config/tls
+              name: tls-certs
+            - mountPath: /app/config/server/tls
+              name: argocd-repo-server-tls
+            - mountPath: /app/config/dex/tls
+              name: argocd-dex-server-tls
+            - mountPath: /home/argocd
+              name: plugins-home
+            - mountPath: /shared/app/custom
+              name: styles
+            - mountPath: /tmp
+              name: tmp
+          ports:
+            - name: server
+              containerPort: 8080
+              protocol: TCP
+            - name: metrics
+              containerPort: 8083
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz?full=true
+              port: server
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: server
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: argocd-server
+                topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      volumes:
+        - name: plugins-home
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: ssh-known-hosts
+          configMap:
+            name: argocd-ssh-known-hosts-cm
+        - name: tls-certs
+          configMap:
+            name: argocd-tls-certs-cm
+        - name: styles
+          configMap:
+            name: argocd-styles-cm
+            optional: true
+        - name: argocd-repo-server-tls
+          secret:
+            secretName: argocd-repo-server-tls
+            optional: true
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+              - key: ca.crt
+                path: ca.crt
+        - name: argocd-dex-server-tls
+          secret:
+            secretName: argocd-dex-server-tls
+            optional: true
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: ca.crt
+                path: ca.crt
+      dnsPolicy: ClusterFirst
+---
+# Source: dpf-operator/charts/argo-cd/templates/redis/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dpf-operator-argocd-redis
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-redis
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: redis
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-redis
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: argo-cd-7.6.8
+        app.kubernetes.io/name: argocd-redis
+        app.kubernetes.io/instance: dpf-operator
+        app.kubernetes.io/component: redis
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: argocd
+        app.kubernetes.io/version: "v2.12.4"
+        ovn.dpu.nvidia.com/skip-injection: ""
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: default
+      automountServiceAccountToken: true
+      containers:
+        - name: redis
+          image: public.ecr.aws/docker/library/redis:7.2.4-alpine
+          imagePullPolicy: IfNotPresent
+          args:
+            - --save
+            - ""
+            - --appendonly
+            - "no"
+            - --requirepass $(REDIS_PASSWORD)
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: argocd-redis
+                  key: auth
+          ports:
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          resources:
+            {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /health
+              name: health
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: argocd-redis
+                topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      volumes:
+        - name: health
+          configMap:
+            name: dpf-operator-argocd-redis-health-configmap
+            defaultMode: 493
+      dnsPolicy: ClusterFirst
+---
+# Source: dpf-operator/charts/kamaji/templates/controller.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dpf-operator-kamaji
+  labels:
+    helm.sh/chart: kamaji-1.0.0
+    app.kubernetes.io/name: kamaji
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: controller-manager
+    app.kubernetes.io/version: "v1.0.0"
+    app.kubernetes.io/managed-by: Helm
+  namespace: dpf-operator-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kamaji
+      app.kubernetes.io/instance: dpf-operator
+      app.kubernetes.io/component: controller-manager
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kamaji
+        app.kubernetes.io/instance: dpf-operator
+        app.kubernetes.io/component: controller-manager
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      serviceAccountName: kamaji-controller-manager
+      containers:
+        - args:
+            - manager
+            - --health-probe-bind-address=:8081
+            - --leader-elect
+            - --metrics-bind-address=:8080
+            - --tmp-directory=/tmp/kamaji
+            - --datastore=default
+          command:
+            - /kamaji
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+          image: "clastix/kamaji:v1.0.0"
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: healthcheck
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          name: manager
+          ports:
+            - containerPort: 9443
+              name: webhook-server
+              protocol: TCP
+            - containerPort: 8080
+              name: metrics
+              protocol: TCP
+            - containerPort: 8081
+              name: healthcheck
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: healthcheck
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            limits:
+              cpu: 200m
+              memory: 100Mi
+            requests:
+              cpu: 100m
+              memory: 20Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /tmp/k8s-webhook-server/serving-certs
+              name: cert
+              readOnly: true
+      terminationGracePeriodSeconds: 10
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: dpf-operator-kamaji-webhook-server-cert
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+---
+# Source: dpf-operator/charts/maintenance-operator-chart/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dpf-operator-maintenance-operator
+  namespace: dpf-operator-system
+  labels:
+    app.kubernetes.io/component: manager
+    app.kubernetes.io/created-by: maintenance-operator
+    app.kubernetes.io/part-of: maintenance-operator
+    control-plane: dpf-operator-controller-manager
+    helm.sh/chart: maintenance-operator-chart-0.1.1
+    app.kubernetes.io/name: maintenance-operator
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.1.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: dpf-operator-controller-manager
+      app.kubernetes.io/name: maintenance-operator
+      app.kubernetes.io/instance: dpf-operator
+  template:
+    metadata:
+      labels:
+        control-plane: dpf-operator-controller-manager
+        app.kubernetes.io/name: maintenance-operator
+        app.kubernetes.io/instance: dpf-operator
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+    spec:
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      nodeSelector:
+        {}
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+              weight: 1
+            - preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+              weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      imagePullSecrets: []
+      securityContext:
+        runAsNonRoot: true
+      serviceAccountName: dpf-operator-maintenance-operator-controller-manager
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: manager
+          command:
+            - /manager
+          args:
+            - --leader-elect
+          env:
+            - name: OPERATOR_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: ENABLE_WEBHOOKS
+              value: "true"
+          image: ghcr.io/mellanox/maintenance-operator:v0.1.1
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          ports:
+            - containerPort: 9443
+              name: webhook-server
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 10m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - mountPath: /tmp/k8s-webhook-server/serving-certs
+              name: cert
+              readOnly: true
+      volumes:
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: operator-webhook-cert
+---
+# Source: dpf-operator/charts/node-feature-discovery/templates/master.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  dpf-operator-node-feature-discovery-master
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: node-feature-discovery-0.16.5
+    app.kubernetes.io/name: node-feature-discovery
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.16.5"
+    app.kubernetes.io/managed-by: Helm
+    role: master
+spec:
+  replicas: 1
+  revisionHistoryLimit:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-feature-discovery
+      app.kubernetes.io/instance: dpf-operator
+      role: master
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: node-feature-discovery
+        app.kubernetes.io/instance: dpf-operator
+        role: master
+    spec:
+      serviceAccountName: dpf-operator-node-feature-discovery
+      enableServiceLinks: false
+      securityContext:
+        {}
+      hostNetwork: false
+      containers:
+        - name: master
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          image: "registry.k8s.io/nfd/node-feature-discovery:v0.16.5"
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            grpc:
+              port: 8082
+            initialDelaySeconds: 10
+          readinessProbe:
+            failureThreshold: 10
+            grpc:
+              port: 8082
+            initialDelaySeconds: 5
+          ports:
+            - containerPort: 8080
+              name: grpc
+            - containerPort: 8081
+              name: metrics
+            - containerPort: 8082
+              name: health
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          command:
+            - "nfd-master"
+          resources:
+            limits:
+              memory: 4Gi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          args:
+            ## By default, disable crd controller for other than the default instances
+            - "-crd-controller=true"
+            # Go over featureGates and add the feature-gate flag
+            - "-feature-gates=NodeFeatureAPI=true"
+            - "-feature-gates=NodeFeatureGroupAPI=false"
+            - "-metrics=8081"
+            - "-grpc-health=8082"
+          volumeMounts:
+            - name: nfd-master-conf
+              mountPath: "/etc/kubernetes/node-feature-discovery"
+              readOnly: true
+      volumes:
+        - name: nfd-master-conf
+          configMap:
+            name: dpf-operator-node-feature-discovery-master-conf
+            items:
+              - key: nfd-master.conf
+                path: nfd-master.conf
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: In
+                    values:
+                      - ""
+              weight: 1
+            - preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: In
+                    values:
+                      - ""
+              weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Equal
+          value: ""
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Equal
+          value: ""
+---
+# Source: dpf-operator/charts/node-feature-discovery/templates/nfd-gc.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dpf-operator-node-feature-discovery-gc
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: node-feature-discovery-0.16.5
+    app.kubernetes.io/name: node-feature-discovery
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.16.5"
+    app.kubernetes.io/managed-by: Helm
+    role: gc
+spec:
+  replicas: 1
+  revisionHistoryLimit:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-feature-discovery
+      app.kubernetes.io/instance: dpf-operator
+      role: gc
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: node-feature-discovery
+        app.kubernetes.io/instance: dpf-operator
+        role: gc
+    spec:
+      serviceAccountName: dpf-operator-node-feature-discovery-gc
+      dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        {}
+      hostNetwork: false
+      containers:
+        - name: gc
+          image: "registry.k8s.io/nfd/node-feature-discovery:v0.16.5"
+          imagePullPolicy: "IfNotPresent"
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          command:
+            - "nfd-gc"
+          args:
+            - "-gc-interval=1h"
+          resources:
+            limits:
+              memory: 1Gi
+            requests:
+              cpu: 10m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ "ALL" ]
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          ports:
+            - name: metrics
+              containerPort: 8081
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+---
+# Source: dpf-operator/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dpf-operator-controller-manager
+  labels:
+    app.kubernetes.io/component: manager
+    app.kubernetes.io/created-by: dpf-operator
+    app.kubernetes.io/part-of: dpf-operator
+    control-plane: controller-manager
+    dpu.nvidia.com/component: dpf-operator-controller-manager
+    helm.sh/chart: dpf-operator-v24.10.0-rc.6
+    app.kubernetes.io/name: dpf-operator
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+      dpu.nvidia.com/component: dpf-operator-controller-manager
+      app.kubernetes.io/name: dpf-operator
+      app.kubernetes.io/instance: dpf-operator
+  template:
+    metadata:
+      labels:
+        control-plane: controller-manager
+        dpu.nvidia.com/component: dpf-operator-controller-manager
+        app.kubernetes.io/name: dpf-operator
+        app.kubernetes.io/instance: dpf-operator
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      containers:
+        - command:
+            - /operator
+          image: ghcr.io/nvidia/dpf-system:v24.10.0-rc.6
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          name: manager
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources: {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8080
+              name: metrics
+              protocol: TCP
+      imagePullSecrets: [{"name":"dpf-pull-secret"}]
+      serviceAccountName: dpf-operator-controller-manager
+      terminationGracePeriodSeconds: 10
+---
+# Source: dpf-operator/charts/argo-cd/templates/argocd-application-controller/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dpf-operator-argocd-application-controller
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: application-controller
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  serviceName: dpf-operator-argocd-application-controller
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-application-controller
+      app.kubernetes.io/instance: dpf-operator
+  template:
+    metadata:
+      annotations:
+        checksum/cmd-params: 793bf4e058c9bab5e90be0ed2d475439b2d668bf40eadcff662c37c2688a6986
+        checksum/cm: 3019b7f3c5cdda92773e90715584efd926551cd9a290ee0b55c92064786e756d
+      labels:
+        helm.sh/chart: argo-cd-7.6.8
+        app.kubernetes.io/name: argocd-application-controller
+        app.kubernetes.io/instance: dpf-operator
+        app.kubernetes.io/component: application-controller
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: argocd
+        app.kubernetes.io/version: "v2.12.4"
+        ovn.dpu.nvidia.com/skip-injection: ""
+    spec:
+      terminationGracePeriodSeconds: 30
+      serviceAccountName: argocd-application-controller
+      automountServiceAccountToken: true
+      containers:
+        - args:
+            - /usr/local/bin/argocd-application-controller
+            - --metrics-port=8082
+          image: quay.io/argoproj/argocd:v2.12.4
+          imagePullPolicy: IfNotPresent
+          name: application-controller
+          env:
+            - name: ARGOCD_CONTROLLER_REPLICAS
+              value: "1"
+            - name: ARGOCD_APPLICATION_CONTROLLER_NAME
+              value: dpf-operator-argocd-application-controller
+            - name: ARGOCD_RECONCILIATION_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cm
+                  key: timeout.reconciliation
+                  optional: true
+            - name: ARGOCD_HARD_RECONCILIATION_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cm
+                  key: timeout.hard.reconciliation
+                  optional: true
+            - name: ARGOCD_RECONCILIATION_JITTER
+              valueFrom:
+                configMapKeyRef:
+                  key: timeout.reconciliation.jitter
+                  name: argocd-cm
+                  optional: true
+            - name: ARGOCD_REPO_ERROR_GRACE_PERIOD_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.repo.error.grace.period.seconds
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_REPO_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: repo.server
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_REPO_SERVER_TIMEOUT_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.repo.server.timeout.seconds
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_STATUS_PROCESSORS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.status.processors
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_OPERATION_PROCESSORS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.operation.processors
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_LOGFORMAT
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.log.format
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_LOGLEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.log.level
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_METRICS_CACHE_EXPIRATION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.metrics.cache.expiration
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_SELF_HEAL_TIMEOUT_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.self.heal.timeout.seconds
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_REPO_SERVER_PLAINTEXT
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.repo.server.plaintext
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_REPO_SERVER_STRICT_TLS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.repo.server.strict.tls
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_PERSIST_RESOURCE_HEALTH
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.resource.health.persist
+                  optional: true
+            - name: ARGOCD_APP_STATE_CACHE_EXPIRATION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.app.state.cache.expiration
+                  optional: true
+            - name: REDIS_SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: redis.server
+                  optional: true
+            - name: REDIS_COMPRESSION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: redis.compression
+                  optional: true
+            - name: REDISDB
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: redis.db
+                  optional: true
+            - name: REDIS_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: argocd-redis
+                  key: redis-username
+                  optional: true
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: argocd-redis
+                  key: auth
+            - name: REDIS_SENTINEL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dpf-operator-argocd-redis
+                  key: redis-sentinel-username
+                  optional: true
+            - name: REDIS_SENTINEL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dpf-operator-argocd-redis
+                  key: redis-sentinel-password
+                  optional: true
+            - name: ARGOCD_DEFAULT_CACHE_EXPIRATION
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.default.cache.expiration
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_OTLP_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: otlp.address
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_OTLP_INSECURE
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: otlp.insecure
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_OTLP_HEADERS
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: otlp.headers
+                  optional: true
+            - name: ARGOCD_APPLICATION_NAMESPACES
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: application.namespaces
+                  optional: true
+            - name: ARGOCD_CONTROLLER_SHARDING_ALGORITHM
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.sharding.algorithm
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_KUBECTL_PARALLELISM_LIMIT
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.kubectl.parallelism.limit
+                  optional: true
+            - name: ARGOCD_K8SCLIENT_RETRY_MAX
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.k8sclient.retry.max
+                  optional: true
+            - name: ARGOCD_K8SCLIENT_RETRY_BASE_BACKOFF
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.k8sclient.retry.base.backoff
+                  optional: true
+            - name: ARGOCD_APPLICATION_CONTROLLER_SERVER_SIDE_DIFF
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.diff.server.side
+                  optional: true
+            - name: ARGOCD_IGNORE_NORMALIZER_JQ_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: argocd-cmd-params-cm
+                  key: controller.ignore.normalizer.jq.timeout
+                  optional: true
+          ports:
+            - name: metrics
+              containerPort: 8082
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          workingDir: /home/argocd
+          volumeMounts:
+            - mountPath: /app/config/controller/tls
+              name: argocd-repo-server-tls
+            - mountPath: /home/argocd
+              name: argocd-home
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: argocd-application-controller
+                topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      volumes:
+        - name: argocd-home
+          emptyDir: {}
+        - name: argocd-repo-server-tls
+          secret:
+            secretName: argocd-repo-server-tls
+            optional: true
+            items:
+              - key: tls.crt
+                path: tls.crt
+              - key: tls.key
+                path: tls.key
+              - key: ca.crt
+                path: ca.crt
+      dnsPolicy: ClusterFirst
+---
+# Source: dpf-operator/charts/kamaji-etcd/templates/etcd_sts.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    helm.sh/chart: kamaji-etcd-0.9.0
+    app.kubernetes.io/name: kamaji-etcd
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "3.5.6"
+    app.kubernetes.io/managed-by: Helm
+  name: dpf-operator-kamaji-etcd
+  namespace: dpf-operator-system
+spec:
+  serviceName: dpf-operator-kamaji-etcd
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kamaji-etcd
+      app.kubernetes.io/instance: dpf-operator
+  replicas: 3
+  template:
+    metadata:
+      name: etcd
+      labels:
+        app.kubernetes.io/name: kamaji-etcd
+        app.kubernetes.io/instance: dpf-operator
+        application: kamaji-etcd
+      annotations:
+    spec:
+      volumes:
+        - name: certs
+          secret:
+            secretName: dpf-operator-kamaji-etcd-certs
+      containers:
+        - name: etcd
+          image: quay.io/coreos/etcd:v3.5.6
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            null
+          ports:
+            - containerPort: 2379
+              name: client
+            - containerPort: 2380
+              name: peer
+            - containerPort: 2381
+              name: metrics
+          volumeMounts:
+            - name: data
+              mountPath: /var/run/etcd
+            - name: certs
+              mountPath: /etc/etcd/pki
+          command:
+            - etcd
+            - --data-dir=/var/run/etcd
+            - --name=$(POD_NAME)
+            - --initial-cluster-state=new
+            - --initial-cluster=dpf-operator-kamaji-etcd-0=https://dpf-operator-kamaji-etcd-0.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local:2380,dpf-operator-kamaji-etcd-1=https://dpf-operator-kamaji-etcd-1.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local:2380,dpf-operator-kamaji-etcd-2=https://dpf-operator-kamaji-etcd-2.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local:2380
+            - --initial-advertise-peer-urls=https://$(POD_NAME).dpf-operator-kamaji-etcd.$(POD_NAMESPACE).svc.cluster.local:2380
+            - --advertise-client-urls=https://$(POD_NAME).dpf-operator-kamaji-etcd.$(POD_NAMESPACE).svc.cluster.local:2379
+            - --initial-cluster-token=kamaji
+            - --listen-client-urls=https://0.0.0.0:2379
+            - --listen-metrics-urls=http://0.0.0.0:2381
+            - --listen-peer-urls=https://0.0.0.0:2380
+            - --client-cert-auth=true
+            - --peer-client-cert-auth=true
+            - --trusted-ca-file=/etc/etcd/pki/ca.crt
+            - --cert-file=/etc/etcd/pki/server.pem
+            - --key-file=/etc/etcd/pki/server-key.pem
+            - --peer-trusted-ca-file=/etc/etcd/pki/ca.crt
+            - --peer-cert-file=/etc/etcd/pki/peer.pem
+            - --peer-key-file=/etc/etcd/pki/peer-key.pem
+            - --auto-compaction-mode=periodic
+            - --auto-compaction-retention=0
+            - --snapshot-count=10000
+            - --quota-backend-bytes=8589934592
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+      priorityClassName:
+        system-cluster-critical
+      nodeSelector:
+        kubernetes.io/os: linux
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        storageClassName: lvms-vg1
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 10Gi
+---
+# Source: dpf-operator/charts/kamaji/templates/certmanager_certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  labels:
+    helm.sh/chart: kamaji-1.0.0
+    app.kubernetes.io/name: kamaji
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: certificate
+    app.kubernetes.io/version: "v1.0.0"
+    app.kubernetes.io/managed-by: Helm
+  name: dpf-operator-kamaji-serving-cert
+  namespace: dpf-operator-system
+spec:
+  dnsNames:
+    - dpf-operator-kamaji-webhook-service.dpf-operator-system.svc
+    - dpf-operator-kamaji-webhook-service.dpf-operator-system.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: kamaji-selfsigned-issuer
+  secretName: dpf-operator-kamaji-webhook-server-cert
+---
+# Source: dpf-operator/charts/maintenance-operator-chart/templates/certificates.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dpf-operator-maintenance-operator-serving-cert
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: maintenance-operator-chart-0.1.1
+    app.kubernetes.io/name: maintenance-operator
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.1.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  dnsNames:
+    - 'dpf-operator-maintenance-operator-webhook-service.dpf-operator-system.svc'
+    - 'dpf-operator-maintenance-operator-webhook-service.dpf-operator-system.svc.'
+  issuerRef:
+    kind: Issuer
+    name: 'dpf-operator-maintenance-operator-selfsigned-issuer'
+  secretName: operator-webhook-cert
+---
+# Source: dpf-operator/charts/kamaji-etcd/templates/etcd_datastore.yaml
+apiVersion: kamaji.clastix.io/v1alpha1
+kind: DataStore
+metadata:
+  name: default
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    helm.sh/chart: kamaji-etcd-0.9.0
+    app.kubernetes.io/name: kamaji-etcd
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "3.5.6"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  driver: etcd
+  endpoints:
+    - dpf-operator-kamaji-etcd-0.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local:2379
+    - dpf-operator-kamaji-etcd-1.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local:2379
+    - dpf-operator-kamaji-etcd-2.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local:2379
+
+  tlsConfig:
+    certificateAuthority:
+      certificate:
+        secretReference:
+          keyPath: ca.crt
+          name: dpf-operator-kamaji-etcd-certs
+          namespace: dpf-operator-system
+      privateKey:
+        secretReference:
+          keyPath: ca.key
+          name: dpf-operator-kamaji-etcd-certs
+          namespace: dpf-operator-system
+    clientCertificate:
+      certificate:
+        secretReference:
+          keyPath: tls.crt
+          name: dpf-operator-kamaji-etcd-root-client-certs
+          namespace: dpf-operator-system
+      privateKey:
+        secretReference:
+          keyPath: tls.key
+          name: dpf-operator-kamaji-etcd-root-client-certs
+          namespace: dpf-operator-system
+---
+# Source: dpf-operator/charts/kamaji/templates/certmanager_issuer.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  labels:
+    helm.sh/chart: kamaji-1.0.0
+    app.kubernetes.io/name: kamaji
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: issuer
+    app.kubernetes.io/version: "v1.0.0"
+    app.kubernetes.io/managed-by: Helm
+  name: kamaji-selfsigned-issuer
+  namespace: dpf-operator-system
+spec:
+  selfSigned: {}
+---
+# Source: dpf-operator/charts/maintenance-operator-chart/templates/certificates.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: dpf-operator-maintenance-operator-selfsigned-issuer
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: maintenance-operator-chart-0.1.1
+    app.kubernetes.io/name: maintenance-operator
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.1.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selfSigned: {}
+---
+# Source: dpf-operator/charts/maintenance-operator-chart/templates/operatorconfig.yaml
+apiVersion: maintenance.nvidia.com/v1alpha1
+kind: MaintenanceOperatorConfig
+metadata:
+  name: default
+  namespace: dpf-operator-system
+  labels:
+    app.kubernetes.io/component: config
+    app.kubernetes.io/created-by: maintenance-operator
+    app.kubernetes.io/part-of: maintenance-operator
+    helm.sh/chart: maintenance-operator-chart-0.1.1
+    app.kubernetes.io/name: maintenance-operator
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.1.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  logLevel: info
+  maxParallelOperations: 60%
+---
+# Source: dpf-operator/charts/kamaji/templates/mutatingwebhookconfiguration.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: dpf-operator-system/dpf-operator-kamaji-serving-cert
+  labels:
+    helm.sh/chart: kamaji-1.0.0
+    app.kubernetes.io/name: kamaji
+    app.kubernetes.io/instance: mutating-webhook-configuration
+    app.kubernetes.io/component: controller-manager
+    app.kubernetes.io/version: "v1.0.0"
+    app.kubernetes.io/managed-by: Helm
+  name: kamaji-mutating-webhook-configuration
+webhooks:
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: dpf-operator-kamaji-webhook-service
+        namespace: dpf-operator-system
+        path: /mutate-kamaji-clastix-io-v1alpha1-tenantcontrolplane
+    failurePolicy: Fail
+    name: mtenantcontrolplane.kb.io
+    rules:
+      - apiGroups:
+          - kamaji.clastix.io
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - tenantcontrolplanes
+    sideEffects: None
+---
+# Source: dpf-operator/templates/node-feature-rule.yaml
+apiVersion: nfd.k8s-sigs.io/v1alpha1
+kind: NodeFeatureRule
+metadata:
+  name: dpu-detection-rule
+spec:
+  rules:
+    - name: "DPU-detection-rule"
+      labels:
+        "dpu-enabled": "true"
+      matchFeatures:
+        - feature: pci.device
+          matchExpressions:
+            vendor: {op: In, value: ["15b3"]}
+            # TODO: Make this settable from the values
+            device: {op: In, value:  ["a2d6", "a2dc"] }
+---
+# Source: dpf-operator/charts/kamaji/templates/validatingwebhookconfiguration.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: dpf-operator-system/dpf-operator-kamaji-serving-cert
+  labels:
+    helm.sh/chart: kamaji-1.0.0
+    app.kubernetes.io/name: kamaji
+    app.kubernetes.io/instance: validating-webhook-configuration
+    app.kubernetes.io/component: controller-manager
+    app.kubernetes.io/version: "v1.0.0"
+    app.kubernetes.io/managed-by: Helm
+  name: kamaji-validating-webhook-configuration
+webhooks:
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: dpf-operator-kamaji-webhook-service
+        namespace: dpf-operator-system
+        path: /telemetry
+    failurePolicy: Ignore
+    name: telemetry.kamaji.clastix.io
+    rules:
+      - apiGroups:
+          - kamaji.clastix.io
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+          - DELETE
+        resources:
+          - tenantcontrolplanes
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: dpf-operator-kamaji-webhook-service
+        namespace: dpf-operator-system
+        path: /validate--v1-secret
+    failurePolicy: Ignore
+    name: vdatastoresecrets.kb.io
+    rules:
+      - apiGroups:
+          - ""
+        apiVersions:
+          - v1
+        operations:
+          - DELETE
+        resources:
+          - secrets
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: dpf-operator-kamaji-webhook-service
+        namespace: dpf-operator-system
+        path: /validate-kamaji-clastix-io-v1alpha1-datastore
+    failurePolicy: Fail
+    name: vdatastore.kb.io
+    rules:
+      - apiGroups:
+          - kamaji.clastix.io
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+          - DELETE
+        resources:
+          - datastores
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: dpf-operator-kamaji-webhook-service
+        namespace: dpf-operator-system
+        path: /validate-kamaji-clastix-io-v1alpha1-tenantcontrolplane
+    failurePolicy: Fail
+    name: vtenantcontrolplane.kb.io
+    rules:
+      - apiGroups:
+          - kamaji.clastix.io
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - tenantcontrolplanes
+    sideEffects: None
+---
+# Source: dpf-operator/charts/maintenance-operator-chart/templates/webhook.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: dpf-operator-maintenance-operator-validating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: dpf-operator-system/dpf-operator-maintenance-operator-serving-cert
+  labels:
+    helm.sh/chart: maintenance-operator-chart-0.1.1
+    app.kubernetes.io/name: maintenance-operator
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.1.1"
+    app.kubernetes.io/managed-by: Helm
+webhooks:
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: 'dpf-operator-maintenance-operator-webhook-service'
+        namespace: dpf-operator-system
+        path: /validate-maintenance-nvidia-com-v1alpha1-nodemaintenance
+    failurePolicy: Fail
+    name: vnodemaintenance.kb.io
+    rules:
+      - apiGroups:
+          - maintenance.nvidia.com
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+        resources:
+          - nodemaintenances
+    sideEffects: None
+---
+# Source: dpf-operator/charts/argo-cd/templates/redis-secret-init/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+automountServiceAccountToken: true
+metadata:
+  name: dpf-operator-argocd-redis-secret-init
+  namespace: "dpf-operator-system"
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-redis-secret-init
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: redis-secret-init
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+---
+# Source: dpf-operator/charts/kamaji-etcd/templates/etcd_sa.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dpf-operator-kamaji-etcd
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: kamaji-etcd-0.9.0
+    app.kubernetes.io/name: kamaji-etcd
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "3.5.6"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-failed"
+    "helm.sh/hook-weight": "0"
+---
+# Source: dpf-operator/charts/node-feature-discovery/templates/post-delete-job.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dpf-operator-node-feature-discovery-prune
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: node-feature-discovery-0.16.5
+    app.kubernetes.io/name: node-feature-discovery
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.16.5"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": post-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+---
+# Source: dpf-operator/charts/kamaji-etcd/templates/etcd_cm.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "5"
+  labels:
+    helm.sh/chart: kamaji-etcd-0.9.0
+    app.kubernetes.io/name: kamaji-etcd
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "3.5.6"
+    app.kubernetes.io/managed-by: Helm
+  name: dpf-operator-kamaji-etcd-csr
+  namespace: dpf-operator-system
+data:
+  ca-csr.json: |-
+    {
+      "CN": "Clastix CA",
+      "key": {
+        "algo": "rsa",
+        "size": 2048
+      },
+      "names": [
+        {
+          "C": "IT",
+          "ST": "Italy",
+          "L": "Milan"
+        }
+      ]
+    }
+  config.json: |-
+    {
+      "signing": {
+        "default": {
+          "expiry": "8760h"
+        },
+        "profiles": {
+          "server-authentication": {
+            "usages": ["signing", "key encipherment", "server auth"],
+            "expiry": "8760h"
+          },
+          "client-authentication": {
+            "usages": ["signing", "key encipherment", "client auth"],
+            "expiry": "8760h"
+          },
+          "peer-authentication": {
+            "usages": ["signing", "key encipherment", "server auth", "client auth"],
+            "expiry": "8760h"
+          }
+        }
+      }
+    }
+  server-csr.json: |-
+    {
+      "CN": "etcd",
+      "key": {
+        "algo": "rsa",
+        "size": 2048
+      },
+      "hosts": ["dpf-operator-kamaji-etcd-0.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local","dpf-operator-kamaji-etcd-1.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local","dpf-operator-kamaji-etcd-2.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local",
+        "etcd-server.dpf-operator-system.svc.cluster.local",
+        "etcd-server.dpf-operator-system.svc",
+        "etcd-server",
+        "127.0.0.1"
+      ]
+    }
+  peer-csr.json: |-
+    {
+      "CN": "etcd",
+      "key": {
+        "algo": "rsa",
+        "size": 2048
+      },
+      "hosts": ["dpf-operator-kamaji-etcd-0",
+        "dpf-operator-kamaji-etcd-0.dpf-operator-kamaji-etcd",
+        "dpf-operator-kamaji-etcd-0.dpf-operator-kamaji-etcd.dpf-operator-system.svc",
+        "dpf-operator-kamaji-etcd-0.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local","dpf-operator-kamaji-etcd-1",
+        "dpf-operator-kamaji-etcd-1.dpf-operator-kamaji-etcd",
+        "dpf-operator-kamaji-etcd-1.dpf-operator-kamaji-etcd.dpf-operator-system.svc",
+        "dpf-operator-kamaji-etcd-1.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local","dpf-operator-kamaji-etcd-2",
+        "dpf-operator-kamaji-etcd-2.dpf-operator-kamaji-etcd",
+        "dpf-operator-kamaji-etcd-2.dpf-operator-kamaji-etcd.dpf-operator-system.svc",
+        "dpf-operator-kamaji-etcd-2.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local",
+        "127.0.0.1"
+      ]
+    }
+  root-client-csr.json: |-
+    {
+      "CN": "root",
+      "key": {
+        "algo": "rsa",
+        "size": 2048
+      },
+      "names": [
+        {
+          "O": "system:masters"
+        }
+      ]
+    }
+---
+# Source: dpf-operator/charts/node-feature-discovery/templates/post-delete-job.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dpf-operator-node-feature-discovery-prune
+  labels:
+    helm.sh/chart: node-feature-discovery-0.16.5
+    app.kubernetes.io/name: node-feature-discovery
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.16.5"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": post-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+      - nodes/status
+    verbs:
+      - get
+      - patch
+      - update
+      - list
+---
+# Source: dpf-operator/charts/node-feature-discovery/templates/post-delete-job.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dpf-operator-node-feature-discovery-prune
+  labels:
+    helm.sh/chart: node-feature-discovery-0.16.5
+    app.kubernetes.io/name: node-feature-discovery
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.16.5"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": post-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dpf-operator-node-feature-discovery-prune
+subjects:
+  - kind: ServiceAccount
+    name: dpf-operator-node-feature-discovery-prune
+    namespace: dpf-operator-system
+---
+# Source: dpf-operator/charts/argo-cd/templates/redis-secret-init/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-redis-secret-init
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: redis-secret-init
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+  name: dpf-operator-argocd-redis-secret-init
+  namespace: "dpf-operator-system"
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    resourceNames:
+      - argocd-redis
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - create
+---
+# Source: dpf-operator/charts/kamaji-etcd/templates/etcd_rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  annotations:
+    "helm.sh/hook": pre-install,post-install,pre-delete
+    "helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation,hook-failed"
+    "helm.sh/hook-weight": "5"
+  labels:
+    helm.sh/chart: kamaji-etcd-0.9.0
+    app.kubernetes.io/name: kamaji-etcd
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "3.5.6"
+    app.kubernetes.io/managed-by: Helm
+  name: dpf-operator-kamaji-etcd-gen-certs-role
+  namespace: dpf-operator-system
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - patch
+      - delete
+    resourceNames:
+      - dpf-operator-kamaji-etcd-certs
+      - dpf-operator-kamaji-etcd-root-client-certs
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - create
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+    resourceNames:
+      - dpf-operator-kamaji-etcd
+---
+# Source: dpf-operator/charts/argo-cd/templates/redis-secret-init/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-redis-secret-init
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: redis-secret-init
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+  name: dpf-operator-argocd-redis-secret-init
+  namespace: "dpf-operator-system"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dpf-operator-argocd-redis-secret-init
+subjects:
+  - kind: ServiceAccount
+    name: dpf-operator-argocd-redis-secret-init
+---
+# Source: dpf-operator/charts/kamaji-etcd/templates/etcd_rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  annotations:
+    "helm.sh/hook": pre-install,post-install,pre-delete
+    "helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation,hook-failed"
+    "helm.sh/hook-weight": "5"
+  labels:
+    helm.sh/chart: kamaji-etcd-0.9.0
+    app.kubernetes.io/name: kamaji-etcd
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "3.5.6"
+    app.kubernetes.io/managed-by: Helm
+  name: dpf-operator-kamaji-etcd-gen-certs-rolebiding
+  namespace: dpf-operator-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dpf-operator-kamaji-etcd-gen-certs-role
+subjects:
+  - kind: ServiceAccount
+    name: dpf-operator-kamaji-etcd
+    namespace: dpf-operator-system
+---
+# Source: dpf-operator/charts/argo-cd/templates/redis-secret-init/job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dpf-operator-argocd-redis-secret-init
+  namespace: "dpf-operator-system"
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+  labels:
+    helm.sh/chart: argo-cd-7.6.8
+    app.kubernetes.io/name: argocd-redis-secret-init
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/component: redis-secret-init
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/version: "v2.12.4"
+spec:
+  ttlSecondsAfterFinished: 60
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: argo-cd-7.6.8
+        app.kubernetes.io/name: argocd-redis-secret-init
+        app.kubernetes.io/instance: dpf-operator
+        app.kubernetes.io/component: redis-secret-init
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: argocd
+        app.kubernetes.io/version: "v2.12.4"
+        ovn.dpu.nvidia.com/skip-injection: ""
+    spec:
+      containers:
+        - command:
+            - argocd
+            - admin
+            - redis-initial-password
+          image: quay.io/argoproj/argocd:v2.12.4
+          imagePullPolicy: IfNotPresent
+          name: secret-init
+          resources:
+            {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+      restartPolicy: OnFailure
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: argocd-redis-secret-init
+                topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      serviceAccountName: dpf-operator-argocd-redis-secret-init
+---
+# Source: dpf-operator/charts/kamaji-etcd/templates/etcd_job_postdelete.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    helm.sh/chart: kamaji-etcd-0.9.0
+    app.kubernetes.io/name: kamaji-etcd
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "3.5.6"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": pre-delete
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation,hook-failed"
+  name: "dpf-operator-etcd-teardown"
+  namespace: dpf-operator-system
+spec:
+  template:
+    metadata:
+      name: "dpf-operator"
+    spec:
+      serviceAccountName: dpf-operator-kamaji-etcd
+      restartPolicy: Never
+      containers:
+        - name: kubectl
+          image: clastix/kubectl:v1.30
+          command:
+            - kubectl
+            - --namespace=dpf-operator-system
+            - delete
+            - secret
+            - --ignore-not-found=true
+            - dpf-operator-kamaji-etcd-certs
+            - dpf-operator-kamaji-etcd-root-client-certs
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+---
+# Source: dpf-operator/charts/kamaji-etcd/templates/etcd_job_preinstall_1.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    helm.sh/chart: kamaji-etcd-0.9.0
+    app.kubernetes.io/name: kamaji-etcd
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "3.5.6"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation,hook-failed"
+  name: "dpf-operator-etcd-setup-1"
+  namespace: dpf-operator-system
+spec:
+  template:
+    metadata:
+      name: "dpf-operator"
+    spec:
+      serviceAccountName: dpf-operator-kamaji-etcd
+      restartPolicy: Never
+      initContainers:
+        - name: cfssl
+          image: cfssl/cfssl:latest
+          command:
+            - bash
+            - -c
+            - |-
+              cfssl gencert -initca /csr/ca-csr.json | cfssljson -bare /certs/ca &&
+              mv /certs/ca.pem /certs/ca.crt && mv /certs/ca-key.pem /certs/ca.key &&
+              cfssl gencert -ca=/certs/ca.crt -ca-key=/certs/ca.key -config=/csr/config.json -profile=peer-authentication /csr/peer-csr.json | cfssljson -bare /certs/peer &&
+              cfssl gencert -ca=/certs/ca.crt -ca-key=/certs/ca.key -config=/csr/config.json -profile=peer-authentication /csr/server-csr.json | cfssljson -bare /certs/server &&
+              cfssl gencert -ca=/certs/ca.crt -ca-key=/certs/ca.key -config=/csr/config.json -profile=client-authentication /csr/root-client-csr.json | cfssljson -bare /certs/root-client
+          volumeMounts:
+            - mountPath: /certs
+              name: certs
+            - mountPath: /csr
+              name: csr
+      containers:
+        - name: kubectl
+          image: clastix/kubectl:v1.30
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              if kubectl get secret dpf-operator-kamaji-etcd-certs --namespace=dpf-operator-system &>/dev/null; then
+                echo "Secret dpf-operator-kamaji-etcd-certs already exists"
+              else
+                echo "Creating secret dpf-operator-kamaji-etcd-certs"
+                kubectl --namespace=dpf-operator-system create secret generic dpf-operator-kamaji-etcd-certs --from-file=/certs/ca.crt --from-file=/certs/ca.key --from-file=/certs/peer-key.pem --from-file=/certs/peer.pem --from-file=/certs/server-key.pem --from-file=/certs/server.pem
+              fi
+              if kubectl get secret dpf-operator-kamaji-etcd-root-client-certs --namespace=dpf-operator-system &>/dev/null; then
+                echo "Secret dpf-operator-kamaji-etcd-root-client-certs already exists"
+              else
+                echo "Creating secret dpf-operator-kamaji-etcd-root-client-certs"
+                kubectl --namespace=dpf-operator-system create secret tls dpf-operator-kamaji-etcd-root-client-certs --key=/certs/root-client-key.pem --cert=/certs/root-client.pem
+              fi
+          volumeMounts:
+            - mountPath: /certs
+              name: certs
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      volumes:
+        - name: csr
+          configMap:
+            name: dpf-operator-kamaji-etcd-csr
+        - name: certs
+          emptyDir: {}
+---
+# Source: dpf-operator/charts/kamaji-etcd/templates/etcd_job_preinstall_2.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    helm.sh/chart: kamaji-etcd-0.9.0
+    app.kubernetes.io/name: kamaji-etcd
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "3.5.6"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation,hook-failed"
+  name: "dpf-operator-etcd-setup-2"
+  namespace: dpf-operator-system
+spec:
+  backoffLimit: 12
+  template:
+    metadata:
+      name: "dpf-operator"
+    spec:
+      serviceAccountName: dpf-operator-kamaji-etcd
+      restartPolicy: Never
+      initContainers:
+        - name: kubectl
+          image: clastix/kubectl:v1.30
+          command:
+            - sh
+            - -c
+            - kubectl --namespace=dpf-operator-system rollout status sts/dpf-operator-kamaji-etcd --timeout=300s
+      containers:
+        - command:
+            - bash
+            - -c
+            - |-
+              etcdctl member list -w table
+              if etcdctl user get root &>/dev/null; then
+                echo "User already exists, nothing to do"
+              else
+                etcdctl user add --no-password=true root &&
+                etcdctl role add root &&
+                etcdctl user grant-role root root &&
+                etcdctl auth enable
+              fi
+          env:
+            - name: ETCDCTL_ENDPOINTS
+              value: https://dpf-operator-kamaji-etcd-0.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local:2379
+            - name: ETCDCTL_CACERT
+              value: /opt/certs/ca/ca.crt
+            - name: ETCDCTL_CERT
+              value: /opt/certs/root-certs/tls.crt
+            - name: ETCDCTL_KEY
+              value: /opt/certs/root-certs/tls.key
+          image: quay.io/coreos/etcd:v3.5.6
+          imagePullPolicy: IfNotPresent
+          name: etcd-client
+          volumeMounts:
+            - name: root-certs
+              mountPath: /opt/certs/root-certs
+            - name: ca
+              mountPath: /opt/certs/ca
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      volumes:
+        - name: root-certs
+          secret:
+            secretName: dpf-operator-kamaji-etcd-root-client-certs
+        - name: ca
+          secret:
+            secretName: dpf-operator-kamaji-etcd-certs
+---
+# Source: dpf-operator/charts/node-feature-discovery/templates/post-delete-job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name:  dpf-operator-node-feature-discovery-prune
+  namespace: dpf-operator-system
+  labels:
+    helm.sh/chart: node-feature-discovery-0.16.5
+    app.kubernetes.io/name: node-feature-discovery
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "v0.16.5"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": post-delete
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: node-feature-discovery-0.16.5
+        app.kubernetes.io/name: node-feature-discovery
+        app.kubernetes.io/instance: dpf-operator
+        app.kubernetes.io/version: "v0.16.5"
+        app.kubernetes.io/managed-by: Helm
+        role: prune
+    spec:
+      serviceAccountName: dpf-operator-node-feature-discovery-prune
+      containers:
+        - name: nfd-master
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+          image: "registry.k8s.io/nfd/node-feature-discovery:v0.16.5"
+          imagePullPolicy: IfNotPresent
+          command:
+            - "nfd-master"
+          args:
+            - "-prune"
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: In
+                    values:
+                      - ""
+              weight: 1
+            - preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: In
+                    values:
+                      - ""
+              weight: 1
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Equal
+          value: ""
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Equal
+          value: ""
+---
+# Roles to fix dpf-provisioning-controller-manager
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fixing-dpuservice-rbac
+rules:
+  - apiGroups:
+      - operator.dpu.nvidia.com
+    resources:
+      - dpfoperatorconfigs/finalizers
+    verbs:
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: fixing-dpuservice-rbac-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: fixing-dpuservice-rbac
+subjects:
+  - kind: ServiceAccount
+    name: dpuservice-controller-manager
+    namespace: dpf-operator-system
+---
+# Rerun etcd jobs to fix certification error
+# Source: dpf-operator/charts/kamaji-etcd/templates/etcd_job_preinstall_1.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    helm.sh/chart: kamaji-etcd-0.9.0
+    app.kubernetes.io/name: kamaji-etcd
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "3.5.6"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation,hook-failed"
+  name: "dpf-operator-etcd-setup-1"
+  namespace: dpf-operator-system
+spec:
+  template:
+    metadata:
+      name: "dpf-operator"
+    spec:
+      serviceAccountName: dpf-operator-kamaji-etcd
+      restartPolicy: Never
+      initContainers:
+        - name: cfssl
+          image: cfssl/cfssl:latest
+          command:
+            - bash
+            - -c
+            - |-
+              cfssl gencert -initca /csr/ca-csr.json | cfssljson -bare /certs/ca &&
+              mv /certs/ca.pem /certs/ca.crt && mv /certs/ca-key.pem /certs/ca.key &&
+              cfssl gencert -ca=/certs/ca.crt -ca-key=/certs/ca.key -config=/csr/config.json -profile=peer-authentication /csr/peer-csr.json | cfssljson -bare /certs/peer &&
+              cfssl gencert -ca=/certs/ca.crt -ca-key=/certs/ca.key -config=/csr/config.json -profile=peer-authentication /csr/server-csr.json | cfssljson -bare /certs/server &&
+              cfssl gencert -ca=/certs/ca.crt -ca-key=/certs/ca.key -config=/csr/config.json -profile=client-authentication /csr/root-client-csr.json | cfssljson -bare /certs/root-client
+          volumeMounts:
+            - mountPath: /certs
+              name: certs
+            - mountPath: /csr
+              name: csr
+      containers:
+        - name: kubectl
+          image: clastix/kubectl:v1.30
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              if kubectl get secret dpf-operator-kamaji-etcd-certs --namespace=dpf-operator-system &>/dev/null; then
+                echo "Secret dpf-operator-kamaji-etcd-certs already exists"
+              else
+                echo "Creating secret dpf-operator-kamaji-etcd-certs"
+                kubectl --namespace=dpf-operator-system create secret generic dpf-operator-kamaji-etcd-certs --from-file=/certs/ca.crt --from-file=/certs/ca.key --from-file=/certs/peer-key.pem --from-file=/certs/peer.pem --from-file=/certs/server-key.pem --from-file=/certs/server.pem
+              fi
+              if kubectl get secret dpf-operator-kamaji-etcd-root-client-certs --namespace=dpf-operator-system &>/dev/null; then
+                echo "Secret dpf-operator-kamaji-etcd-root-client-certs already exists"
+              else
+                echo "Creating secret dpf-operator-kamaji-etcd-root-client-certs"
+                kubectl --namespace=dpf-operator-system create secret tls dpf-operator-kamaji-etcd-root-client-certs --key=/certs/root-client-key.pem --cert=/certs/root-client.pem
+              fi
+          volumeMounts:
+            - mountPath: /certs
+              name: certs
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      volumes:
+        - name: csr
+          configMap:
+            name: dpf-operator-kamaji-etcd-csr
+        - name: certs
+          emptyDir: {}
+---
+# Source: dpf-operator/charts/kamaji-etcd/templates/etcd_job_preinstall_2.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    helm.sh/chart: kamaji-etcd-0.9.0
+    app.kubernetes.io/name: kamaji-etcd
+    app.kubernetes.io/instance: dpf-operator
+    app.kubernetes.io/version: "3.5.6"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": "hook-succeeded,before-hook-creation,hook-failed"
+  name: "dpf-operator-etcd-setup-2"
+  namespace: dpf-operator-system
+spec:
+  backoffLimit: 12
+  template:
+    metadata:
+      name: "dpf-operator"
+    spec:
+      serviceAccountName: dpf-operator-kamaji-etcd
+      restartPolicy: Never
+      initContainers:
+        - name: kubectl
+          image: clastix/kubectl:v1.30
+          command:
+            - sh
+            - -c
+            - kubectl --namespace=dpf-operator-system rollout status sts/dpf-operator-kamaji-etcd --timeout=300s
+      containers:
+        - command:
+            - bash
+            - -c
+            - |-
+              etcdctl member list -w table
+              if etcdctl user get root &>/dev/null; then
+                echo "User already exists, nothing to do"
+              else
+                etcdctl user add --no-password=true root &&
+                etcdctl role add root &&
+                etcdctl user grant-role root root &&
+                etcdctl auth enable
+              fi
+          env:
+            - name: ETCDCTL_ENDPOINTS
+              value: https://dpf-operator-kamaji-etcd-0.dpf-operator-kamaji-etcd.dpf-operator-system.svc.cluster.local:2379
+            - name: ETCDCTL_CACERT
+              value: /opt/certs/ca/ca.crt
+            - name: ETCDCTL_CERT
+              value: /opt/certs/root-certs/tls.crt
+            - name: ETCDCTL_KEY
+              value: /opt/certs/root-certs/tls.key
+          image: quay.io/coreos/etcd:v3.5.6
+          imagePullPolicy: IfNotPresent
+          name: etcd-client
+          volumeMounts:
+            - name: root-certs
+              mountPath: /opt/certs/root-certs
+            - name: ca
+              mountPath: /opt/certs/ca
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: Exists
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      volumes:
+        - name: root-certs
+          secret:
+            secretName: dpf-operator-kamaji-etcd-root-client-certs
+        - name: ca
+          secret:
+            secretName: dpf-operator-kamaji-etcd-certs
