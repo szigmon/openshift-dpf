@@ -1,0 +1,35 @@
+---
+# scc.yaml
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: dpf-privileged-users
+allowPrivilegedContainer: true
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+fsGroup:
+  type: RunAsAny
+supplementalGroups:
+  type: RunAsAny
+users:
+- system:serviceaccount:dpu-cplane-tenant1:default
+- system:serviceaccount:dpf-operator-system:dpf-operator-kamaji-etcd
+- system:serviceaccount:dpf-operator-system:dpf-operator-controller-manager
+- system:serviceaccount:dpf-operator-system:dpf-operator-node-feature-discovery-worker
+- system:serviceaccount:dpf-operator-system:default
+---
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: dpf-anyuid-users
+allowPrivilegedContainer: false
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+fsGroup:
+  type: RunAsAny
+users:
+- system:serviceaccount:dpf-operator-system:default
