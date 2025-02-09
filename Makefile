@@ -60,7 +60,7 @@ KUBECONFIG_FILE ?= /home/sagi/dpf-automation/openshift-dpf/cluster-installation/
 
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso download-cert-manager fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
-        wait-for-installed wait-for-status cluster-start clean-all test-dpf-variables install-dpf-aicli install-dpf-kubectl
+        wait-for-installed wait-for-status cluster-start clean-all test-dpf-variables install-dpf-aicli deploy-dpf
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install
 
@@ -119,7 +119,7 @@ prepare-manifests: $(DPF_PULL_SECRET)
 	# Configure cluster components
 	@echo "Configuring cluster installation..."
 	@aicli update installconfig $(CLUSTER_NAME) -P network_type=NVIDIA-OVN
-	@$(MAKE) download-cert-manager
+	#@$(MAKE) download-cert-manager
 	@$(MAKE) generate-ovn
 	@$(MAKE) update-paths
 	@$(MAKE) enable-storage
@@ -210,51 +210,30 @@ prepare-dpf-manifests: $(DPF_PULL_SECRET)
 	@test -n "$(HOST_CLUSTER_API)" || (echo "Error: HOST_CLUSTER_API must be set" && exit 1)
 	@test -n "$(KAMAJI_VIP)" || (echo "Error: KAMAJI_VIP must be set" && exit 1)
 	@test -n "$(DPU_INTERFACE)" || (echo "Error: DPU_INTERFACE must be set" && exit 1)
-	
 	@echo "Preparing DPF manifests..."
 	@rm -rf $(GENERATED_DIR)
 	@mkdir -p $(GENERATED_DIR)
 	@find $(MANIFESTS_DIR)/dpf-installation -maxdepth 1 -type f -name "*.yaml" \
 		| xargs -I {} cp {} $(GENERATED_DIR)/
 	@sed -i 's|value: api.doca-cluster.karmalabs.corp|value: $(HOST_CLUSTER_API)|g' \
-		$(GENERATED_DIR)/dpf-operator-manifests-*.yaml
+		$(GENERATED_DIR)/*dpf-operator-manifests-*.yaml
 	@sed -i 's|value: "6443"|value: "$(HOST_CLUSTER_PORT)"|g' \
-		$(GENERATED_DIR)/dpf-operator-manifests-*.yaml
+		$(GENERATED_DIR)/*dpf-operator-manifests-*.yaml
 	@sed -i 's|storageClassName: lvms-vg1|storageClassName: $(ETCD_STORAGE_CLASS)|g' \
-		$(GENERATED_DIR)/dpf-operator-manifests-*.yaml
+		$(GENERATED_DIR)/*dpf-operator-manifests-*.yaml
 	@sed -i 's|storageClassName: ""|storageClassName: "$(BFB_STORAGE_CLASS)"|g' \
 		$(GENERATED_DIR)/bfb-pvc.yaml
 	@NGC_API_KEY=$$(jq -r '.auths."nvcr.io".password' $(DPF_PULL_SECRET)); \
 	sed -i "s|password: xxx|password: $$NGC_API_KEY|g" $(GENERATED_DIR)/ngc-secrets.yaml
-	@sed -i 's|ens8f0np0|$(DPU_INTERFACE)|g' $(GENERATED_DIR)/sriov-policy.yaml
+	#@sed -i 's|ens8f0np0|$(DPU_INTERFACE)|g' $(GENERATED_DIR)/sriov-policy.yaml
+	@PULL_SECRET=$$(cat $(DPF_PULL_SECRET) | base64 -w 0); \
+	sed -i "s|.dockerconfigjson: = xxx|.dockerconfigjson: $$PULL_SECRET|g" $(GENERATED_DIR)/05-dpf-operator-manifests-1.yaml
+
+deploy-prepare-kamaji:
 	@sed -i 's|interface: br-ex|interface: $(DPU_INTERFACE)|g' $(GENERATED_DIR)/kamaji-manifests.yaml
 	@sed -i 's|vip: 10.1.178.225|vip: $(KAMAJI_VIP)|g' $(GENERATED_DIR)/kamaji-manifests.yaml
-	@PULL_SECRET=$$(cat $(DPF_PULL_SECRET) | base64 -w 0); \
-	sed -i "s|.dockerconfigjson: = xxx|.dockerconfigjson: $$PULL_SECRET|g" $(GENERATED_DIR)/dpf-operator-manifests-*.yaml
 
-fix-jobs:
-	@echo "Setting up etcd certificates..."
-	@KUBECONFIG=$(KUBECONFIG_FILE) oc delete job -n dpf-operator-system dpf-operator-etcd-setup-1 dpf-operator-etcd-setup-2 2>/dev/null || true
-	@KUBECONFIG=$(KUBECONFIG_FILE) oc delete secret -n dpf-operator-system dpf-operator-kamaji-etcd-certs dpf-operator-kamaji-etcd-root-client-certs 2>/dev/null || true
-	@KUBECONFIG=$(KUBECONFIG_FILE) oc apply -f "$(GENERATED_DIR)/fix-etcd-certs-jobs.yaml" || exit 1
-	@echo "Waiting for etcd cert jobs to complete..."
-	@for i in {1..12}; do \
-			JOB_STATUS=$$(KUBECONFIG=$(KUBECONFIG_FILE) oc get job -n dpf-operator-system dpf-operator-etcd-setup-1 -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' 2>/dev/null); \
-			if [ "$$JOB_STATUS" = "True" ]; then \
-					echo "Etcd setup job failed"; \
-					KUBECONFIG=$(KUBECONFIG_FILE) oc describe job -n dpf-operator-system dpf-operator-etcd-setup-1; \
-					KUBECONFIG=$(KUBECONFIG_FILE) oc logs -n dpf-operator-system -l job-name=dpf-operator-etcd-setup-1; \
-					exit 1; \
-			fi; \
-			if KUBECONFIG=$(KUBECONFIG_FILE) oc get job -n dpf-operator-system dpf-operator-etcd-setup-1 -o jsonpath='{.status.succeeded}' 2>/dev/null | grep -q "1"; then \
-					echo "Etcd certificates generated successfully"; \
-					break; \
-			fi; \
-			echo "Waiting for etcd setup job (attempt $$i/12)..."; \
-			sleep 10; \
-	done
-
-install-dpf-kubectl: prepare-dpf-manifests
+deploy-dpf: prepare-dpf-manifests
 	@echo "Applying manifests in order..."
 	@GENERATED_DIR=$(GENERATED_DIR) scripts/apply-dpf.sh
 
@@ -307,7 +286,7 @@ help:
 	@echo ""
 	@echo "DPF Installation targets:"
 	@echo "  install-dpf-aicli   - Install DPF operator using assisted installer"
-	@echo "  install-dpf-kubectl - Install DPF operator using kubectl/oc"
+	@echo "  deploy-dpf - Install DPF operator using kubectl/oc"
 	@echo ""
 	@echo "Configuration options:"
 	@echo "  HOST_CLUSTER_API    - Management cluster API FQDN (default: api.<cluster>.<domain>)"

@@ -1,5 +1,10 @@
 ---
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: dpf-operator-system
+---
+apiVersion: v1
 kind: Secret
 metadata:
   labels:
@@ -1363,3 +1368,5 @@ spec:
                     RevisionHistoryLimit limits the number of items kept in the application's revision history, which is used for informational purposes as well as for rollbacks to previous versions.
                     This should only be changed in exceptional circumstances.
                     Setting to zero will s
+      served: true
+      storage: true

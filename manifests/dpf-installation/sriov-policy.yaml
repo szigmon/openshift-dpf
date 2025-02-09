@@ -1,5 +1,17 @@
 ---
 apiVersion: sriovnetwork.openshift.io/v1
+kind: SriovOperatorConfig
+metadata:
+  name: default
+  namespace: openshift-sriov-network-operator
+spec:
+  configurationMode: daemon
+  disableDrain: false
+  enableInjector: false
+  enableOperatorWebhook: false
+  logLevel: 2
+---
+apiVersion: sriovnetwork.openshift.io/v1
 kind: SriovNetworkNodePolicy
 metadata:
   name: bf3-p0-vfs

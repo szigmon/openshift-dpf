@@ -1,0 +1,59 @@
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  name: 99-nvidia-ovn-changes-worker-dpu
+  labels:
+    machineconfiguration.openshift.io/role: worker
+spec:
+  config:
+    ignition:
+      version: 3.1.0
+    systemd:
+      units:
+        - name: ovs-configuration.service
+          enabled: false
+        - name: openvswitch.service
+          enabled: false
+        - contents: |
+            [Unit]
+            Description=Kubernetes Kubelet
+            Requires=crio.service kubelet-dependencies.target
+            After=kubelet-dependencies.target
+            After=ostree-finalize-staged.service
+            
+            [Service]
+            Type=notify
+            ExecStartPre=/bin/mkdir --parents /etc/kubernetes/manifests
+            ExecStartPre=-/usr/sbin/restorecon -rv /var/lib/kubelet/ /usr/local/bin/kubenswrapper /usr/bin/kubensenter
+            Environment="KUBELET_NODE_IP=0.0.0.0"
+            EnvironmentFile=/etc/os-release
+            EnvironmentFile=-/etc/kubernetes/kubelet-workaround
+            EnvironmentFile=-/etc/kubernetes/kubelet-env
+            EnvironmentFile=/etc/node-sizing.env
+            
+            ExecStart=/usr/local/bin/kubenswrapper \
+            /usr/bin/kubelet \
+            --config=/etc/kubernetes/kubelet.conf \
+            --bootstrap-kubeconfig=/etc/kubernetes/kubeconfig \
+            --kubeconfig=/var/lib/kubelet/kubeconfig \
+            --container-runtime-endpoint=/var/run/crio/crio.sock \
+            --runtime-cgroups=/system.slice/crio.service \
+            --node-labels=node-role.kubernetes.io/worker,node.openshift.io/os_id=${ID},k8s.ovn.org/zone-name="%H",k8s.ovn.org/dpu-host="" \
+            --node-ip=${KUBELET_NODE_IP} \
+            --minimum-container-ttl-duration=6m0s \
+            --cloud-provider= \
+            --volume-plugin-dir=/etc/kubernetes/kubelet-plugins/volume/exec \
+            \
+            --hostname-override=${KUBELET_NODE_NAME} \
+            --provider-id=${KUBELET_PROVIDERID} \
+            --pod-infra-container-image=quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:4c66ed7d92217db9126393d3c8e9e7ed6e5ea084b5a0bb3f60321da89b29fede \
+            --system-reserved=cpu=${SYSTEM_RESERVED_CPU},memory=${SYSTEM_RESERVED_MEMORY},ephemeral-storage=${SYSTEM_RESERVED_ES} \
+            --v=${KUBELET_LOG_LEVEL}
+            
+            Restart=always
+            RestartSec=10
+            
+            [Install]
+            WantedBy=multi-user.target
+          enabled: true
+          name: kubelet.service
