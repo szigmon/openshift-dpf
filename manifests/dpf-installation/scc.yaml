@@ -15,10 +15,12 @@ supplementalGroups:
   type: RunAsAny
 users:
 - system:serviceaccount:dpu-cplane-tenant1:default
+- system:serviceaccount:default
 - system:serviceaccount:dpf-operator-system:dpf-operator-kamaji-etcd
 - system:serviceaccount:dpf-operator-system:dpf-operator-controller-manager
 - system:serviceaccount:dpf-operator-system:dpf-operator-node-feature-discovery-worker
 - system:serviceaccount:dpf-operator-system:default
+- system:serviceaccount:dpf-operator-system:dpf-provisioning-controller-manager
 ---
 apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
@@ -33,3 +35,43 @@ fsGroup:
   type: RunAsAny
 users:
 - system:serviceaccount:dpf-operator-system:default
+---
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: nfd-worker-scc
+allowHostDirVolumePlugin: true
+allowHostIPC: false
+allowHostNetwork: true
+allowHostPID: false
+allowHostPorts: true
+allowPrivilegeEscalation: true
+allowPrivilegedContainer: false
+allowedCapabilities: null
+defaultAddCapabilities: null
+fsGroup:
+  type: RunAsAny
+groups: []
+priority: null
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+  - KILL
+  - MKNOD
+  - SETUID
+  - SETGID
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+users:
+  - system:serviceaccount:dpf-operator-system:dpf-operator-node-feature-discovery-worker
+volumes:
+  - configMap
+  - downwardAPI
+  - emptyDir
+  - hostPath
+  - persistentVolumeClaim
+  - projected
+  - secret

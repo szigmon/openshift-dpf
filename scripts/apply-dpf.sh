@@ -1,6 +1,7 @@
 #!/bin/bash
 
 GENERATED_DIR=${GENERATED_DIR:-"manifests/generated/"}
+KUBECONFIG=${KUBECONFIG}
 
 function log() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
@@ -100,6 +101,7 @@ function apply_remaining() {
 }
 
 log "Starting deployment sequence..."
+echo "Provided kubeconfig ${KUBECONFIG}"
 apply_crds
 apply_scc
 apply_namespaces

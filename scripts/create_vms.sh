@@ -4,9 +4,11 @@ set -e
 # Configuration with defaults
 VM_PREFIX=${VM_PREFIX:-"vm-dpf"}
 VM_COUNT=${VM_COUNT:-3}
+MTU_SIZE=${MTU_SIZE:-1500}
 
 # Get the default physical NIC
 PHYSICAL_NIC=${PHYSICAL_NIC:-$(ip route | awk '/default/ {print $5; exit}')}
+API_VIP=${API_VIP}
 RAM=${RAM:-16384}  # Memory in MB
 VCPUS=${VCPUS:-8}   # Number of virtual CPUs
 DISK_SIZE1=${DISK_SIZE1:-120}  # Size of first disk
@@ -22,7 +24,8 @@ for i in $(seq 1 "$VM_COUNT"); do
             --os-variant=rhel9.4 \
             --disk pool=default,size="${DISK_SIZE1}" \
             --disk pool=default,size="${DISK_SIZE2}" \
-            --network type=direct,source="${PHYSICAL_NIC}",source_mode=bridge,model=virtio \
+            --network type=direct,source="${PHYSICAL_NIC}",mac="52:54:00:12:34:5${i}",source_mode=bridge,model=virtio \
+            --network network=default \
             --graphics=vnc \
             --events on_reboot=restart \
             --cdrom "$ISO_PATH" \

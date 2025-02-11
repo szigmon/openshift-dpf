@@ -27023,6 +27023,9 @@ subjects:
 - kind: ServiceAccount
   name: kamaji-controller-manager
   namespace: dpf-operator-system
+- kind: ServiceAccount
+  name: dpf-operator-controller-manager
+  namespace: dpf-operator-system
 ---
 # Source: dpf-operator/charts/maintenance-operator-chart/templates/role_binding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -27335,7 +27338,6 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     role: worker
 spec:
-  revisionHistoryLimit: 
   selector:
     matchLabels:
       app.kubernetes.io/name: node-feature-discovery
@@ -27387,7 +27389,7 @@ spec:
             fieldRef:
               fieldPath: metadata.uid
         - name: KUBERNETES_SERVICE_HOST
-          value: api.doca-ovn-test.okoyl.xyz
+          value: api.CLUSTER_FQDN
         - name: KUBERNETES_SERVICE_PORT
           value: "6443"
         resources:
@@ -28583,7 +28585,7 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 999
+        runAsUser: 1000749999
         seccompProfile:
           type: RuntimeDefault
       terminationGracePeriodSeconds: 30
