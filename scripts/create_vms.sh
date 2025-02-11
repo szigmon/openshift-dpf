@@ -4,7 +4,6 @@ set -e
 # Configuration with defaults
 VM_PREFIX=${VM_PREFIX:-"vm-dpf"}
 VM_COUNT=${VM_COUNT:-3}
-MTU_SIZE=${MTU_SIZE:-1500}
 
 # Get the default physical NIC
 PHYSICAL_NIC=${PHYSICAL_NIC:-$(ip route | awk '/default/ {print $5; exit}')}

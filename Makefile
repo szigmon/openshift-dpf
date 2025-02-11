@@ -28,10 +28,9 @@ PHYSICAL_NIC ?= $(shell ip route | awk '/default/ {print $$5; exit}')
 
 # Set memory, vCPUs, and disk sizes if not already set
 RAM ?= 41984
-VCPUS ?= 12
+VCPUS ?= 14
 DISK_SIZE1 ?= 120
-DISK_SIZE2 ?= 40
-MTU_SIZE ?= 1500
+DISK_SIZE2 ?= 80
 
 # Network configuration
 API_VIP ?=
@@ -171,7 +170,6 @@ create-vms: download-iso
 		DISK_SIZE2="$(DISK_SIZE2)" \
 		DISK_PATH="$(DISK_PATH)" \
 		ISO_PATH="$(ISO_FOLDER)/$(CLUSTER_NAME).iso" \
-		MTU_SIZE="$(MTU_SIZE)" \
 		OS_VARIANT="rhel9.4" \
 		scripts/create_vms.sh
 
