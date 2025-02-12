@@ -26874,6 +26874,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: dpf-operator-leader-election-role
+  namespace: dpf-operator-system
   labels:
     app.kubernetes.io/component: rbac
     app.kubernetes.io/created-by: dpf-operator
