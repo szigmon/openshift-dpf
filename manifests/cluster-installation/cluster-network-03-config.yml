@@ -13,3 +13,6 @@ spec:
     - 172.30.0.0/16
   disableMultiNetwork: false
   deployKubeProxy: false
+  defaultNetwork:
+    ovnKubernetesConfig:
+      mtu: 9000
