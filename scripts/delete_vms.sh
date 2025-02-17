@@ -3,7 +3,7 @@ set -e
 
 # Default configuration
 VM_PREFIX=${VM_PREFIX:-"vm-dpf"}
-DEFAULT_POOL=${DEFAULT_POOL:-"default"}
+DEFAULT_POOL=${DEFAULT_POOL:-"images"}
 
 # 1. Delete all VMs whose names start with VM_PREFIX
 echo "Deleting all VMs starting with prefix: $VM_PREFIX"
