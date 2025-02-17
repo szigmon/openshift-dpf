@@ -52,28 +52,28 @@ find_vm_ip() {
     local vm_prefix=$1
     local vm_ip=""
 
-    echo "Looking for VMs matching prefix: $vm_prefix"
+    echo "Looking for VMs matching prefix: $vm_prefix" >&2
     local vm_list=$(get_matching_vms "$vm_prefix")
 
     if [ -z "$vm_list" ]; then
-        echo "No VMs found matching prefix: $vm_prefix"
+        echo "No VMs found matching prefix: $vm_prefix" >&2
         return 1
     fi
 
-    echo "Found VMs:"
-    echo "$vm_list"
+    echo "Found VMs:" >&2
+    echo "$vm_list" >&2
 
     for vm in $vm_list; do
-        echo "Checking IP for VM: $vm"
+        echo "Checking IP for VM: $vm" >&2
         vm_ip=$(get_vm_ip "$vm")
         if [ -n "$vm_ip" ]; then
-            echo "Found IP: $vm_ip for VM: $vm"
+            echo "Found IP: $vm_ip for VM: $vm" >&2
             echo "$vm_ip"
             return 0
         fi
     done
 
-    echo "No IP addresses found for matching VMs"
+    echo "No IP addresses found for matching VMs" >&2
     return 1
 }
 
@@ -87,7 +87,7 @@ update_hosts_file() {
     # Read hosts file line by line and update/add entry
     while IFS= read -r line || [ -n "$line" ]; do
         if [[ $line =~ ^[^#]*[[:space:]]+"$fqdn"([[:space:]]|$) ]]; then
-            echo "$ip $fqdn" >> "$temp_file"
+            printf "%s\t%s\n" "$ip" "$fqdn" >> "$temp_file"
             updated=1
         else
             echo "$line" >> "$temp_file"
@@ -96,7 +96,7 @@ update_hosts_file() {
 
     # If FQDN wasn't found, append new entry
     if [ $updated -eq 0 ]; then
-        echo "$ip $fqdn" >> "$temp_file"
+        printf "%s\t%s\n" "$ip" "$fqdn" >> "$temp_file"
     fi
 
     # Backup original hosts file
@@ -116,17 +116,16 @@ main() {
     local ip=$1
     local fqdn=$2
     local vm_prefix=${3:-""}
+    local final_ip=$ip
 
     if ! check_ip_reachable "$ip"; then
         echo "Warning: IP $ip is not reachable"
-
         if [ -n "$vm_prefix" ]; then
             echo "Attempting to find VM IP for prefix: $vm_prefix"
             local vm_ip=$(find_vm_ip "$vm_prefix")
-
             if [ -n "$vm_ip" ]; then
                 echo "Found VM IP: $vm_ip"
-                ip=$vm_ip
+                final_ip=$vm_ip
             else
                 echo "Error: Could not find VM IP for prefix $vm_prefix"
                 echo "Using original IP: $ip"
@@ -136,7 +135,7 @@ main() {
         fi
     fi
 
-    update_hosts_file "$ip" "$fqdn"
+    update_hosts_file "$final_ip" "$fqdn"
 }
 
 # Script execution starts here
