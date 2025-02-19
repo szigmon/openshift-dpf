@@ -51,7 +51,6 @@ ISO_FOLDER ?= $(DISK_PATH)
 # DPF/Kamaji Configuration
 KAMAJI_VIP ?= 10.1.178.225                              # VIP for Kamaji hosted cluster
 HOST_CLUSTER_API ?= api.$(CLUSTER_NAME).$(BASE_DOMAIN)  # Management cluster API FQDN
-HOST_CLUSTER_PORT ?= 6443                               # Management cluster API port
 ETCD_STORAGE_CLASS ?= ocs-storagecluster-ceph-rbd      # StorageClass for Kamaji etcd (RWO)
 BFB_STORAGE_CLASS ?= ocs-storagecluster-cephfs         # StorageClass for BFB PVC (RWX)
 
@@ -215,8 +214,6 @@ prepare-dpf-manifests: $(DPF_PULL_SECRET)
 		| xargs -I {} cp {} $(GENERATED_DIR)/
 	@sed -i 's|value: api.CLUSTER_FQDN|value: $(HOST_CLUSTER_API)|g' \
 		$(GENERATED_DIR)/dpf-operator-manifests.yaml
-	@sed -i 's|value: "6443"|value: "$(HOST_CLUSTER_PORT)"|g' \
-		$(GENERATED_DIR)/dpf-operator-manifests.yaml
 	@sed -i 's|storageClassName: lvms-vg1|storageClassName: $(ETCD_STORAGE_CLASS)|g' \
 		$(GENERATED_DIR)/dpf-operator-manifests.yaml
 	@sed -i 's|storageClassName: ""|storageClassName: "$(BFB_STORAGE_CLASS)"|g' \
@@ -327,7 +324,6 @@ help:
 	@echo ""
 	@echo "DPF Configuration:"
 	@echo "  HOST_CLUSTER_API  - Management cluster API FQDN (default: api.<cluster>.<domain>)"
-	@echo "  HOST_CLUSTER_PORT - Management cluster API port (default: $(HOST_CLUSTER_PORT))"
 	@echo "  KAMAJI_VIP       - VIP for Kamaji hosted cluster (default: $(KAMAJI_VIP))"
 	@echo "  ETCD_STORAGE_CLASS - StorageClass for Kamaji etcd (default: $(ETCD_STORAGE_CLASS))"
 	@echo "  BFB_STORAGE_CLASS - StorageClass for BFB PVC (default: $(BFB_STORAGE_CLASS))"
