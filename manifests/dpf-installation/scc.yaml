@@ -1,64 +1,59 @@
----
-# scc.yaml
 apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
 metadata:
-  name: dpf-privileged-users
-allowPrivilegedContainer: true
-runAsUser:
-  type: RunAsAny
-seLinuxContext:
-  type: RunAsAny
-fsGroup:
-  type: RunAsAny
-supplementalGroups:
-  type: RunAsAny
-users:
-- system:serviceaccount:dpu-cplane-tenant1:default
-- system:serviceaccount:default
-- system:serviceaccount:dpf-operator-system:dpf-operator-kamaji-etcd
-- system:serviceaccount:dpf-operator-system:dpf-operator-controller-manager
-- system:serviceaccount:dpf-operator-system:dpf-operator-node-feature-discovery-worker
-- system:serviceaccount:dpf-operator-system:default
-- system:serviceaccount:dpf-operator-system:dpf-provisioning-controller-manager
----
-apiVersion: security.openshift.io/v1
-kind: SecurityContextConstraints
-metadata:
-  name: dpf-anyuid-users
-allowPrivilegedContainer: false
-runAsUser:
-  type: RunAsAny
-seLinuxContext:
-  type: MustRunAs
-fsGroup:
-  type: RunAsAny
-users:
-- system:serviceaccount:dpf-operator-system:default
----
-apiVersion: security.openshift.io/v1
-kind: SecurityContextConstraints
-metadata:
-  name: nfd-worker-scc
+  name: dpf-operator-privileged-scc
 allowHostDirVolumePlugin: true
-allowHostIPC: false
+allowHostIPC: true
 allowHostNetwork: true
-allowHostPID: false
+allowHostPID: true
 allowHostPorts: true
 allowPrivilegeEscalation: true
-allowPrivilegedContainer: false
-allowedCapabilities: null
-defaultAddCapabilities: null
+allowPrivilegedContainer: true
+allowedCapabilities:
+  - '*'
+defaultAddCapabilities: []
 fsGroup:
   type: RunAsAny
 groups: []
-priority: null
+priority: 10
+readOnlyRootFilesystem: false
+requiredDropCapabilities: []
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+supplementalGroups:
+  type: RunAsAny
+users:
+  - system:serviceaccount:dpu-cplane-tenant1:default
+  - system:serviceaccount:dpf-operator-system:default
+  - system:serviceaccount:dpf-operator-system:dpf-operator-kamaji-etcd
+  - system:serviceaccount:dpf-operator-system:dpf-provisioning-controller-manager
+  - system:serviceaccount:dpf-operator-system:dpf-operator-controller-manager
+  - system:serviceaccount:dpf-operator-system:dpf-operator-node-feature-discovery-worker
+volumes:
+  - '*'
+---
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: dpf-operator-anyuid-scc
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegeEscalation: true
+allowPrivilegedContainer: false
+allowedCapabilities: []
+defaultAddCapabilities: []
+fsGroup:
+  type: RunAsAny
+groups: []
+priority: 10
 readOnlyRootFilesystem: false
 requiredDropCapabilities:
-  - KILL
   - MKNOD
-  - SETUID
-  - SETGID
 runAsUser:
   type: RunAsAny
 seLinuxContext:
@@ -66,12 +61,11 @@ seLinuxContext:
 supplementalGroups:
   type: RunAsAny
 users:
-  - system:serviceaccount:dpf-operator-system:dpf-operator-node-feature-discovery-worker
+  - system:serviceaccount:dpu-cplane-tenant1:default
 volumes:
   - configMap
   - downwardAPI
   - emptyDir
-  - hostPath
   - persistentVolumeClaim
   - projected
   - secret

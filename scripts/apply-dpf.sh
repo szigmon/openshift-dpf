@@ -102,11 +102,11 @@ function apply_remaining() {
 
 log "Starting deployment sequence..."
 echo "Provided kubeconfig ${KUBECONFIG}"
-apply_crds
-apply_scc
 apply_namespaces
+apply_crds
 deploy_cert_manager
 apply_remaining
+apply_scc
 deploy_kamaji
 log "Deployment complete"
 
