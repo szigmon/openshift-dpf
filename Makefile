@@ -13,7 +13,7 @@ HELM_CHART_VERSION := v24.10.0-rc.6
 # Network configuration
 POD_CIDR ?= 10.128.0.0/14
 SERVICE_CIDR ?= 172.30.0.0/16
-DPU_INTERFACE ?= ens8f0np0  # Interface for OVN, SRIOV, and Kamaji endpoint
+DPU_INTERFACE ?= ens7f0np0  # Interface for OVN, SRIOV, and Kamaji endpoint
 
 # Pull Secret files
 OPENSHIFT_PULL_SECRET := openshift_pull.json
