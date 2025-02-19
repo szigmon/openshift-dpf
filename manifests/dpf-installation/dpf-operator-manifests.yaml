@@ -29101,6 +29101,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: dpf-operator-controller-manager
+  namespace: dpf-operator-system
   labels:
     app.kubernetes.io/component: manager
     app.kubernetes.io/created-by: dpf-operator
