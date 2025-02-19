@@ -45,8 +45,8 @@ function wait_for_pods() {
 
 function apply_crds() {
     log "Applying CRDs..."
-    for file in "$GENERATED_DIR"/*-crd.yaml "$GENERATED_DIR"/kamaji-crd.yaml "$GENERATED_DIR"/maintenance-oc-crd.yaml; do
-       if [ -f "$file" ]; then apply_manifest "$file"; fi
+    for file in "$GENERATED_DIR"/*-crd.yaml; do
+        [ -f "$file" ] && apply_manifest "$file"
     done
 }
 
