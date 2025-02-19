@@ -13,7 +13,7 @@ HELM_CHART_VERSION := v24.10.0-rc.6
 # Network configuration
 POD_CIDR ?= 10.128.0.0/14
 SERVICE_CIDR ?= 172.30.0.0/16
-DPU_INTERFACE ?= enp1s0  # Interface for OVN, SRIOV, and Kamaji endpoint
+DPU_INTERFACE ?= ens8f0np0  # Interface for OVN, SRIOV, and Kamaji endpoint
 
 # Pull Secret files
 OPENSHIFT_PULL_SECRET := openshift_pull.json
@@ -258,28 +258,6 @@ deploy-dpf: prepare-dpf-manifests update-etc-hosts kubeconfig
 update-etc-hosts:
 	@echo "Updating /etc/host"
 	@scripts/update-etc-hosts.sh $(API_VIP) $(HOST_CLUSTER_API) $(VM_PREFIX)
-
-
-test-dpf-variables:
-	@echo "Testing DPF variable substitutions..."
-	@mkdir -p $(GENERATED_DIR)/test
-	@echo "value: api.doca-cluster.karmalabs.corp" > $(GENERATED_DIR)/test/test.yaml
-	@echo "value: \"6443\"" >> $(GENERATED_DIR)/test/test.yaml
-	@echo "storageClassName: lvms-vg1" >> $(GENERATED_DIR)/test/test.yaml
-	@echo "storageClassName: \"\"" >> $(GENERATED_DIR)/test/test.yaml
-	@echo "interface: br-ex" >> $(GENERATED_DIR)/test/test.yaml
-	@echo "vip: 10.1.178.225" >> $(GENERATED_DIR)/test/test.yaml
-	@echo "interface: ens8f0np0" >> $(GENERATED_DIR)/test/test.yaml
-	@sed -i 's|value: api.doca-cluster.karmalabs.corp|value: $(HOST_CLUSTER_API)|g' $(GENERATED_DIR)/test/test.yaml
-	@sed -i 's|value: "6443"|value: "$(HOST_CLUSTER_PORT)"|g' $(GENERATED_DIR)/test/test.yaml
-	@sed -i 's|storageClassName: lvms-vg1|storageClassName: $(ETCD_STORAGE_CLASS)|g' $(GENERATED_DIR)/test/test.yaml
-	@sed -i 's|storageClassName: ""|storageClassName: "$(BFB_STORAGE_CLASS)"|g' $(GENERATED_DIR)/test/test.yaml
-	@sed -i 's|interface: br-ex|interface: $(DPU_INTERFACE)|g' $(GENERATED_DIR)/test/test.yaml
-	@sed -i 's|vip: 10.1.178.225|vip: $(KAMAJI_VIP)|g' $(GENERATED_DIR)/test/test.yaml
-	@sed -i 's|interface: ens8f0np0|interface: $(DPU_INTERFACE)|g' $(GENERATED_DIR)/test/test.yaml
-	@echo "Test results:"
-	@cat $(GENERATED_DIR)/test/test.yaml
-	@rm -rf $(GENERATED_DIR)/test
 
 clean-all:
 	@echo "Cleaning up cluster and VMs..."
