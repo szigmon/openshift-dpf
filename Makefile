@@ -9,6 +9,7 @@ GENERATED_DIR := $(MANIFESTS_DIR)/generated
 
 # Helm configuration
 HELM_CHART_VERSION := v24.10.0-rc.6
+DISABLE_KAMAJI ?= false
 
 # Network configuration
 POD_CIDR ?= 10.128.0.0/14
@@ -60,7 +61,7 @@ KUBECONFIG ?= kubeconfig.$(CLUSTER_NAME)
         download-iso download-cert-manager fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all test-dpf-variables deploy-dpf kubeconfig
 
-all: verify-files check-cluster create-vms prepare-manifests cluster-install deploy-dpf
+all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf
 
 verify-files:
 	@test -f $(OPENSHIFT_PULL_SECRET) || (echo "Error: $(OPENSHIFT_PULL_SECRET) not found" && exit 1)
@@ -226,31 +227,9 @@ prepare-dpf-manifests: $(DPF_PULL_SECRET)
 	@PULL_SECRET=$$(cat $(DPF_PULL_SECRET) | base64 -w 0); \
 	sed -i "s|.dockerconfigjson: = xxx|.dockerconfigjson: $$PULL_SECRET|g" $(GENERATED_DIR)/dpf-operator-manifests.yaml
 
-fix-jobs:
-	@echo "Setting up etcd certificates..."
-	@KUBECONFIG=$(KUBECONFIG) oc delete job -n dpf-operator-system dpf-operator-etcd-setup-1 dpf-operator-etcd-setup-2 2>/dev/null || true
-	@KUBECONFIG=$(KUBECONFIG) oc delete secret -n dpf-operator-system dpf-operator-kamaji-etcd-certs dpf-operator-kamaji-etcd-root-client-certs 2>/dev/null || true
-	@KUBECONFIG=$(KUBECONFIG) oc apply -f "$(GENERATED_DIR)/fix-etcd-certs-jobs.yaml" || exit 1
-	@echo "Waiting for etcd cert jobs to complete..."
-	@for i in {1..12}; do \
-			JOB_STATUS=$$(KUBECONFIG=$(KUBECONFIG) oc get job -n dpf-operator-system dpf-operator-etcd-setup-1 -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' 2>/dev/null); \
-			if [ "$$JOB_STATUS" = "True" ]; then \
-					echo "Etcd setup job failed"; \
-					KUBECONFIG=$(KUBECONFIG) oc describe job -n dpf-operator-system dpf-operator-etcd-setup-1; \
-					KUBECONFIG=$(KUBECONFIG) oc logs -n dpf-operator-system -l job-name=dpf-operator-etcd-setup-1; \
-					exit 1; \
-			fi; \
-			if KUBECONFIG=$(KUBECONFIG) oc get job -n dpf-operator-system dpf-operator-etcd-setup-1 -o jsonpath='{.status.succeeded}' 2>/dev/null | grep -q "1"; then \
-					echo "Etcd certificates generated successfully"; \
-					break; \
-			fi; \
-			echo "Waiting for etcd setup job (attempt $$i/12)..."; \
-			sleep 10; \
-	done
-
-deploy-dpf: prepare-dpf-manifests update-etc-hosts kubeconfig
+deploy-dpf: prepare-dpf-manifests kubeconfig
 	@echo "Applying manifests in order..."
-	@GENERATED_DIR=$(GENERATED_DIR) KUBECONFIG=$(KUBECONFIG) scripts/apply-dpf.sh
+	@GENERATED_DIR=$(GENERATED_DIR) KUBECONFIG=$(KUBECONFIG) DISABLE_KAMAJI=$(DISABLE_KAMAJI) scripts/apply-dpf.sh
 
 update-etc-hosts:
 	@echo "Updating /etc/host"

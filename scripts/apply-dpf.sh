@@ -78,10 +78,14 @@ function deploy_cert_manager() {
 }
 
 function deploy_kamaji() {
-    log "Deploying kamaji..."
-    apply_manifest "$GENERATED_DIR/kamaji-manifests.yaml"
-    log "Waiting for etcd pods..."
-    wait_for_pods "dpf-operator-system" "application=kamaji-etcd" "status.phase=Running" "1/1" 60 10
+    if [ "${DISABLE_KAMAJI:-false}" = "false" ]; then
+        log "Deploying kamaji..."
+        apply_manifest "$GENERATED_DIR/kamaji-manifests.yaml"
+        log "Waiting for etcd pods..."
+        wait_for_pods "dpf-operator-system" "application=kamaji-etcd" "status.phase=Running" "1/1" 60 10
+    else
+        log "Skipping kamaji deployment (ENABLE_KAMAJI explicitly set to false)"
+    fi
 }
 
 function apply_remaining() {
