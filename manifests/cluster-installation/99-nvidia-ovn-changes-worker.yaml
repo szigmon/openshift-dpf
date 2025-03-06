@@ -5,14 +5,6 @@ metadata:
   labels:
     machineconfiguration.openshift.io/role: worker
 spec:
-  kernelArguments:
-    - "intel_iommu=on"
-    - "iommu=pt"
-    - "numa_balancing=disable"
-    - "processor.max_cstate=0"
-    - "isolcpus=40-63"
-    - "nohz_full=40-63"
-    - "rcu_nocbs=40-63"
   config:
     ignition:
       version: 3.1.0

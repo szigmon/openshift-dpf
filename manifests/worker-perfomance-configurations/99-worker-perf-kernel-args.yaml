@@ -1,0 +1,15 @@
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  name: 99-nvidia-ovn-changes-worker-dpu
+  labels:
+    machineconfiguration.openshift.io/role: worker
+spec:
+  kernelArguments:
+    - "intel_iommu=on"
+    - "iommu=pt"
+    - "numa_balancing=disable"
+    - "processor.max_cstate=0"
+    - "isolcpus=40-63"
+    - "nohz_full=40-63"
+    - "rcu_nocbs=40-63"
