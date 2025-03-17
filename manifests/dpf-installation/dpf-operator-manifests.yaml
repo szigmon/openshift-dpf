@@ -1,3 +1,13 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    dpf.nvidia.com/image-pull-secret: ""
+  name: dpf-pull-secret
+  namespace: dpf-operator-system
+data:
+  .dockerconfigjson: = xxx
+type: kubernetes.io/dockerconfigjson
 ---
 # Source: dpf-operator/charts/argo-cd/templates/argocd-application-controller/serviceaccount.yaml
 apiVersion: v1
