@@ -75,6 +75,409 @@ metadata:
     app.kubernetes.io/version: "v2.12.4"
 
 ---
+# Source: dpf-operator/templates/crds/operator.dpu.nvidia.com_dpfoperatorconfigs.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.5
+    helm.sh/resource-policy: keep
+  name: dpfoperatorconfigs.operator.dpu.nvidia.com
+spec:
+  group: operator.dpu.nvidia.com
+  names:
+    kind: DPFOperatorConfig
+    listKind: DPFOperatorConfigList
+    plural: dpfoperatorconfigs
+    singular: dpfoperatorconfig
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .status.conditions[?(@.type=='Ready')].status
+          name: Ready
+          type: string
+        - jsonPath: .status.conditions[?(@.type=='Ready')].reason
+          name: Phase
+          type: string
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+      name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          description: DPFOperatorConfig is the Schema for the dpfoperatorconfigs API
+          properties:
+            apiVersion:
+              description: |-
+                APIVersion defines the versioned schema of this representation of an object.
+                Servers should convert recognized schemas to the latest internal value, and
+                may reject unrecognized values.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+              type: string
+            kind:
+              description: |-
+                Kind is a string value representing the REST resource this object represents.
+                Servers may infer this from the endpoint the client submits requests to.
+                Cannot be updated.
+                In CamelCase.
+                More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: DPFOperatorConfigSpec defines the desired state of DPFOperatorConfig
+              properties:
+                dpuDetector:
+                  description: DPUDetector is the configuration for the DPUDetector.
+                  properties:
+                    collectors:
+                      description: Collectors enables or disables specific collectors.
+                      properties:
+                        psID:
+                          description: PSID enables collecting PSID information for
+                            DPUs on nodes.
+                          type: boolean
+                      type: object
+                    disable:
+                      description: Disable ensures the component is not deployed when
+                        set to true.
+                      type: boolean
+                    image:
+                      description: Image overrides the container image used by the component.
+                      pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
+                      type: string
+                  type: object
+                dpuServiceController:
+                  description: DPUServiceController is the configuration for the DPUServiceController
+                  properties:
+                    disable:
+                      description: Disable ensures the component is not deployed when
+                        set to true.
+                      type: boolean
+                    image:
+                      description: Image overrides the container image used by the DPUService
+                        controller
+                      pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
+                      type: string
+                  type: object
+                flannel:
+                  description: Flannel is the configuration for Flannel
+                  properties:
+                    disable:
+                      description: Disable ensures the component is not deployed when
+                        set to true.
+                      type: boolean
+                    helmChart:
+                      description: |-
+                        HelmChart overrides the helm chart used by the Flannel
+                        The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
+                        OCI registry or a web-based repository.
+                      pattern: ^(oci://|https://).+$
+                      type: string
+                  type: object
+                imagePullSecrets:
+                  description: |-
+                    List of secret names which are used to pull images for DPF system components and DPUServices.
+                    These secrets must be in the same namespace as the DPF Operator Config and should be created before the config is created.
+                    System reconciliation will not proceed until these secrets are available.
+                  items:
+                    type: string
+                  type: array
+                kamajiClusterManager:
+                  description: KamajiClusterManager is the configuration for the kamaji-cluster-manager
+                  properties:
+                    disable:
+                      description: Disable ensures the component is not deployed when
+                        set to true.
+                      type: boolean
+                    image:
+                      description: Image overrides the container image used by the HostedControlPlaneManager.
+                      pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
+                      type: string
+                  type: object
+                multus:
+                  description: Multus is the configuration for Multus
+                  properties:
+                    disable:
+                      description: Disable ensures the component is not deployed when
+                        set to true.
+                      type: boolean
+                    helmChart:
+                      description: |-
+                        HelmChart overrides the helm chart used by Multus
+                        The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
+                        OCI registry or a web-based repository.
+                      pattern: ^(oci://|https://).+$
+                      type: string
+                    image:
+                      description: Image overrides the container image used by Multus
+                      pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
+                      type: string
+                  type: object
+                networking:
+                  default:
+                    controlPlaneMTU: 1500
+                  description: Networking defines the networking configuration for the
+                    system components.
+                  properties:
+                    controlPlaneMTU:
+                      default: 1500
+                      description: |-
+                        ControlPlaneMTU is the MTU value to be set on the management network.
+                        The default is 1500.
+                      maximum: 9216
+                      minimum: 0
+                      type: integer
+                    highSpeedMTU:
+                      default: 1500
+                      description: |-
+                        HighSpeedMTU is the MTU value to be set on the high-speed interface.
+                        The default is 1500.
+                      maximum: 9216
+                      minimum: 0
+                      type: integer
+                  type: object
+                nvipam:
+                  description: NVIPAM is the configuration for NVIPAM
+                  properties:
+                    disable:
+                      description: Disable ensures the component is not deployed when
+                        set to true.
+                      type: boolean
+                    helmChart:
+                      description: |-
+                        HelmChart overrides the helm chart used by NVIPAM
+                        The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
+                        OCI registry or a web-based repository.
+                      pattern: ^(oci://|https://).+$
+                      type: string
+                    image:
+                      description: Image overrides the container image used by NVIPAM
+                      pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
+                      type: string
+                  type: object
+                overrides:
+                  description: Overrides exposes a set of fields which impact the recommended
+                    behavior of the DPF Operator.
+                  properties:
+                    paused:
+                      description: Paused disables all reconciliation of the DPFOperatorConfig
+                        when set to true.
+                      type: boolean
+                  type: object
+                ovsCNI:
+                  description: OVSCNI is the configuration for OVSCNI
+                  properties:
+                    disable:
+                      description: Disable ensures the component is not deployed when
+                        set to true.
+                      type: boolean
+                    helmChart:
+                      description: |-
+                        HelmChart overrides the helm chart used by the OVS CNI
+                        The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
+                        OCI registry or a web-based repository.
+                      pattern: ^(oci://|https://).+$
+                      type: string
+                    image:
+                      description: Image overrides the container image used by the OVS
+                        CNI
+                      pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
+                      type: string
+                  type: object
+                ovsHelper:
+                  description: OVSHelper is the configuration for the OVSHelper
+                  properties:
+                    disable:
+                      description: Disable ensures the component is not deployed when
+                        set to true.
+                      type: boolean
+                    helmChart:
+                      description: |-
+                        HelmChart overrides the helm chart used by the OVS Helper
+                        The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
+                        OCI registry or a web-based repository.
+                      pattern: ^(oci://|https://).+$
+                      type: string
+                    image:
+                      description: Image overrides the container image used by the OVS
+                        Helper
+                      pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
+                      type: string
+                  type: object
+                provisioningController:
+                  description: ProvisioningController is the configuration for the ProvisioningController
+                  properties:
+                    bfbPVCName:
+                      description: BFBPersistentVolumeClaimName is the name of the PersistentVolumeClaim
+                        used by dpf-provisioning-controller
+                      minLength: 1
+                      type: string
+                    disable:
+                      description: Disable ensures the component is not deployed when
+                        set to true.
+                      type: boolean
+                    dmsTimeout:
+                      description: DMSTimeout is the max time in seconds within which
+                        a DMS API must respond, 0 is unlimited
+                      minimum: 1
+                      type: integer
+                    image:
+                      description: Image overrides the container image used by the Provisioning
+                        controller
+                      pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
+                      type: string
+                  required:
+                    - bfbPVCName
+                  type: object
+                serviceSetController:
+                  description: ServiceSetController is the configuration for the ServiceSetController
+                  properties:
+                    disable:
+                      description: Disable ensures the component is not deployed when
+                        set to true.
+                      type: boolean
+                    helmChart:
+                      description: |-
+                        HelmChart overrides the helm chart used by the ServiceSet controller.
+                        The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
+                        OCI registry or a web-based repository.
+                      pattern: ^(oci://|https://).+$
+                      type: string
+                    image:
+                      description: Image overrides the container image used by the ServiceSetController
+                      pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
+                      type: string
+                  type: object
+                sfcController:
+                  description: SFCController is the configuration for the SFCController
+                  properties:
+                    disable:
+                      description: Disable ensures the component is not deployed when
+                        set to true.
+                      type: boolean
+                    helmChart:
+                      description: |-
+                        HelmChart overrides the helm chart used by the SFC Controller
+                        The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
+                        OCI registry or a web-based repository.
+                      pattern: ^(oci://|https://).+$
+                      type: string
+                    image:
+                      description: Image overrides the container image used by the SFC
+                        Controller
+                      pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
+                      type: string
+                  type: object
+                sriovDevicePlugin:
+                  description: SRIOVDevicePlugin is the configuration for the SRIOVDevicePlugin
+                  properties:
+                    disable:
+                      description: Disable ensures the component is not deployed when
+                        set to true.
+                      type: boolean
+                    helmChart:
+                      description: |-
+                        HelmChart overrides the helm chart used by the SRIOV Device Plugin
+                        The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
+                        OCI registry or a web-based repository.
+                      pattern: ^(oci://|https://).+$
+                      type: string
+                    image:
+                      description: Image overrides the container image used by the SRIOV
+                        Device Plugin
+                      pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
+                      type: string
+                  type: object
+                staticClusterManager:
+                  description: StaticClusterManager is the configuration for the static-cluster-manager
+                  properties:
+                    disable:
+                      description: Disable ensures the component is not deployed when
+                        set to true.
+                      type: boolean
+                    image:
+                      description: |-
+                        Image is the container image used by the StaticControlPlaneManager
+                        Image overrides the container image used by the HostedControlPlaneManager.
+                      pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
+                      type: string
+                  type: object
+              required:
+                - provisioningController
+              type: object
+            status:
+              description: DPFOperatorConfigStatus defines the observed state of DPFOperatorConfig
+              properties:
+                conditions:
+                  description: Conditions exposes the current state of the OperatorConfig.
+                  items:
+                    description: Condition contains details for one aspect of the current
+                      state of this API Resource.
+                    properties:
+                      lastTransitionTime:
+                        description: |-
+                          lastTransitionTime is the last time the condition transitioned from one status to another.
+                          This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                        format: date-time
+                        type: string
+                      message:
+                        description: |-
+                          message is a human readable message indicating details about the transition.
+                          This may be an empty string.
+                        maxLength: 32768
+                        type: string
+                      observedGeneration:
+                        description: |-
+                          observedGeneration represents the .metadata.generation that the condition was set based upon.
+                          For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                          with respect to the current state of the instance.
+                        format: int64
+                        minimum: 0
+                        type: integer
+                      reason:
+                        description: |-
+                          reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                          Producers of specific condition types may define expected values and meanings for this field,
+                          and whether the values are considered a guaranteed API.
+                          The value should be a CamelCase string.
+                          This field may not be empty.
+                        maxLength: 1024
+                        minLength: 1
+                        pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                        type: string
+                      status:
+                        description: status of the condition, one of True, False, Unknown.
+                        enum:
+                          - "True"
+                          - "False"
+                          - Unknown
+                        type: string
+                      type:
+                        description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                        maxLength: 316
+                        pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                        type: string
+                    required:
+                      - lastTransitionTime
+                      - message
+                      - reason
+                      - status
+                      - type
+                    type: object
+                  type: array
+                observedGeneration:
+                  description: ObservedGeneration records the Generation observed on
+                    the object the last time it was patched.
+                  format: int64
+                  type: integer
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+---
 # Source: dpf-operator/charts/maintenance-operator-chart/templates/serviceaccount.yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -92,45 +495,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
   annotations:
     {}
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/serviceaccount.yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: dpf-operator-node-feature-discovery
-  namespace: dpf-operator-system
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/serviceaccount.yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: dpf-operator-node-feature-discovery-gc
-  namespace: dpf-operator-system
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/serviceaccount.yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: dpf-operator-node-feature-discovery-worker
-  namespace: dpf-operator-system
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
+
 ---
 # Source: dpf-operator/templates/serviceaccount.yaml
 apiVersion: v1
@@ -357,45 +722,7 @@ data:
       exit 1
     fi
     echo "response=$response"
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/nfd-master-conf.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: dpf-operator-node-feature-discovery-master-conf
-  namespace: dpf-operator-system
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-data:
-  nfd-master.conf: |-
-    null
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/nfd-worker-conf.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: dpf-operator-node-feature-discovery-worker-conf
-  namespace: dpf-operator-system
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-data:
-  nfd-worker.conf: |-
-    sources:
-      pci:
-        deviceClassWhitelist:
-        - "0200"
-        deviceLabelFields:
-        - class
-        - vendor
-        - device
+
 ---
 # Source: dpf-operator/charts/argo-cd/templates/crds/crd-application.yaml
 apiVersion: apiextensions.k8s.io/v1
@@ -25236,409 +25563,7 @@ spec:
     storage: true
     subresources:
       status: {}
----
-# Source: dpf-operator/templates/crds/operator.dpu.nvidia.com_dpfoperatorconfigs.yaml
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.16.5
-    helm.sh/resource-policy: keep
-  name: dpfoperatorconfigs.operator.dpu.nvidia.com
-spec:
-  group: operator.dpu.nvidia.com
-  names:
-    kind: DPFOperatorConfig
-    listKind: DPFOperatorConfigList
-    plural: dpfoperatorconfigs
-    singular: dpfoperatorconfig
-  scope: Namespaced
-  versions:
-  - additionalPrinterColumns:
-    - jsonPath: .status.conditions[?(@.type=='Ready')].status
-      name: Ready
-      type: string
-    - jsonPath: .status.conditions[?(@.type=='Ready')].reason
-      name: Phase
-      type: string
-    - jsonPath: .metadata.creationTimestamp
-      name: Age
-      type: date
-    name: v1alpha1
-    schema:
-      openAPIV3Schema:
-        description: DPFOperatorConfig is the Schema for the dpfoperatorconfigs API
-        properties:
-          apiVersion:
-            description: |-
-              APIVersion defines the versioned schema of this representation of an object.
-              Servers should convert recognized schemas to the latest internal value, and
-              may reject unrecognized values.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
-            type: string
-          kind:
-            description: |-
-              Kind is a string value representing the REST resource this object represents.
-              Servers may infer this from the endpoint the client submits requests to.
-              Cannot be updated.
-              In CamelCase.
-              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-            type: string
-          metadata:
-            type: object
-          spec:
-            description: DPFOperatorConfigSpec defines the desired state of DPFOperatorConfig
-            properties:
-              dpuDetector:
-                description: DPUDetector is the configuration for the DPUDetector.
-                properties:
-                  collectors:
-                    description: Collectors enables or disables specific collectors.
-                    properties:
-                      psID:
-                        description: PSID enables collecting PSID information for
-                          DPUs on nodes.
-                        type: boolean
-                    type: object
-                  disable:
-                    description: Disable ensures the component is not deployed when
-                      set to true.
-                    type: boolean
-                  image:
-                    description: Image overrides the container image used by the component.
-                    pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
-                    type: string
-                type: object
-              dpuServiceController:
-                description: DPUServiceController is the configuration for the DPUServiceController
-                properties:
-                  disable:
-                    description: Disable ensures the component is not deployed when
-                      set to true.
-                    type: boolean
-                  image:
-                    description: Image overrides the container image used by the DPUService
-                      controller
-                    pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
-                    type: string
-                type: object
-              flannel:
-                description: Flannel is the configuration for Flannel
-                properties:
-                  disable:
-                    description: Disable ensures the component is not deployed when
-                      set to true.
-                    type: boolean
-                  helmChart:
-                    description: |-
-                      HelmChart overrides the helm chart used by the Flannel
-                      The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
-                      OCI registry or a web-based repository.
-                    pattern: ^(oci://|https://).+$
-                    type: string
-                type: object
-              imagePullSecrets:
-                description: |-
-                  List of secret names which are used to pull images for DPF system components and DPUServices.
-                  These secrets must be in the same namespace as the DPF Operator Config and should be created before the config is created.
-                  System reconciliation will not proceed until these secrets are available.
-                items:
-                  type: string
-                type: array
-              kamajiClusterManager:
-                description: KamajiClusterManager is the configuration for the kamaji-cluster-manager
-                properties:
-                  disable:
-                    description: Disable ensures the component is not deployed when
-                      set to true.
-                    type: boolean
-                  image:
-                    description: Image overrides the container image used by the HostedControlPlaneManager.
-                    pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
-                    type: string
-                type: object
-              multus:
-                description: Multus is the configuration for Multus
-                properties:
-                  disable:
-                    description: Disable ensures the component is not deployed when
-                      set to true.
-                    type: boolean
-                  helmChart:
-                    description: |-
-                      HelmChart overrides the helm chart used by Multus
-                      The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
-                      OCI registry or a web-based repository.
-                    pattern: ^(oci://|https://).+$
-                    type: string
-                  image:
-                    description: Image overrides the container image used by Multus
-                    pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
-                    type: string
-                type: object
-              networking:
-                default:
-                  controlPlaneMTU: 1500
-                description: Networking defines the networking configuration for the
-                  system components.
-                properties:
-                  controlPlaneMTU:
-                    default: 1500
-                    description: |-
-                      ControlPlaneMTU is the MTU value to be set on the management network.
-                      The default is 1500.
-                    maximum: 9216
-                    minimum: 0
-                    type: integer
-                  highSpeedMTU:
-                    default: 1500
-                    description: |-
-                      HighSpeedMTU is the MTU value to be set on the high-speed interface.
-                      The default is 1500.
-                    maximum: 9216
-                    minimum: 0
-                    type: integer
-                type: object
-              nvipam:
-                description: NVIPAM is the configuration for NVIPAM
-                properties:
-                  disable:
-                    description: Disable ensures the component is not deployed when
-                      set to true.
-                    type: boolean
-                  helmChart:
-                    description: |-
-                      HelmChart overrides the helm chart used by NVIPAM
-                      The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
-                      OCI registry or a web-based repository.
-                    pattern: ^(oci://|https://).+$
-                    type: string
-                  image:
-                    description: Image overrides the container image used by NVIPAM
-                    pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
-                    type: string
-                type: object
-              overrides:
-                description: Overrides exposes a set of fields which impact the recommended
-                  behavior of the DPF Operator.
-                properties:
-                  paused:
-                    description: Paused disables all reconciliation of the DPFOperatorConfig
-                      when set to true.
-                    type: boolean
-                type: object
-              ovsCNI:
-                description: OVSCNI is the configuration for OVSCNI
-                properties:
-                  disable:
-                    description: Disable ensures the component is not deployed when
-                      set to true.
-                    type: boolean
-                  helmChart:
-                    description: |-
-                      HelmChart overrides the helm chart used by the OVS CNI
-                      The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
-                      OCI registry or a web-based repository.
-                    pattern: ^(oci://|https://).+$
-                    type: string
-                  image:
-                    description: Image overrides the container image used by the OVS
-                      CNI
-                    pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
-                    type: string
-                type: object
-              ovsHelper:
-                description: OVSHelper is the configuration for the OVSHelper
-                properties:
-                  disable:
-                    description: Disable ensures the component is not deployed when
-                      set to true.
-                    type: boolean
-                  helmChart:
-                    description: |-
-                      HelmChart overrides the helm chart used by the OVS Helper
-                      The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
-                      OCI registry or a web-based repository.
-                    pattern: ^(oci://|https://).+$
-                    type: string
-                  image:
-                    description: Image overrides the container image used by the OVS
-                      Helper
-                    pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
-                    type: string
-                type: object
-              provisioningController:
-                description: ProvisioningController is the configuration for the ProvisioningController
-                properties:
-                  bfbPVCName:
-                    description: BFBPersistentVolumeClaimName is the name of the PersistentVolumeClaim
-                      used by dpf-provisioning-controller
-                    minLength: 1
-                    type: string
-                  disable:
-                    description: Disable ensures the component is not deployed when
-                      set to true.
-                    type: boolean
-                  dmsTimeout:
-                    description: DMSTimeout is the max time in seconds within which
-                      a DMS API must respond, 0 is unlimited
-                    minimum: 1
-                    type: integer
-                  image:
-                    description: Image overrides the container image used by the Provisioning
-                      controller
-                    pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
-                    type: string
-                required:
-                - bfbPVCName
-                type: object
-              serviceSetController:
-                description: ServiceSetController is the configuration for the ServiceSetController
-                properties:
-                  disable:
-                    description: Disable ensures the component is not deployed when
-                      set to true.
-                    type: boolean
-                  helmChart:
-                    description: |-
-                      HelmChart overrides the helm chart used by the ServiceSet controller.
-                      The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
-                      OCI registry or a web-based repository.
-                    pattern: ^(oci://|https://).+$
-                    type: string
-                  image:
-                    description: Image overrides the container image used by the ServiceSetController
-                    pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
-                    type: string
-                type: object
-              sfcController:
-                description: SFCController is the configuration for the SFCController
-                properties:
-                  disable:
-                    description: Disable ensures the component is not deployed when
-                      set to true.
-                    type: boolean
-                  helmChart:
-                    description: |-
-                      HelmChart overrides the helm chart used by the SFC Controller
-                      The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
-                      OCI registry or a web-based repository.
-                    pattern: ^(oci://|https://).+$
-                    type: string
-                  image:
-                    description: Image overrides the container image used by the SFC
-                      Controller
-                    pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
-                    type: string
-                type: object
-              sriovDevicePlugin:
-                description: SRIOVDevicePlugin is the configuration for the SRIOVDevicePlugin
-                properties:
-                  disable:
-                    description: Disable ensures the component is not deployed when
-                      set to true.
-                    type: boolean
-                  helmChart:
-                    description: |-
-                      HelmChart overrides the helm chart used by the SRIOV Device Plugin
-                      The URL must begin with either 'oci://' or 'https://', ensuring it points to a valid
-                      OCI registry or a web-based repository.
-                    pattern: ^(oci://|https://).+$
-                    type: string
-                  image:
-                    description: Image overrides the container image used by the SRIOV
-                      Device Plugin
-                    pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
-                    type: string
-                type: object
-              staticClusterManager:
-                description: StaticClusterManager is the configuration for the static-cluster-manager
-                properties:
-                  disable:
-                    description: Disable ensures the component is not deployed when
-                      set to true.
-                    type: boolean
-                  image:
-                    description: |-
-                      Image is the container image used by the StaticControlPlaneManager
-                      Image overrides the container image used by the HostedControlPlaneManager.
-                    pattern: ^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)(?::([\w][\w.-]{0,127}))?(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}))?$
-                    type: string
-                type: object
-            required:
-            - provisioningController
-            type: object
-          status:
-            description: DPFOperatorConfigStatus defines the observed state of DPFOperatorConfig
-            properties:
-              conditions:
-                description: Conditions exposes the current state of the OperatorConfig.
-                items:
-                  description: Condition contains details for one aspect of the current
-                    state of this API Resource.
-                  properties:
-                    lastTransitionTime:
-                      description: |-
-                        lastTransitionTime is the last time the condition transitioned from one status to another.
-                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
-                      format: date-time
-                      type: string
-                    message:
-                      description: |-
-                        message is a human readable message indicating details about the transition.
-                        This may be an empty string.
-                      maxLength: 32768
-                      type: string
-                    observedGeneration:
-                      description: |-
-                        observedGeneration represents the .metadata.generation that the condition was set based upon.
-                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
-                        with respect to the current state of the instance.
-                      format: int64
-                      minimum: 0
-                      type: integer
-                    reason:
-                      description: |-
-                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
-                        Producers of specific condition types may define expected values and meanings for this field,
-                        and whether the values are considered a guaranteed API.
-                        The value should be a CamelCase string.
-                        This field may not be empty.
-                      maxLength: 1024
-                      minLength: 1
-                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
-                      type: string
-                    status:
-                      description: status of the condition, one of True, False, Unknown.
-                      enum:
-                      - "True"
-                      - "False"
-                      - Unknown
-                      type: string
-                    type:
-                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
-                      maxLength: 316
-                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
-                      type: string
-                  required:
-                  - lastTransitionTime
-                  - message
-                  - reason
-                  - status
-                  - type
-                  type: object
-                type: array
-              observedGeneration:
-                description: ObservedGeneration records the Generation observed on
-                  the object the last time it was patched.
-                format: int64
-                type: integer
-            type: object
-        type: object
-    served: true
-    storage: true
-    subresources:
-      status: {}
+
 ---
 # Source: dpf-operator/charts/argo-cd/templates/argocd-application-controller/clusterrole.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -25853,101 +25778,7 @@ rules:
   - get
   - list
   - watch
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/clusterrole.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: dpf-operator-node-feature-discovery
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  - nodes/status
-  verbs:
-  - get
-  - patch
-  - update
-  - list
-- apiGroups:
-  - nfd.k8s-sigs.io
-  resources:
-  - nodefeatures
-  - nodefeaturerules
-  - nodefeaturegroups
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - nfd.k8s-sigs.io
-  resources:
-  - nodefeaturegroups/status
-  verbs:
-  - patch
-  - update
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - create
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  resourceNames:
-  - "nfd-master.nfd.kubernetes.io"
-  verbs:
-  - get
-  - update
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/clusterrole.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: dpf-operator-node-feature-discovery-gc
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - nodes/proxy
-  verbs:
-  - get
-- apiGroups:
-  - topology.node.k8s.io
-  resources:
-  - noderesourcetopologies
-  verbs:
-  - delete
-  - list
-- apiGroups:
-  - nfd.k8s-sigs.io
-  resources:
-  - nodefeatures
-  verbs:
-  - delete
-  - list
+
 ---
 # Source: dpf-operator/templates/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -26276,46 +26107,7 @@ subjects:
 - kind: ServiceAccount
   name: 'dpf-operator-maintenance-operator-controller-manager'
   namespace: dpf-operator-system
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/clusterrolebinding.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: dpf-operator-node-feature-discovery
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: dpf-operator-node-feature-discovery
-subjects:
-- kind: ServiceAccount
-  name: dpf-operator-node-feature-discovery
-  namespace: dpf-operator-system
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/clusterrolebinding.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: dpf-operator-node-feature-discovery-gc
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: dpf-operator-node-feature-discovery-gc
-subjects:
-- kind: ServiceAccount
-  name: dpf-operator-node-feature-discovery-gc
-  namespace: dpf-operator-system
+
 ---
 # Source: dpf-operator/templates/cluster-role-binding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -26604,36 +26396,7 @@ rules:
   verbs:
   - create
   - patch
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/role.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: dpf-operator-node-feature-discovery-worker
-  namespace: dpf-operator-system
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-rules:
-- apiGroups:
-  - nfd.k8s-sigs.io
-  resources:
-  - nodefeatures
-  verbs:
-  - create
-  - get
-  - update
-  - delete
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-  - delete
+
 ---
 # Source: dpf-operator/templates/leader-election-rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -26799,27 +26562,7 @@ subjects:
 - kind: ServiceAccount
   name: 'dpf-operator-maintenance-operator-controller-manager'
   namespace: dpf-operator-system
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/rolebinding.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: dpf-operator-node-feature-discovery-worker
-  namespace: dpf-operator-system
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: dpf-operator-node-feature-discovery-worker
-subjects:
-- kind: ServiceAccount
-  name: dpf-operator-node-feature-discovery-worker
-  namespace: dpf-operator-system
+
 ---
 # Source: dpf-operator/templates/leader-election-rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -26999,156 +26742,7 @@ spec:
   - port: 443
     protocol: TCP
     targetPort: 9443
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/worker.yaml
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name:  dpf-operator-node-feature-discovery-worker
-  namespace: dpf-operator-system
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-    role: worker
-spec:
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: node-feature-discovery
-      app.kubernetes.io/instance: dpf-operator
-      role: worker
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: node-feature-discovery
-        app.kubernetes.io/instance: dpf-operator
-        role: worker
-    spec:
-      dnsPolicy: Default
-      serviceAccountName: dpf-operator-node-feature-discovery-worker
-      securityContext:
-        {}
-      hostNetwork: true
-      containers:
-      - name: worker
-        securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-              - ALL
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-        image: "quay.io/itsoiref/nfd:latest"
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-            grpc:
-              port: 8082
-            initialDelaySeconds: 10
-        readinessProbe:
-            failureThreshold: 10
-            grpc:
-              port: 8082
-            initialDelaySeconds: 5
-        env:
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        - name: POD_UID
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.uid
-        - name: KUBERNETES_SERVICE_HOST
-          value: api.CLUSTER_FQDN
-        - name: KUBERNETES_SERVICE_PORT
-          value: "6443"
-        resources:
-            limits:
-              memory: 512Mi
-            requests:
-              cpu: 5m
-              memory: 64Mi
-        command:
-        - "nfd-worker"
-        args:
-# Go over featureGate and add the feature-gate flag
-        - "-feature-gates=NodeFeatureAPI=true"
-        - "-feature-gates=NodeFeatureGroupAPI=false"
-        - "-metrics=8081"
-        - "-grpc-health=8082"
-        ports:
-          - containerPort: 8081
-            name: metrics
-          - containerPort: 8082
-            name: health
-        volumeMounts:
-        - name: host-boot
-          mountPath: "/host-boot"
-          readOnly: true
-        - name: host-os-release
-          mountPath: "/host-etc/os-release"
-          readOnly: true
-        - name: host-sys
-          mountPath: "/host-sys"
-          readOnly: true
-        - name: host-usr-lib
-          mountPath: "/host-usr/lib"
-          readOnly: true
-        - name: host-lib
-          mountPath: "/host-lib"
-          readOnly: true
-        - name: host-proc-swaps
-          mountPath: "/host-proc/swaps"
-          readOnly: true
-        - name: source-d
-          mountPath: "/etc/kubernetes/node-feature-discovery/source.d/"
-          readOnly: true
-        - name: features-d
-          mountPath: "/etc/kubernetes/node-feature-discovery/features.d/"
-          readOnly: true
-        - name: nfd-worker-conf
-          mountPath: "/etc/kubernetes/node-feature-discovery"
-          readOnly: true
-      volumes:
-        - name: host-boot
-          hostPath:
-            path: "/boot"
-        - name: host-os-release
-          hostPath:
-            path: "/etc/os-release"
-        - name: host-sys
-          hostPath:
-            path: "/sys"
-        - name: host-usr-lib
-          hostPath:
-            path: "/usr/lib"
-        - name: host-lib
-          hostPath:
-            path: "/lib"
-        - name: host-proc-swaps
-          hostPath:
-            path: "/proc/swaps"
-        - name: source-d
-          hostPath:
-            path: "/etc/kubernetes/node-feature-discovery/source.d/"
-        - name: features-d
-          hostPath:
-            path: "/etc/kubernetes/node-feature-discovery/features.d/"
-        - name: nfd-worker-conf
-          configMap:
-            name: dpf-operator-node-feature-discovery-worker-conf
-            items:
-              - key: nfd-worker.conf
-                path: nfd-worker.conf
-      tolerations:
-        - key: node.kubernetes.io/not-ready
-          operator: Exists
+
 ---
 # Source: dpf-operator/charts/argo-cd/templates/argocd-applicationset/deployment.yaml
 apiVersion: apps/v1
@@ -28448,212 +28042,8 @@ spec:
         secret:
           defaultMode: 420
           secretName: operator-webhook-cert
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/master.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name:  dpf-operator-node-feature-discovery-master
-  namespace: dpf-operator-system
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-    role: master
-spec:
-  replicas: 1
-  revisionHistoryLimit: 
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: node-feature-discovery
-      app.kubernetes.io/instance: dpf-operator
-      role: master
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: node-feature-discovery
-        app.kubernetes.io/instance: dpf-operator
-        role: master
-    spec:
-      serviceAccountName: dpf-operator-node-feature-discovery
-      enableServiceLinks: false
-      securityContext:
-        {}
-      hostNetwork: false
-      containers:
-        - name: master
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-              - ALL
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-          image: "registry.k8s.io/nfd/node-feature-discovery:v0.16.5"
-          imagePullPolicy: IfNotPresent
-          livenessProbe:
-            grpc:
-              port: 8082
-            initialDelaySeconds: 10
-          readinessProbe:
-            failureThreshold: 10
-            grpc:
-              port: 8082
-            initialDelaySeconds: 5
-          ports:
-          - containerPort: 8080
-            name: grpc
-          - containerPort: 8081
-            name: metrics
-          - containerPort: 8082
-            name: health
-          env:
-          - name: NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-          command:
-            - "nfd-master"
-          resources:
-            limits:
-              memory: 4Gi
-            requests:
-              cpu: 100m
-              memory: 128Mi
-          args:
-            ## By default, disable crd controller for other than the default instances
-            - "-crd-controller=true"
-            # Go over featureGates and add the feature-gate flag
-            - "-feature-gates=NodeFeatureAPI=true"
-            - "-feature-gates=NodeFeatureGroupAPI=false"
-            - "-metrics=8081"
-            - "-grpc-health=8082"
-          volumeMounts:
-            - name: nfd-master-conf
-              mountPath: "/etc/kubernetes/node-feature-discovery"
-              readOnly: true
-      volumes:
-        - name: nfd-master-conf
-          configMap:
-            name: dpf-operator-node-feature-discovery-master-conf
-            items:
-              - key: nfd-master.conf
-                path: nfd-master.conf
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - preference:
-              matchExpressions:
-              - key: node-role.kubernetes.io/master
-                operator: In
-                values:
-                - ""
-            weight: 1
-          - preference:
-              matchExpressions:
-              - key: node-role.kubernetes.io/control-plane
-                operator: In
-                values:
-                - ""
-            weight: 1
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: node-role.kubernetes.io/master
-                operator: Exists
-            - matchExpressions:
-              - key: node-role.kubernetes.io/control-plane
-                operator: Exists
-      tolerations:
-        - effect: NoSchedule
-          key: node-role.kubernetes.io/master
-          operator: Equal
-          value: ""
-        - effect: NoSchedule
-          key: node-role.kubernetes.io/control-plane
-          operator: Equal
-          value: ""
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/nfd-gc.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: dpf-operator-node-feature-discovery-gc
-  namespace: dpf-operator-system
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-    role: gc
-spec:
-  replicas: 1
-  revisionHistoryLimit: 
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: node-feature-discovery
-      app.kubernetes.io/instance: dpf-operator
-      role: gc
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: node-feature-discovery
-        app.kubernetes.io/instance: dpf-operator
-        role: gc
-    spec:
-      serviceAccountName: dpf-operator-node-feature-discovery-gc
-      dnsPolicy: ClusterFirstWithHostNet
-      securityContext:
-        {}
-      hostNetwork: false
-      containers:
-      - name: gc
-        image: "registry.k8s.io/nfd/node-feature-discovery:v0.16.5"
-        imagePullPolicy: "IfNotPresent"
-        env:
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        command:
-          - "nfd-gc"
-        args:
-          - "-gc-interval=1h"
-        resources:
-            limits:
-              memory: 1Gi
-            requests:
-              cpu: 10m
-              memory: 128Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: [ "ALL" ]
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-        ports:
-          - name: metrics
-            containerPort: 8081
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: node-role.kubernetes.io/master
-                operator: Exists
-            - matchExpressions:
-              - key: node-role.kubernetes.io/control-plane
-                operator: Exists
-      tolerations:
-        - effect: NoSchedule
-          key: node-role.kubernetes.io/master
-          operator: Exists
-        - effect: NoSchedule
-          key: node-role.kubernetes.io/control-plane
-          operator: Exists
+
+
 ---
 # Source: dpf-operator/templates/deployment.yaml
 apiVersion: apps/v1
@@ -29188,71 +28578,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/part-of: argocd
     app.kubernetes.io/version: "v2.12.4"
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/post-delete-job.yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: dpf-operator-node-feature-discovery-prune
-  namespace: dpf-operator-system
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-  annotations:
-    "helm.sh/hook": post-delete
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/post-delete-job.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: dpf-operator-node-feature-discovery-prune
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-  annotations:
-    "helm.sh/hook": post-delete
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  - nodes/status
-  verbs:
-  - get
-  - patch
-  - update
-  - list
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/post-delete-job.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: dpf-operator-node-feature-discovery-prune
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-  annotations:
-    "helm.sh/hook": post-delete
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: dpf-operator-node-feature-discovery-prune
-subjects:
-- kind: ServiceAccount
-  name: dpf-operator-node-feature-discovery-prune
-  namespace: dpf-operator-system
+
 ---
 # Source: dpf-operator/charts/argo-cd/templates/redis-secret-init/role.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -29389,84 +28715,7 @@ spec:
           key: node-role.kubernetes.io/control-plane
           operator: Exists
       serviceAccountName: dpf-operator-argocd-redis-secret-init
----
-# Source: dpf-operator/charts/node-feature-discovery/templates/post-delete-job.yaml
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name:  dpf-operator-node-feature-discovery-prune
-  namespace: dpf-operator-system
-  labels:
-    helm.sh/chart: node-feature-discovery-0.16.5
-    app.kubernetes.io/name: node-feature-discovery
-    app.kubernetes.io/instance: dpf-operator
-    app.kubernetes.io/version: "v0.16.5"
-    app.kubernetes.io/managed-by: Helm
-  annotations:
-    "helm.sh/hook": post-delete
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
-spec:
-  template:
-    metadata:
-      labels:
-        helm.sh/chart: node-feature-discovery-0.16.5
-        app.kubernetes.io/name: node-feature-discovery
-        app.kubernetes.io/instance: dpf-operator
-        app.kubernetes.io/version: "v0.16.5"
-        app.kubernetes.io/managed-by: Helm
-        role: prune
-    spec:
-      serviceAccountName: dpf-operator-node-feature-discovery-prune
-      containers:
-        - name: nfd-master
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-              - ALL
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-          image: "registry.k8s.io/nfd/node-feature-discovery:v0.16.5"
-          imagePullPolicy: IfNotPresent
-          command:
-            - "nfd-master"
-          args:
-            - "-prune"
-      restartPolicy: Never
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - preference:
-              matchExpressions:
-              - key: node-role.kubernetes.io/master
-                operator: In
-                values:
-                - ""
-            weight: 1
-          - preference:
-              matchExpressions:
-              - key: node-role.kubernetes.io/control-plane
-                operator: In
-                values:
-                - ""
-            weight: 1
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: node-role.kubernetes.io/master
-                operator: Exists
-            - matchExpressions:
-              - key: node-role.kubernetes.io/control-plane
-                operator: Exists
-      tolerations:
-        - effect: NoSchedule
-          key: node-role.kubernetes.io/master
-          operator: Equal
-          value: ""
-        - effect: NoSchedule
-          key: node-role.kubernetes.io/control-plane
-          operator: Equal
-          value: ""
+
 ---
 # Roles to fix dpf-provisioning-controller-manager 
 apiVersion: rbac.authorization.k8s.io/v1

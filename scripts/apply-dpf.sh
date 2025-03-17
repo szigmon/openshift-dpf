@@ -2,6 +2,8 @@
 
 GENERATED_DIR=${GENERATED_DIR:-"manifests/generated/"}
 KUBECONFIG=${KUBECONFIG}
+DISABLE_KAMAJI=${DISABLE_KAMAJI:-"false"}
+DISABLE_NFD=${DISABLE_NFD:-"false"}  # New environment variable to disable NFD deployment
 
 function log() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
@@ -78,19 +80,25 @@ function deploy_cert_manager() {
 }
 
 function deploy_kamaji() {
-    if [ "${DISABLE_KAMAJI:-false}" = "false" ]; then
+    if [ "${DISABLE_KAMAJI}" = "false" ]; then
         log "Deploying kamaji..."
         apply_manifest "$GENERATED_DIR/kamaji-manifests.yaml"
         log "Waiting for etcd pods..."
         wait_for_pods "dpf-operator-system" "application=kamaji-etcd" "status.phase=Running" "1/1" 60 10
     else
-        log "Skipping kamaji deployment (ENABLE_KAMAJI explicitly set to false)"
+        log "Skipping kamaji deployment (DISABLE_KAMAJI explicitly set to true)"
     fi
 }
 
 function apply_remaining() {
     log "Applying remaining manifests..."
     for file in "$GENERATED_DIR"/*.yaml; do
+        # Skip NFD deployment if DISABLE_NFD is set to true
+        if [[ "${DISABLE_NFD}" = "true" && "$file" =~ .*dpf-nfd\.yaml$ ]]; then
+            log "Skipping NFD deployment (DISABLE_NFD explicitly set to true)"
+            continue
+        fi
+
         if [[ ! "$file" =~ .*(-ns)\.yaml$ && \
               "$file" != "$GENERATED_DIR/cert-manager-manifests.yaml" && \
               "$file" != "$GENERATED_DIR/kamaji-manifests.yaml" && \
@@ -106,6 +114,7 @@ function apply_remaining() {
 
 log "Starting deployment sequence..."
 echo "Provided kubeconfig ${KUBECONFIG}"
+echo "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
 apply_namespaces
 apply_crds
 deploy_cert_manager
@@ -113,4 +122,3 @@ apply_remaining
 apply_scc
 deploy_kamaji
 log "Deployment complete"
-

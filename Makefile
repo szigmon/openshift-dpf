@@ -10,6 +10,7 @@ GENERATED_DIR := $(MANIFESTS_DIR)/generated
 # Helm configuration
 HELM_CHART_VERSION := v24.10.0-rc.6
 DISABLE_KAMAJI ?= false
+DISABLE_NFD ?= false  # New environment variable to disable NFD deployment
 
 # Network configuration
 POD_CIDR ?= 10.128.0.0/14
@@ -207,7 +208,7 @@ prepare-dpf-manifests: $(DPF_PULL_SECRET)
 	@test -n "$(HOST_CLUSTER_API)" || (echo "Error: HOST_CLUSTER_API must be set" && exit 1)
 	@test -n "$(KAMAJI_VIP)" || (echo "Error: KAMAJI_VIP must be set" && exit 1)
 	@test -n "$(DPU_INTERFACE)" || (echo "Error: DPU_INTERFACE must be set" && exit 1)
-	
+
 	@echo "Preparing DPF manifests..."
 	@rm -rf $(GENERATED_DIR)
 	@mkdir -p $(GENERATED_DIR)
@@ -217,6 +218,8 @@ prepare-dpf-manifests: $(DPF_PULL_SECRET)
 		$(GENERATED_DIR)/dpf-operator-manifests.yaml
 	@sed -i 's|storageClassName: lvms-vg1|storageClassName: $(ETCD_STORAGE_CLASS)|g' \
 		$(GENERATED_DIR)/dpf-operator-manifests.yaml
+	@sed -i 's|storageClassName: lvms-vg1|storageClassName: $(ETCD_STORAGE_CLASS)|g' \
+        $(GENERATED_DIR)/kamaji-manifests.yaml
 	@sed -i 's|storageClassName: ""|storageClassName: "$(BFB_STORAGE_CLASS)"|g' \
 		$(GENERATED_DIR)/bfb-pvc.yaml
 	@NGC_API_KEY=$$(jq -r '.auths."nvcr.io".password' $(DPF_PULL_SECRET)); \
@@ -229,7 +232,7 @@ prepare-dpf-manifests: $(DPF_PULL_SECRET)
 
 deploy-dpf: prepare-dpf-manifests kubeconfig
 	@echo "Applying manifests in order..."
-	@GENERATED_DIR=$(GENERATED_DIR) KUBECONFIG=$(KUBECONFIG) DISABLE_KAMAJI=$(DISABLE_KAMAJI) scripts/apply-dpf.sh
+	@GENERATED_DIR=$(GENERATED_DIR) KUBECONFIG=$(KUBECONFIG) DISABLE_KAMAJI=$(DISABLE_KAMAJI) DISABLE_NFD=$(DISABLE_NFD) scripts/apply-dpf.sh
 
 update-etc-hosts:
 	@echo "Updating /etc/host"
@@ -286,6 +289,10 @@ help:
 	@echo "  BASE_DOMAIN      - Set base DNS domain (default: $(BASE_DOMAIN))"
 	@echo "  OPENSHIFT_VERSION - Set OpenShift version (default: $(OPENSHIFT_VERSION))"
 	@echo "  KUBECONFIG       - Path to kubeconfig file (default: $(KUBECONFIG))"
+	@echo ""
+	@echo "Feature Configuration:"
+	@echo "  DISABLE_KAMAJI    - Skip kamaji deployment (default: $(DISABLE_KAMAJI))"
+	@echo "  DISABLE_NFD       - Skip NFD deployment (default: $(DISABLE_NFD))"
 	@echo ""
 	@echo "Network Configuration:"
 	@echo "  POD_CIDR         - Set pod CIDR (default: $(POD_CIDR))"
