@@ -1,0 +1,34 @@
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: worker
+  name: worker-nmstate-bridge
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    storage:
+      files:
+        - contents:
+            source: data:text/plain;charset=utf-8;base64,IyEvYmluL2Jhc2gKCiMgV2FpdCBpbmRlZmluaXRlbHkgZm9yIGFuIGludGVyZmFjZSB0byBnZXQgYW4gSVAgYWRkcmVzcyBhbmQgZGVmYXVsdCByb3V0ZQpXQUlUX0lOVEVSVkFMPTUgICMgQ2hlY2sgaW50ZXJ2YWwgaW4gc2Vjb25kcwpBVFRFTVBUPTEKCmVjaG8gIldhaXRpbmcgZm9yIG5ldHdvcmsgY29uZmlndXJhdGlvbi4uLiIKd2hpbGUgdHJ1ZTsgZG8KICAgICMgQ2hlY2sgaWYgd2UgaGF2ZSBhbiBpbnRlcmZhY2Ugd2l0aCBhIGRlZmF1bHQgcm91dGUKICAgIERFRkFVTFRfSU5URVJGQUNFPSQ7aXAgcm91dGUgfCBncmVwIGRlZmF1bHQgfCBhd2sgJ3twcmludCAkNX0nIHwgaGVhZCAtbiAxKQogICAgCiAgICBpZiBbIC1uICIkREVGQVVMVF9JTlRFUkZBQ0UiIF07IHRoZW4KICAgICAgICAjIENoZWNrIGlmIHRoYXQgaW50ZXJmYWNlIGhhcyBhbiBJUCBhZGRyZXNzCiAgICAgICAgSVBfQUREUj0kKGlwIGFkZHIgc2hvdyBkZXYgIiRERUZBVUxUX0lOVEVSRkFDRSIgfCBncmVwIC13ICJpbmV0IiB8IGF3ayAne3ByaW50ICQyfScpCiAgICAgICAgCiAgICAgICAgaWYgWyAtbiAiJElQX0FERFIiIF07IHRoZW4KICAgICAgICAgICAgZWNobyAiTmV0d29yayBpcyByZWFkeS4gSW50ZXJmYWNlICRERUZBVUxUX0lOVEVSRkFDRSBoYXMgSVAgYWRkcmVzcyAkSVBfQUREUiIKICAgICAgICAgICAgYnJlYWsKICAgICAgICBmaQogICAgZmkKICAgIAogICAgZWNobyAiV2FpdGluZyBmb3IgbmV0d29yayBjb25maWd1cmF0aW9uLi4uIChBdHRlbXB0ICRBVFRFTVBUKSIKYXR0ZW1wdApVTVBUKSIKICAgIHNsZWVwICRXQUlUX0lOVEVSVkFMCiAgICBBVFRFTVBUPSQoKEFUVEVNUFQgKyAxKSkKZG9uZQoKIyBGaW5kIHRoZSBpbnRlcmZhY2UgdGhhdCBoYXMgdGhlIGRlZmF1bHQgcm91dGUKREVGQVVMVF9JTlRFUkZBQ0U9JChpcCByb3V0ZSB8IGdyZXAgZGVmYXVsdCB8IGF3ayAne3ByaW50ICQ1fScgfCBoZWFkIC1uIDEpCgppZiBbIC16ICIkREVGQVVMVF9JTlRFUkZBQ0UiIF07IHRoZW4KICAgIGVjaG8gIkVycm9yOiBDb3VsZCBub3QgZmluZCBpbnRlcmZhY2Ugd2l0aCBkZWZhdWx0IHJvdXRlIiA+JjIKICAgIGV4aXQgMQpmaQoKZWNobyAiRm91bmQgZGVmYXVsdCBpbnRlcmZhY2U6ICRERUZBVUxUX0lOVEVSRkFDRSIKCiMgQ3JlYXRlIGEgdGVtcG9yYXJ5IFlBTUwgZmlsZSB3aXRoIHRoZSBpbnRlcmZhY2Ugc3Vic3RpdHV0ZWQKVE1QX0ZJTEU9JChtYXRlbXApCgpjYXQgPiAiJFRNUF9GSUxFIiA8PCBFTzZ1bHQKaW50ZXJmYWNlczoKICAtIG5hbWU6IGJyLWRwdQogICAgdHlwZTogbGludXgtYnJpZGdlCiAgICBzdGF0ZTogdXAKICAgIGlwdjY6CiAgICAgIGVuYWJsZWQ6IGZhbHNlCiAgICBpcHY0OgogICAgICBlbmFibGVkOiB0cnVlCiAgICAgIGRoY3A6IHRydWUKICAgICAgYXV0by1kbnM6IHRydWUKICAgICAgYXV0by1nYXRld2F5OiB0cnVlCiAgICAgIGF1dG8tcm91dGVzOiB0cnVlCiAgICBicmlkZ2U6CiAgICAgIG9wdGlvbnM6CiAgICAgICAgc3RwOgogICAgICAgICAgZW5hYWJsZWQ6IGZhbHNlCiAgICAgIHBvcnQ6CiAgICAgICAgLSBuYW1lOiAkREVGQVVMVF9JTlRFUkZBQ0UKRUzA
+          mode: 0755
+          overwrite: true
+          path: /usr/local/bin/apply-nmstate-bridge.sh
+    systemd:
+      units:
+        - contents: |
+            [Unit]
+            Description=Apply NMState bridge configuration
+            After=network.target NetworkManager.service
+            Wants=NetworkManager.service
+            
+            [Service]
+            Type=oneshot
+            ExecStart=/usr/local/bin/apply-nmstate-bridge.sh
+            RemainAfterExit=yes
+            
+            [Install]
+            WantedBy=multi-user.target
+          enabled: true
+          name: nmstate-bridge.service
