@@ -8,7 +8,7 @@ MANIFESTS_DIR := manifests
 GENERATED_DIR := $(MANIFESTS_DIR)/generated
 
 # Helm configuration
-HELM_CHART_VERSION := v24.10.0-rc.6
+HELM_CHART_VERSION := v25.1.1
 DISABLE_KAMAJI ?= false
 DISABLE_NFD ?= false  # New environment variable to disable NFD deployment
 
