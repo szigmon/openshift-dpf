@@ -1,7 +1,7 @@
 # Configuration for cluster
 CLUSTER_NAME ?= doca-cluster
 BASE_DOMAIN ?= okoyl.xyz
-OPENSHIFT_VERSION ?= 4.17.12
+OPENSHIFT_VERSION ?= 4.18.4
 
 # Directory structure
 MANIFESTS_DIR := manifests
@@ -11,6 +11,20 @@ GENERATED_DIR := $(MANIFESTS_DIR)/generated
 HELM_CHART_VERSION := v25.1.1
 DISABLE_KAMAJI ?= false
 DISABLE_NFD ?= false  # New environment variable to disable NFD deployment
+
+# NFD Configuration
+NFD_OPERATOR_IMAGE ?= quay.io/yshnaidm/cluster-nfd-operator:dpf
+NFD_OPERAND_IMAGE ?= quay.io/yshnaidm/node-feature-discovery:dpf
+
+# Hypershift Configuration
+HYPERSHIFT_IMAGE ?= quay.io/eranco74/hypershift:latest
+HOSTED_CLUSTER_NAME ?= doca
+CLUSTERS_NAMESPACE ?= clusters
+HOSTED_CONTROL_PLANE_NAMESPACE ?= $(CLUSTERS_NAMESPACE)-$(HOSTED_CLUSTER_NAME)
+OCP_RELEASE_IMAGE ?= quay.io/openshift-release-dev/ocp-release:$(OPENSHIFT_VERSION)-multi
+
+# Cluster Manager Configuration
+DPF_CLUSTER_TYPE ?= kamaji  # Options: kamaji, hypershift
 
 # Network configuration
 POD_CIDR ?= 10.128.0.0/14
@@ -60,7 +74,8 @@ KUBECONFIG ?= kubeconfig.$(CLUSTER_NAME)
 
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso download-cert-manager fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
-        wait-for-installed wait-for-status cluster-start clean-all test-dpf-variables deploy-dpf kubeconfig
+        wait-for-installed wait-for-status cluster-start clean-all test-dpf-variables deploy-dpf kubeconfig deploy-nfd \
+        install-hypershift create-hypershift-cluster configure-hypershift-dpucluster configure-kamaji-dpucluster
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf
 
@@ -117,6 +132,15 @@ prepare-manifests: $(DPF_PULL_SECRET)
 	# Configure cluster components
 	@echo "Configuring cluster installation..."
 	@aicli update installconfig $(CLUSTER_NAME) -P network_type=NVIDIA-OVN
+	
+	# Generate Cert-Manager manifests if enabled
+	@if [ "$(ENABLE_CERT_MANAGER)" = "true" ]; then \
+		echo "Generating Cert-Manager manifests..."; \
+		cp $(MANIFESTS_DIR)/cluster-installation/openshift-cert-manager.yaml $(GENERATED_DIR)/; \
+	else \
+		echo "Skipping Cert-Manager manifests (ENABLE_CERT_MANAGER=false)"; \
+	fi
+	
 	@$(MAKE) download-cert-manager
 	@$(MAKE) generate-ovn
 	@$(MAKE) update-paths
@@ -213,7 +237,9 @@ prepare-dpf-manifests: $(DPF_PULL_SECRET)
 	@rm -rf $(GENERATED_DIR)
 	@mkdir -p $(GENERATED_DIR)
 	@find $(MANIFESTS_DIR)/dpf-installation -maxdepth 1 -type f -name "*.yaml" \
+		| grep -v "dpf-nfd.yaml" \
 		| xargs -I {} cp {} $(GENERATED_DIR)/
+	
 	@sed -i 's|value: api.CLUSTER_FQDN|value: $(HOST_CLUSTER_API)|g' \
 		$(GENERATED_DIR)/dpf-operator-manifests.yaml
 	@sed -i 's|storageClassName: lvms-vg1|storageClassName: $(ETCD_STORAGE_CLASS)|g' \
@@ -233,6 +259,11 @@ prepare-dpf-manifests: $(DPF_PULL_SECRET)
 deploy-dpf: prepare-dpf-manifests kubeconfig
 	@echo "Applying manifests in order..."
 	@GENERATED_DIR=$(GENERATED_DIR) KUBECONFIG=$(KUBECONFIG) DISABLE_KAMAJI=$(DISABLE_KAMAJI) DISABLE_NFD=$(DISABLE_NFD) scripts/apply-dpf.sh
+	
+	@if [ "$(DPF_CLUSTER_TYPE)" = "hypershift" ]; then \
+		echo "Configuring Hypershift as cluster manager..."; \
+		$(MAKE) create-hypershift-cluster configure-hypershift-dpucluster; \
+	fi
 
 update-etc-hosts:
 	@echo "Updating /etc/host"
@@ -244,7 +275,6 @@ clean-all:
 	@$(MAKE) delete-vms || true
 	@$(MAKE) clean || true
 	@echo "Cleanup complete"
-
 kubeconfig:
 	@if [ ! -f "$(KUBECONFIG)" ]; then \
 		echo "Downloading kubeconfig for $(CLUSTER_NAME)"; \
@@ -253,6 +283,93 @@ kubeconfig:
 	else \
 		echo "Using existing kubeconfig at: $(KUBECONFIG)"; \
    fi
+
+# Deploy NFD operator directly from source
+deploy-nfd: kubeconfig
+	@echo "Deploying NFD operator directly from source..."
+	@if ! command -v go &> /dev/null; then \
+		echo "Error: Go is not installed but required for NFD operator deployment"; \
+		echo "Please install Go before continuing"; \
+		exit 1; \
+	fi
+	@if [ ! -d "cluster-nfd-operator" ]; then \
+		echo "NFD operator repository not found. Cloning..."; \
+		git clone https://github.com/openshift/cluster-nfd-operator.git; \
+	fi
+	@cd cluster-nfd-operator && make deploy IMAGE_TAG=$(NFD_OPERATOR_IMAGE) KUBECONFIG=$(KUBECONFIG)
+	@echo "NFD operator deployment from source completed"
+	
+	@echo "Creating NFD instance with custom operand image..."
+	@mkdir -p $(GENERATED_DIR)
+	@cp $(MANIFESTS_DIR)/dpf-installation/nfd-cr-template.yaml $(GENERATED_DIR)/nfd-cr.yaml
+	@sed -i 's|api.CLUSTER_FQDN|$(HOST_CLUSTER_API)|g' $(GENERATED_DIR)/nfd-cr.yaml
+	@sed -i 's|image: quay.io/yshnaidm/node-feature-discovery:dpf|image: $(NFD_OPERAND_IMAGE)|g' $(GENERATED_DIR)/nfd-cr.yaml
+	@KUBECONFIG=$(KUBECONFIG) oc apply -f $(GENERATED_DIR)/nfd-cr.yaml
+
+# Install Hypershift
+install-hypershift: kubeconfig
+	@echo "Installing Hypershift binary and operator..."
+	@podman cp $$(podman create --name hypershift --rm --pull always $(HYPERSHIFT_IMAGE)):/usr/bin/hypershift /tmp/hypershift && podman rm -f hypershift
+	@sudo install -m 0755 -o root -g root /tmp/hypershift /usr/local/bin/hypershift
+	@hypershift install --hypershift-image $(HYPERSHIFT_IMAGE)
+	@echo "Checking Hypershift operator status..."
+	@oc -n hypershift get pods
+
+# Create Hypershift hosted cluster
+create-hypershift-cluster: install-hypershift kubeconfig
+	@echo "Creating Hypershift hosted cluster $(HOSTED_CLUSTER_NAME)..."
+	@oc create ns $(HOSTED_CONTROL_PLANE_NAMESPACE) || true
+	@hypershift create cluster none --name=$(HOSTED_CLUSTER_NAME) \
+		--base-domain=$(BASE_DOMAIN) \
+		--release-image=$(OCP_RELEASE_IMAGE) \
+		--ssh-key=$(HOME)/.ssh/id_rsa.pub \
+		--network-type=Other \
+		--pull-secret=$(DPF_PULL_SECRET)
+	@echo "Checking hosted control plane pods..."
+	@oc -n $(HOSTED_CONTROL_PLANE_NAMESPACE) get pods
+	@echo "Pausing nodepool to disable rhcos update..."
+	@oc patch nodepool -n $(CLUSTERS_NAMESPACE) $(HOSTED_CLUSTER_NAME) --type=merge -p '{"spec":{"pausedUntil":"true"}}'
+
+# Configure static cluster manager for Hypershift
+configure-hypershift-dpucluster: kubeconfig
+	@echo "Creating kubeconfig for Hypershift hosted cluster..."
+	@hypershift create kubeconfig --namespace $(CLUSTERS_NAMESPACE) --name $(HOSTED_CLUSTER_NAME) > $(HOSTED_CLUSTER_NAME).kubeconfig
+	@kubectl create secret generic $(HOSTED_CLUSTER_NAME)-admin-kubeconfig -n dpf-operator-system --from-file=admin.conf=./$(HOSTED_CLUSTER_NAME).kubeconfig --type=Opaque || \
+		kubectl -n dpf-operator-system create secret generic $(HOSTED_CLUSTER_NAME)-admin-kubeconfig --from-file=admin.conf=./$(HOSTED_CLUSTER_NAME).kubeconfig --type=Opaque --dry-run=client -o yaml | kubectl apply -f -
+	
+	@echo "Configuring static cluster manager in DPFOperatorConfig..."
+	@oc get dpfoperatorconfig -n dpf-operator-system dpfoperatorconfig -o json | \
+		jq '.spec.staticClusterManager.disable = false | .spec.kamajiClusterManager.disable = true' | \
+		oc apply -f -
+	
+	@echo "Creating static DPUCluster for Hypershift..."
+	@cat > $(GENERATED_DIR)/static-dpucluster.yaml << EOF
+apiVersion: provisioning.dpu.nvidia.com/v1alpha1
+kind: DPUCluster
+metadata:
+  name: cluster
+  namespace: dpf-operator-system
+spec:
+  type: static
+  maxNodes: 10
+  version: $(OPENSHIFT_VERSION)
+  kubeconfig: $(HOSTED_CLUSTER_NAME)-admin-kubeconfig
+EOF
+	@KUBECONFIG=$(KUBECONFIG) oc apply -f $(GENERATED_DIR)/static-dpucluster.yaml
+	@echo "Restarting dpf-operator-controller-manager to apply changes..."
+	@oc rollout restart deploy -n dpf-operator-system dpf-operator-controller-manager
+
+# Configure Kamaji cluster manager
+configure-kamaji-dpucluster: kubeconfig
+	@echo "Configuring Kamaji cluster manager in DPFOperatorConfig..."
+	@oc get dpfoperatorconfig -n dpf-operator-system dpfoperatorconfig -o json | \
+		jq '.spec.staticClusterManager.disable = true | .spec.kamajiClusterManager.disable = false' | \
+		oc apply -f -
+	
+	@echo "Restarting dpf-operator-controller-manager to apply changes..."
+	@oc rollout restart deploy -n dpf-operator-system dpf-operator-controller-manager
+	
+	@echo "DPUCluster will be created with Kamaji manifests during dpf deployment"
 
 help:
 	@echo "Available targets:"
@@ -282,6 +399,13 @@ help:
 	@echo "  prepare-dpf-manifests - Prepare DPF installation manifests"
 	@echo "  fix-jobs         - Fix etcd certificate jobs if needed"
 	@echo "  update-etc-hosts - Update /etc/hosts with cluster entries"
+	@echo "  deploy-nfd       - Deploy NFD operator directly from source"
+	@echo ""
+	@echo "Hypershift Management:"
+	@echo "  install-hypershift - Install Hypershift binary and operator"
+	@echo "  create-hypershift-cluster - Create a new Hypershift hosted cluster"
+	@echo "  configure-hypershift-dpucluster - Configure DPF to use Hypershift hosted cluster"
+	@echo "  configure-kamaji-dpucluster - Configure DPF to use Kamaji hosted cluster"
 	@echo ""
 	@echo "Configuration options:"
 	@echo "Cluster Configuration:"
@@ -289,10 +413,18 @@ help:
 	@echo "  BASE_DOMAIN      - Set base DNS domain (default: $(BASE_DOMAIN))"
 	@echo "  OPENSHIFT_VERSION - Set OpenShift version (default: $(OPENSHIFT_VERSION))"
 	@echo "  KUBECONFIG       - Path to kubeconfig file (default: $(KUBECONFIG))"
+	@echo "  DPF_CLUSTER_TYPE - Cluster manager type (options: kamaji, hypershift; default: $(DPF_CLUSTER_TYPE))"
 	@echo ""
 	@echo "Feature Configuration:"
 	@echo "  DISABLE_KAMAJI    - Skip kamaji deployment (default: $(DISABLE_KAMAJI))"
 	@echo "  DISABLE_NFD       - Skip NFD deployment (default: $(DISABLE_NFD))"
+	@echo "  NFD_OPERAND_IMAGE - NFD operand image (default: $(NFD_OPERAND_IMAGE))"
+	@echo ""
+	@echo "Hypershift Configuration:"
+	@echo "  HYPERSHIFT_IMAGE  - Hypershift operator image (default: $(HYPERSHIFT_IMAGE))"
+	@echo "  HOSTED_CLUSTER_NAME - Name of the hosted cluster (default: $(HOSTED_CLUSTER_NAME))"
+	@echo "  CLUSTERS_NAMESPACE - Namespace for clusters (default: $(CLUSTERS_NAMESPACE))"
+	@echo "  OCP_RELEASE_IMAGE - OCP release image for hosted cluster (default: $(OCP_RELEASE_IMAGE))"
 	@echo ""
 	@echo "Network Configuration:"
 	@echo "  POD_CIDR         - Set pod CIDR (default: $(POD_CIDR))"
@@ -317,3 +449,4 @@ help:
 	@echo "Wait Configuration:"
 	@echo "  MAX_RETRIES      - Maximum number of retries for status checks (default: $(MAX_RETRIES))"
 	@echo "  SLEEP_TIME       - Sleep time in seconds between retries (default: $(SLEEP_TIME))"
+

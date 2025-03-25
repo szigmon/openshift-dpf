@@ -1,0 +1,10 @@
+apiVersion: provisioning.dpu.nvidia.com/v1alpha1
+kind: DPUCluster
+metadata:
+  name: cluster
+  namespace: dpf-operator-system
+spec:
+  type: static
+  maxNodes: 10
+  version: KUBERNETES_VERSION
+  kubeconfig: KUBECONFIG_SECRET_NAME
