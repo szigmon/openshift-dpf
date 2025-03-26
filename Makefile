@@ -275,6 +275,7 @@ clean-all:
 	@$(MAKE) delete-vms || true
 	@$(MAKE) clean || true
 	@echo "Cleanup complete"
+
 kubeconfig:
 	@if [ ! -f "$(KUBECONFIG)" ]; then \
 		echo "Downloading kubeconfig for $(CLUSTER_NAME)"; \
