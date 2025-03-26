@@ -344,18 +344,10 @@ configure-hypershift-dpucluster: kubeconfig
 		oc apply -f -
 	
 	@echo "Creating static DPUCluster for Hypershift..."
-	@cat > $(GENERATED_DIR)/static-dpucluster.yaml << EOF
-apiVersion: provisioning.dpu.nvidia.com/v1alpha1
-kind: DPUCluster
-metadata:
-  name: cluster
-  namespace: dpf-operator-system
-spec:
-  type: static
-  maxNodes: 10
-  version: $(OPENSHIFT_VERSION)
-  kubeconfig: $(HOSTED_CLUSTER_NAME)-admin-kubeconfig
-EOF
+	@mkdir -p $(GENERATED_DIR)
+	@cp $(MANIFESTS_DIR)/dpf-installation/static-dpucluster-template.yaml $(GENERATED_DIR)/static-dpucluster.yaml
+	@sed -i 's|KUBERNETES_VERSION|$(OPENSHIFT_VERSION)|g' $(GENERATED_DIR)/static-dpucluster.yaml
+	@sed -i 's|KUBECONFIG_SECRET_NAME|$(HOSTED_CLUSTER_NAME)-admin-kubeconfig|g' $(GENERATED_DIR)/static-dpucluster.yaml
 	@KUBECONFIG=$(KUBECONFIG) oc apply -f $(GENERATED_DIR)/static-dpucluster.yaml
 	@echo "Restarting dpf-operator-controller-manager to apply changes..."
 	@oc rollout restart deploy -n dpf-operator-system dpf-operator-controller-manager
