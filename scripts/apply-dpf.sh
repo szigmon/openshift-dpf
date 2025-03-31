@@ -2,7 +2,7 @@
 
 GENERATED_DIR=${GENERATED_DIR:-"manifests/generated/"}
 KUBECONFIG=${KUBECONFIG}
-DISABLE_KAMAJI=${DISABLE_KAMAJI:-"false"}
+DPF_CLUSTER_TYPE=${DPF_CLUSTER_TYPE:-"hypershift"}
 DISABLE_NFD=${DISABLE_NFD:-"false"}  # New environment variable to disable NFD deployment
 
 function log() {
@@ -45,6 +45,28 @@ function wait_for_pods() {
     exit 1
 }
 
+function wait_for_resource() {
+    local namespace=$1
+    local resource_type=$2
+    local resource_name=$3
+    local max_attempts=${4:-30}
+    local delay=${5:-5}
+
+    log "Waiting for $resource_type/$resource_name in namespace $namespace..."
+
+    for i in $(seq 1 "$max_attempts"); do
+        if oc get "$resource_type" -n "$namespace" "$resource_name" &>/dev/null; then
+            log "$resource_type/$resource_name found in namespace $namespace"
+            return 0
+        fi
+        log "Waiting for $resource_type/$resource_name (attempt $i/$max_attempts)..."
+        sleep "$delay"
+    done
+
+    log "Timed out waiting for $resource_type/$resource_name in namespace $namespace"
+    return 1
+}
+
 function apply_crds() {
     log "Applying CRDs..."
     for file in "$GENERATED_DIR"/*-crd.yaml; do
@@ -79,15 +101,63 @@ function deploy_cert_manager() {
     fi
 }
 
-function deploy_kamaji() {
-    if [ "${DISABLE_KAMAJI}" = "false" ]; then
-        log "Deploying kamaji..."
-        apply_manifest "$GENERATED_DIR/kamaji-manifests.yaml"
-        log "Waiting for etcd pods..."
-        wait_for_pods "dpf-operator-system" "application=kamaji-etcd" "status.phase=Running" "1/1" 60 10
+function deploy_hosted_cluster() {
+    if [ "${DPF_CLUSTER_TYPE}" = "kamaji" ]; then
+        deploy_kamaji
     else
-        log "Skipping kamaji deployment (DISABLE_KAMAJI explicitly set to true)"
+        deploy_hypershift
     fi
+}
+
+function deploy_kamaji() {
+    log "Deploying kamaji..."
+    apply_manifest "$GENERATED_DIR/kamaji-manifests.yaml"
+    log "Waiting for etcd pods..."
+    wait_for_pods "dpf-operator-system" "application=kamaji-etcd" "status.phase=Running" "1/1" 60 10
+}
+
+function deploy_hypershift() {
+
+    log "Waiting for hypershift operator"
+    wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
+    log "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
+    oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
+    hypershift create cluster none --name=${HOSTED_CLUSTER_NAME} \
+      --base-domain=${BASE_DOMAIN} \
+      --release-image="${OCP_RELEASE_IMAGE}" \
+      --ssh-key=${HOME}/.ssh/id_rsa.pub \
+      --network-type=Other \
+      --etcd-storage-class=${ETCD_STORAGE_CLASS} \
+      --pull-secret=${OPENSHIFT_PULL_SECRET}
+
+    log "Checking hosted control plane pods..."
+    oc -n ${HOSTED_CONTROL_PLANE_NAMESPACE} get pods
+    log "Waiting for etcd pods..."
+    wait_for_pods ${HOSTED_CONTROL_PLANE_NAMESPACE} "app=etcd" "status.phase=Running" "3/3" 60 10
+
+    log "Pausing nodepool to disable rhcos update..."
+    oc patch nodepool -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} --type=merge -p '{"spec":{"pausedUntil":"true"}}'
+
+    configure_hypershift
+
+}
+
+function configure_hypershift() {
+    log "Creating kubeconfig for Hypershift hosted cluster..."
+
+    # Wait for the HostedCluster resource to be created before proceeding
+    wait_for_resource "${CLUSTERS_NAMESPACE}" "secret" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" 60 10
+
+    # Then create the kubeconfig
+    hypershift create kubeconfig --namespace ${CLUSTERS_NAMESPACE} --name ${HOSTED_CLUSTER_NAME} > ${HOSTED_CLUSTER_NAME}.kubeconfig
+
+    # Create the admin kubeconfig secret
+    oc create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig -n dpf-operator-system \
+      --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque || \
+      oc -n dpf-operator-system create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig \
+      --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque --dry-run=client -o yaml | oc apply -f -
+
+
 }
 
 function apply_remaining() {
@@ -120,5 +190,5 @@ apply_crds
 deploy_cert_manager
 apply_remaining
 apply_scc
-deploy_kamaji
+deploy_hosted_cluster
 log "Deployment complete"

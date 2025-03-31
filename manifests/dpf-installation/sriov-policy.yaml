@@ -9,12 +9,12 @@ spec:
     deviceID: "a2dc"
     vendor: "15b3"
     pfNames:
-    - ens8f0np0#2-15
+    - ens7f0np0#2-15
   nodeSelector:
     node-role.kubernetes.io/worker: ""
   numVfs: 16
   resourceName: bf3-p0-vfs
-  resourcePrefix: nvidia.com
+  resourcePrefix: openshift.io
   isRdma: true
   externallyManaged: true
   deviceType: netdevice

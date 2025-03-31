@@ -1,7 +1,7 @@
 # Configuration for cluster
 CLUSTER_NAME ?= doca-cluster
 BASE_DOMAIN ?= okoyl.xyz
-OPENSHIFT_VERSION ?= 4.18.4
+OPENSHIFT_VERSION ?= 4.19.0-ec.3
 
 # Directory structure
 MANIFESTS_DIR := manifests
@@ -9,28 +9,27 @@ GENERATED_DIR := $(MANIFESTS_DIR)/generated
 
 # Helm configuration
 HELM_CHART_VERSION := v25.1.1
-DISABLE_KAMAJI ?= false
-DISABLE_NFD ?= false  # New environment variable to disable NFD deployment
+DISABLE_NFD ?= true  #disable DPF NFD deployment
 
 # NFD Configuration
 NFD_OPERATOR_IMAGE ?= quay.io/yshnaidm/cluster-nfd-operator:dpf
 NFD_OPERAND_IMAGE ?= quay.io/yshnaidm/node-feature-discovery:dpf
 
 # Hypershift Configuration
-HYPERSHIFT_IMAGE ?= quay.io/eranco74/hypershift:latest
+HYPERSHIFT_IMAGE ?= quay.io/itsoiref/hypershift:latest
 HOSTED_CLUSTER_NAME ?= doca
 CLUSTERS_NAMESPACE ?= clusters
 HOSTED_CONTROL_PLANE_NAMESPACE ?= $(CLUSTERS_NAMESPACE)-$(HOSTED_CLUSTER_NAME)
 OCP_RELEASE_IMAGE ?= quay.io/openshift-release-dev/ocp-release:$(OPENSHIFT_VERSION)-multi
 
 # Cluster Manager Configuration
-DPF_CLUSTER_TYPE ?= kamaji  # Options: kamaji, hypershift
+DPF_CLUSTER_TYPE ?= hypershift  # Options: kamaji, hypershift
 
 # Network configuration
 POD_CIDR ?= 10.128.0.0/14
 SERVICE_CIDR ?= 172.30.0.0/16
 DPU_INTERFACE ?= ens7f0np0  # Interface for OVN, SRIOV, and Kamaji endpoint
-
+DPU_OVN_VF ?= ens7f0v1
 # Pull Secret files
 OPENSHIFT_PULL_SECRET := openshift_pull.json
 DPF_PULL_SECRET := pull-secret.txt
@@ -75,7 +74,7 @@ KUBECONFIG ?= kubeconfig.$(CLUSTER_NAME)
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso download-cert-manager fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all test-dpf-variables deploy-dpf kubeconfig deploy-nfd \
-        install-hypershift create-hypershift-cluster configure-hypershift-dpucluster configure-kamaji-dpucluster
+        install-hypershift
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf
 
@@ -86,6 +85,8 @@ verify-files:
 
 clean:
 	@rm -rf $(GENERATED_DIR)
+	@rm -f kubeconfig.$(CLUSTER_NAME)
+	@rm -f $(HOSTED_CLUSTER_NAME).kubeconfig
 
 delete-cluster:
 	@aicli delete cluster $(CLUSTER_NAME) -y || true
@@ -161,7 +162,7 @@ generate-ovn:
 	sed -e "s|k8sAPIServer:.*|k8sAPIServer: https://$$API_SERVER|" \
 		-e "s|podNetwork:.*|podNetwork: $(POD_CIDR)|" \
 		-e "s|serviceNetwork:.*|serviceNetwork: $(SERVICE_CIDR)|" \
-		-e "s|nodeMgmtPortNetdev:.*|nodeMgmtPortNetdev: $(DPU_INTERFACE)|" \
+		-e "s|nodeMgmtPortNetdev:.*|nodeMgmtPortNetdev: $(DPU_OVN_VF)|" \
 		-e "s|gatewayOpts:.*|gatewayOpts: --gateway-interface=$(DPU_INTERFACE)|" \
 		$(MANIFESTS_DIR)/cluster-installation/ovn-values.yaml > $(GENERATED_DIR)/temp/values.yaml
 	@sed -i -E 's/:[[:space:]]+/: /g' $(GENERATED_DIR)/temp/values.yaml
@@ -250,20 +251,18 @@ prepare-dpf-manifests: $(DPF_PULL_SECRET)
 		$(GENERATED_DIR)/bfb-pvc.yaml
 	@NGC_API_KEY=$$(jq -r '.auths."nvcr.io".password' $(DPF_PULL_SECRET)); \
 	sed -i "s|password: xxx|password: $$NGC_API_KEY|g" $(GENERATED_DIR)/ngc-secrets.yaml
-	@sed -i 's|ens8f0np0|$(DPU_INTERFACE)|g' $(GENERATED_DIR)/sriov-policy.yaml
+	@sed -i 's|ens7f0np0|$(DPU_INTERFACE)|g' $(GENERATED_DIR)/sriov-policy.yaml
 	@sed -i 's|interface: br-ex|interface: $(DPU_INTERFACE)|g' $(GENERATED_DIR)/kamaji-manifests.yaml
 	@sed -i 's|vip: KAMAJI_VIP|vip: $(KAMAJI_VIP)|g' $(GENERATED_DIR)/kamaji-manifests.yaml
 	@PULL_SECRET=$$(cat $(DPF_PULL_SECRET) | base64 -w 0); \
 	sed -i "s|.dockerconfigjson: = xxx|.dockerconfigjson: $$PULL_SECRET|g" $(GENERATED_DIR)/dpf-operator-manifests.yaml
 
-deploy-dpf: prepare-dpf-manifests kubeconfig
+deploy-dpf: prepare-dpf-manifests kubeconfig install-hypershift deploy-nfd
 	@echo "Applying manifests in order..."
-	@GENERATED_DIR=$(GENERATED_DIR) KUBECONFIG=$(KUBECONFIG) DISABLE_KAMAJI=$(DISABLE_KAMAJI) DISABLE_NFD=$(DISABLE_NFD) scripts/apply-dpf.sh
-	
-	@if [ "$(DPF_CLUSTER_TYPE)" = "hypershift" ]; then \
-		echo "Configuring Hypershift as cluster manager..."; \
-		$(MAKE) create-hypershift-cluster configure-hypershift-dpucluster; \
-	fi
+	@GENERATED_DIR=$(GENERATED_DIR) MANIFESTS_DIR=$(MANIFESTS_DIR) HOSTED_CLUSTER_NAME=$(HOSTED_CLUSTER_NAME) KUBECONFIG=$(KUBECONFIG) \
+DPF_CLUSTER_TYPE=$(DPF_CLUSTER_TYPE) DISABLE_NFD=$(DISABLE_NFD) HOSTED_CONTROL_PLANE_NAMESPACE=$(HOSTED_CONTROL_PLANE_NAMESPACE) \
+BASE_DOMAIN=$(BASE_DOMAIN) OCP_RELEASE_IMAGE=$(OCP_RELEASE_IMAGE) OPENSHIFT_PULL_SECRET=$(OPENSHIFT_PULL_SECRET) \
+CLUSTERS_NAMESPACE=$(CLUSTERS_NAMESPACE) ETCD_STORAGE_CLASS=$(ETCD_STORAGE_CLASS) scripts/apply-dpf.sh
 
 update-etc-hosts:
 	@echo "Updating /etc/host"
@@ -297,7 +296,7 @@ deploy-nfd: kubeconfig
 		echo "NFD operator repository not found. Cloning..."; \
 		git clone https://github.com/openshift/cluster-nfd-operator.git; \
 	fi
-	@cd cluster-nfd-operator && make deploy IMAGE_TAG=$(NFD_OPERATOR_IMAGE) KUBECONFIG=$(KUBECONFIG)
+	@make -C cluster-nfd-operator deploy IMAGE_TAG=$(NFD_OPERATOR_IMAGE) KUBECONFIG=$(KUBECONFIG)
 	@echo "NFD operator deployment from source completed"
 	
 	@echo "Creating NFD instance with custom operand image..."
@@ -312,57 +311,10 @@ install-hypershift: kubeconfig
 	@echo "Installing Hypershift binary and operator..."
 	@podman cp $$(podman create --name hypershift --rm --pull always $(HYPERSHIFT_IMAGE)):/usr/bin/hypershift /tmp/hypershift && podman rm -f hypershift
 	@sudo install -m 0755 -o root -g root /tmp/hypershift /usr/local/bin/hypershift
-	@hypershift install --hypershift-image $(HYPERSHIFT_IMAGE)
+	@KUBECONFIG=$(KUBECONFIG) hypershift install --hypershift-image $(HYPERSHIFT_IMAGE)
 	@echo "Checking Hypershift operator status..."
-	@oc -n hypershift get pods
+	@KUBECONFIG=$(KUBECONFIG) oc -n hypershift get pods
 
-# Create Hypershift hosted cluster
-create-hypershift-cluster: install-hypershift kubeconfig
-	@echo "Creating Hypershift hosted cluster $(HOSTED_CLUSTER_NAME)..."
-	@oc create ns $(HOSTED_CONTROL_PLANE_NAMESPACE) || true
-	@hypershift create cluster none --name=$(HOSTED_CLUSTER_NAME) \
-		--base-domain=$(BASE_DOMAIN) \
-		--release-image=$(OCP_RELEASE_IMAGE) \
-		--ssh-key=$(HOME)/.ssh/id_rsa.pub \
-		--network-type=Other \
-		--pull-secret=$(DPF_PULL_SECRET)
-	@echo "Checking hosted control plane pods..."
-	@oc -n $(HOSTED_CONTROL_PLANE_NAMESPACE) get pods
-	@echo "Pausing nodepool to disable rhcos update..."
-	@oc patch nodepool -n $(CLUSTERS_NAMESPACE) $(HOSTED_CLUSTER_NAME) --type=merge -p '{"spec":{"pausedUntil":"true"}}'
-
-# Configure static cluster manager for Hypershift
-configure-hypershift-dpucluster: kubeconfig
-	@echo "Creating kubeconfig for Hypershift hosted cluster..."
-	@hypershift create kubeconfig --namespace $(CLUSTERS_NAMESPACE) --name $(HOSTED_CLUSTER_NAME) > $(HOSTED_CLUSTER_NAME).kubeconfig
-	@kubectl create secret generic $(HOSTED_CLUSTER_NAME)-admin-kubeconfig -n dpf-operator-system --from-file=admin.conf=./$(HOSTED_CLUSTER_NAME).kubeconfig --type=Opaque || \
-		kubectl -n dpf-operator-system create secret generic $(HOSTED_CLUSTER_NAME)-admin-kubeconfig --from-file=admin.conf=./$(HOSTED_CLUSTER_NAME).kubeconfig --type=Opaque --dry-run=client -o yaml | kubectl apply -f -
-	
-	@echo "Configuring static cluster manager in DPFOperatorConfig..."
-	@oc get dpfoperatorconfig -n dpf-operator-system dpfoperatorconfig -o json | \
-		jq '.spec.staticClusterManager.disable = false | .spec.kamajiClusterManager.disable = true' | \
-		oc apply -f -
-	
-	@echo "Creating static DPUCluster for Hypershift..."
-	@mkdir -p $(GENERATED_DIR)
-	@cp $(MANIFESTS_DIR)/dpf-installation/static-dpucluster-template.yaml $(GENERATED_DIR)/static-dpucluster.yaml
-	@sed -i 's|KUBERNETES_VERSION|$(OPENSHIFT_VERSION)|g' $(GENERATED_DIR)/static-dpucluster.yaml
-	@sed -i 's|KUBECONFIG_SECRET_NAME|$(HOSTED_CLUSTER_NAME)-admin-kubeconfig|g' $(GENERATED_DIR)/static-dpucluster.yaml
-	@KUBECONFIG=$(KUBECONFIG) oc apply -f $(GENERATED_DIR)/static-dpucluster.yaml
-	@echo "Restarting dpf-operator-controller-manager to apply changes..."
-	@oc rollout restart deploy -n dpf-operator-system dpf-operator-controller-manager
-
-# Configure Kamaji cluster manager
-configure-kamaji-dpucluster: kubeconfig
-	@echo "Configuring Kamaji cluster manager in DPFOperatorConfig..."
-	@oc get dpfoperatorconfig -n dpf-operator-system dpfoperatorconfig -o json | \
-		jq '.spec.staticClusterManager.disable = true | .spec.kamajiClusterManager.disable = false' | \
-		oc apply -f -
-	
-	@echo "Restarting dpf-operator-controller-manager to apply changes..."
-	@oc rollout restart deploy -n dpf-operator-system dpf-operator-controller-manager
-	
-	@echo "DPUCluster will be created with Kamaji manifests during dpf deployment"
 
 help:
 	@echo "Available targets:"

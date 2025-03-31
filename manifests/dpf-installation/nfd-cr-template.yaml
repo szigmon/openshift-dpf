@@ -6,11 +6,11 @@ metadata:
 spec:
   operand:
     image: quay.io/yshnaidm/node-feature-discovery:dpf
-  workerEnvs:
-    - name: KUBERNETES_SERVICE_HOST
-      value: api.CLUSTER_FQDN
-    - name: KUBERNETES_SERVICE_PORT
-      value: "6443"
+    workerEnvs:
+      - name: KUBERNETES_SERVICE_HOST
+        value: api.CLUSTER_FQDN
+      - name: KUBERNETES_SERVICE_PORT
+        value: "6443"
   workerConfig:
     configData: |
       sources:
@@ -19,7 +19,26 @@ spec:
             - "0200"
             - "03"
             - "12"
+            - "0207"
           deviceLabelFields:
             - "vendor"
             - "device"
             - "class"
+
+---
+apiVersion: nfd.openshift.io/v1alpha1
+kind: NodeFeatureRule
+metadata:
+  name: dpu-detection-rule
+  namespace: openshift-nfd
+spec:
+  rules:
+    - name: "DPU-detection-rule"
+      labels:
+        "dpu-enabled": "true"
+      matchFeatures:
+        - feature: pci.device
+          matchExpressions:
+            vendor: {op: In, value: ["15b3"]}
+            # TODO: Make this settable from the values
+            device: {op: In, value:  ["a2d6", "a2dc"] }

@@ -6,7 +6,7 @@ spec:
   kubeletConfig:
     cpuManagerPolicy: static
     cpuManagerReconcilePeriod: 5s
-    reservedSystemCPUs: 0-39
+    reservedSystemCPUs: 0-31
     topologyManagerPolicy: single-numa-node
   machineConfigPoolSelector:
     matchLabels:
