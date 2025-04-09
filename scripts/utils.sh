@@ -1,0 +1,120 @@
+#!/bin/bash
+# utils.sh - Common utilities for DPF cluster management
+
+# Exit on error
+set -e
+
+# -----------------------------------------------------------------------------
+# Logging utility
+# -----------------------------------------------------------------------------
+function log() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
+}
+
+# -----------------------------------------------------------------------------
+# File verification functions
+# -----------------------------------------------------------------------------
+function verify_files() {
+    log "Verifying required files..."
+    
+    if [ ! -f "${OPENSHIFT_PULL_SECRET}" ]; then
+        log "Error: ${OPENSHIFT_PULL_SECRET} not found"
+        exit 1
+    fi
+
+    if [ ! -f "${DPF_PULL_SECRET}" ]; then
+        log "Error: ${DPF_PULL_SECRET} not found"
+        exit 1
+    fi
+
+    if [ ! -f "${MANIFESTS_DIR}/cluster-installation/ovn-values.yaml" ]; then
+        log "Error: ${MANIFESTS_DIR}/cluster-installation/ovn-values.yaml not found"
+        exit 1
+    fi
+
+    log "All required files verified successfully."
+}
+
+# -----------------------------------------------------------------------------
+# Resource waiting functions
+# -----------------------------------------------------------------------------
+function wait_for_resource() {
+    local namespace=$1
+    local resource_type=$2
+    local resource_name=$3
+    local max_attempts=${4:-30}
+    local delay=${5:-5}
+
+    log "Waiting for $resource_type/$resource_name in namespace $namespace..."
+
+    for i in $(seq 1 "$max_attempts"); do
+        if oc get "$resource_type" -n "$namespace" "$resource_name" &>/dev/null; then
+            log "$resource_type/$resource_name found in namespace $namespace"
+            return 0
+        fi
+        log "Waiting for $resource_type/$resource_name (attempt $i/$max_attempts)..."
+        sleep "$delay"
+    done
+
+    log "Timed out waiting for $resource_type/$resource_name in namespace $namespace"
+    return 1
+}
+
+function wait_for_pods() {
+    local namespace=$1
+    local label=$2
+    local selector=$3
+    local expected_state=$4
+    local max_attempts=$5
+    local delay=$6
+
+    for i in $(seq 1 "$max_attempts"); do
+        oc get pods -n "$namespace" -l "$label" --field-selector "$selector"
+        if oc get pods -n "$namespace" -l "$label" --field-selector "$selector" 2>/dev/null | grep -q "$expected_state"; then
+            log "$label pods are ready"
+            return 0
+        fi
+        log "Waiting for $label pods (attempt $i/$max_attempts)..."
+        sleep "$delay"
+    done
+
+    log "$label pods failed to become ready"
+    oc get pods -n "$namespace"
+    oc describe pod -n "$namespace" -l "$label"
+    exit 1
+}
+
+# -----------------------------------------------------------------------------
+# Manifest application functions
+# -----------------------------------------------------------------------------
+function apply_manifest() {
+    local file=$1
+    log "Applying $file..."
+    oc apply -f "$file"
+    local exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        log "Failed to apply $file (exit code: $exit_code)"
+        return $exit_code
+    fi
+    return 0
+}
+
+# -----------------------------------------------------------------------------
+# Cleanup functions
+# -----------------------------------------------------------------------------
+function clean_resources() {
+    log "Cleaning up resources..."
+    
+    # Clean up generated files
+    rm -rf "$GENERATED_DIR" || true
+    rm -f "kubeconfig.$CLUSTER_NAME" || true
+    rm -f "$HOSTED_CLUSTER_NAME.kubeconfig" || true
+    
+    log "Cleanup complete"
+}
+
+# If script is executed directly (not sourced), show usage
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    log "This script should be sourced, not executed directly"
+    exit 1
+fi 

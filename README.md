@@ -5,12 +5,20 @@ Complete automation for deploying and managing NVIDIA DPF (Data Processing Frame
 ```
 openshift-dpf/
 ├── Makefile                    # Main orchestration Makefile
+├── .env                        # Environment variables configuration
 ├── manifests/                  # Manifests for all components
 │   ├── cluster-installation/   # OpenShift/OVN cluster manifests
 │   ├── dpf-installation/       # DPF operator manifests
 │   ├── post-installation/      # Post-install configurations
 │   └── worker-perfomance-configurations/ # Worker node performance tuning
 ├── scripts/                    # Automation scripts
+│   ├── env.sh                  # Environment variable loading
+│   ├── utils.sh                # Common utility functions
+│   ├── cluster.sh              # Cluster management functions
+│   ├── manifests.sh            # Manifest management functions
+│   ├── tools.sh                # Tool installation functions
+│   ├── dpf.sh                  # DPF deployment functions
+│   └── vm.sh                   # VM management functions
 ├── configuration_templates/    # Templates for configuration
 └── README.md                   # Main project documentation
 ```
@@ -56,6 +64,8 @@ cd openshift-dpf
 ```
 
 2. Configure your environment:
+   - Copy the example environment file: `cp .env.example .env`
+   - Edit `.env` to set your desired configuration values
    - Place your OpenShift pull secret in `openshift_pull.json`
    - Place your DPF pull secret in `pull-secret.txt`
 
@@ -66,28 +76,48 @@ make all
 
 ## Configuration Options
 
+### Environment Variables
+All configuration options are now managed through the `.env` file. This provides a centralized, consistent way to configure the deployment.
+
+The `.env` file contains sections for:
+- Cluster Configuration
+- Directory Structure
+- Helm Configuration
+- NFD Configuration
+- Hypershift Configuration
+- Network Configuration
+- VM Configuration
+- And more...
+
+To customize your deployment, simply edit the values in the `.env` file.
+
 ### Basic Configuration
 ```bash
-make all CLUSTER_NAME=my-cluster BASE_DOMAIN=my.domain OPENSHIFT_VERSION=4.18.4
+# Edit .env file to set these values
+CLUSTER_NAME=my-cluster
+BASE_DOMAIN=my.domain
+OPENSHIFT_VERSION=4.18.4
 ```
 
 Default values:
 - CLUSTER_NAME: doca-cluster
 - BASE_DOMAIN: okoyl.xyz
-- OPENSHIFT_VERSION: 4.18.4
+- OPENSHIFT_VERSION: 4.19.0-ec.3
 
 ### Switching Between Kamaji and Hypershift
 
 By default, the automation uses Kamaji as the cluster manager. To use Hypershift instead:
 
 ```bash
-make all DPF_CLUSTER_TYPE=hypershift
+# Edit .env file to set
+DPF_CLUSTER_TYPE=hypershift
 ```
 
 To explicitly specify Kamaji (default behavior):
 
 ```bash
-make all DPF_CLUSTER_TYPE=kamaji
+# Edit .env file to set
+DPF_CLUSTER_TYPE=kamaji
 ```
 
 ### NFD Deployment

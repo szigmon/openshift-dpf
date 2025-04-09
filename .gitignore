@@ -1,8 +1,23 @@
+# Editor files
 *.swp
-.env
 *~
 .DS_Store
+.idea/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Secrets
 pull-secret.txt
 openshift_pull.json
+*offlinetoken*
+
+# Generated files
 manifests/generated/
 kubeconfig*
+
+# Temporary files
+*.log
+*.tmp

@@ -1,70 +1,55 @@
 #!/bin/bash
+# dpf.sh - DPF deployment operations
 
-GENERATED_DIR=${GENERATED_DIR:-"manifests/generated/"}
-KUBECONFIG=${KUBECONFIG}
-DPF_CLUSTER_TYPE=${DPF_CLUSTER_TYPE:-"hypershift"}
-DISABLE_NFD=${DISABLE_NFD:-"false"}  # New environment variable to disable NFD deployment
+# Exit on error
+set -e
 
-function log() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
-}
+# Source common utilities
+source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
-function apply_manifest() {
-    local file=$1
-    echo "Applying $file..."
-    oc apply -f "$file"
-    local exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        echo "Failed to apply $file (exit code: $exit_code)"
-        return $exit_code
+# -----------------------------------------------------------------------------
+# DPF deployment functions
+# -----------------------------------------------------------------------------
+function deploy_nfd() {
+    log "Managing NFD deployment..."
+    
+    # Check if NFD should be disabled
+    if [ "$DISABLE_NFD" = "true" ]; then
+        log "NFD deployment is disabled (DISABLE_NFD=true). Skipping..."
+        return 0
     fi
-    return 0
-}
 
-function wait_for_pods() {
-    local namespace=$1
-    local label=$2
-    local selector=$3
-    local expected_state=$4
-    local max_attempts=$5
-    local delay=$6
+    log "Deploying NFD operator directly from source..."
 
-    for i in $(seq 1 "$max_attempts"); do
-        oc get pods -n "$namespace" -l "$label" --field-selector "$selector"
-        if oc get pods -n "$namespace" -l "$label" --field-selector "$selector" 2>/dev/null | grep -q "$expected_state"; then
-            log "$label pods are ready"
-            return 0
-        fi
-        log "Waiting for $label pods (attempt $i/$max_attempts)..."
-        sleep "$delay"
-    done
+    # Check if Go is installed
+    if ! command -v go &> /dev/null; then
+        log "Error: Go is not installed but required for NFD operator deployment"
+        log "Please install Go before continuing"
+        exit 1
+    fi
 
-    log "$label pods failed to become ready"
-    oc get pods -n "$namespace"
-    oc describe pod -n "$namespace" -l "$label"
-    exit 1
-}
+    # Clone the NFD operator repository if not exists
+    if [ ! -d "cluster-nfd-operator" ]; then
+        log "NFD operator repository not found. Cloning..."
+        git clone https://github.com/openshift/cluster-nfd-operator.git
+    fi
 
-function wait_for_resource() {
-    local namespace=$1
-    local resource_type=$2
-    local resource_name=$3
-    local max_attempts=${4:-30}
-    local delay=${5:-5}
+    # Deploy the NFD operator
+    make -C cluster-nfd-operator deploy IMAGE_TAG=$NFD_OPERATOR_IMAGE KUBECONFIG=$KUBECONFIG
 
-    log "Waiting for $resource_type/$resource_name in namespace $namespace..."
+    log "NFD operator deployment from source completed"
 
-    for i in $(seq 1 "$max_attempts"); do
-        if oc get "$resource_type" -n "$namespace" "$resource_name" &>/dev/null; then
-            log "$resource_type/$resource_name found in namespace $namespace"
-            return 0
-        fi
-        log "Waiting for $resource_type/$resource_name (attempt $i/$max_attempts)..."
-        sleep "$delay"
-    done
+    # Create NFD instance with custom operand image
+    log "Creating NFD instance with custom operand image..."
+    mkdir -p "$GENERATED_DIR"
+    cp "$MANIFESTS_DIR/dpf-installation/nfd-cr-template.yaml" "$GENERATED_DIR/nfd-cr.yaml"
+    sed -i "s|api.CLUSTER_FQDN|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr.yaml"
+    sed -i "s|image: quay.io/yshnaidm/node-feature-discovery:dpf|image: $NFD_OPERAND_IMAGE|g" "$GENERATED_DIR/nfd-cr.yaml"
 
-    log "Timed out waiting for $resource_type/$resource_name in namespace $namespace"
-    return 1
+    # Apply the NFD CR
+    KUBECONFIG=$KUBECONFIG oc apply -f "$GENERATED_DIR/nfd-cr.yaml"
+
+    log "NFD deployment completed successfully!"
 }
 
 function apply_crds() {
@@ -117,7 +102,6 @@ function deploy_kamaji() {
 }
 
 function deploy_hypershift() {
-
     log "Waiting for hypershift operator"
     wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
     log "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
@@ -139,7 +123,6 @@ function deploy_hypershift() {
     oc patch nodepool -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} --type=merge -p '{"spec":{"pausedUntil":"true"}}'
 
     configure_hypershift
-
 }
 
 function configure_hypershift() {
@@ -156,8 +139,6 @@ function configure_hypershift() {
       --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque || \
       oc -n dpf-operator-system create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig \
       --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque --dry-run=client -o yaml | oc apply -f -
-
-
 }
 
 function apply_remaining() {
@@ -182,13 +163,54 @@ function apply_remaining() {
     done
 }
 
-log "Starting deployment sequence..."
-echo "Provided kubeconfig ${KUBECONFIG}"
-echo "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
-apply_namespaces
-apply_crds
-deploy_cert_manager
-apply_remaining
-apply_scc
-deploy_hosted_cluster
-log "Deployment complete"
+function apply_dpf() {
+    log "Starting DPF deployment sequence..."
+    log "Provided kubeconfig ${KUBECONFIG}"
+    log "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
+    
+    prepare_dpf_manifests
+    get_kubeconfig
+    install_hypershift
+    deploy_nfd
+    
+    apply_namespaces
+    apply_crds
+    deploy_cert_manager
+    apply_remaining
+    apply_scc
+    deploy_hosted_cluster
+    
+    log "DPF deployment complete"
+}
+
+# -----------------------------------------------------------------------------
+# Command dispatcher
+# -----------------------------------------------------------------------------
+function main() {
+    local command=$1
+    shift
+
+    case "$command" in
+        deploy-nfd)
+            deploy_nfd
+            ;;
+        apply-dpf)
+            apply_dpf
+            ;;
+        *)
+            log "Unknown command: $command"
+            log "Available commands: deploy-nfd, apply-dpf"
+            exit 1
+            ;;
+    esac
+}
+
+# If script is executed directly (not sourced), run the main function
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    if [ $# -lt 1 ]; then
+        log "Usage: $0 <command> [arguments...]"
+        exit 1
+    fi
+    
+    main "$@"
+fi 
