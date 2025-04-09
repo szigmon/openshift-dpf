@@ -6,6 +6,9 @@ set -e
 
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/tools.sh"
 
 # -----------------------------------------------------------------------------
 # DPF deployment functions
@@ -168,7 +171,16 @@ function apply_dpf() {
     log "Provided kubeconfig ${KUBECONFIG}"
     log "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
     
-    prepare_dpf_manifests
+    # Check if prepare-dpf-manifests.sh exists
+    local prepare_script="$(dirname "${BASH_SOURCE[0]}")/prepare-dpf-manifests.sh"
+    if [ ! -f "$prepare_script" ]; then
+        log "Error: $prepare_script not found"
+        exit 1
+    fi
+    
+    # Call the prepare-dpf-manifests.sh script directly
+    "$prepare_script"
+    
     get_kubeconfig
     install_hypershift
     deploy_nfd

@@ -11,7 +11,7 @@ load_env() {
     if [ ! -f "$env_file" ]; then
         echo "Error: .env file not found"
         exit 1
-    }
+    fi
 
     # Load environment variables from .env file
     while IFS='=' read -r key value; do
