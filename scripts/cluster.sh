@@ -14,106 +14,98 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 # Cluster management functions
 # -----------------------------------------------------------------------------
 function check_create_cluster() {
-    log "Checking for cluster: ${CLUSTER_NAME}"
+    log "INFO" "Checking if cluster ${CLUSTER_NAME} exists..."
     
-    # Convert single VIPs to lists
-    if [ -n "$API_VIP" ]; then
-        API_VIPS="['$API_VIP']"
-    else
-        API_VIPS="['']"
-    fi
-
-    if [ -n "$INGRESS_VIP" ]; then
-        INGRESS_VIPS="['$INGRESS_VIP']"
-    else
-        INGRESS_VIPS="['']"
-    fi
-
-    # Check if cluster exists
-    if ! aicli list clusters | grep -q "$CLUSTER_NAME"; then
-        log "Cluster '$CLUSTER_NAME' not found. Creating..."
+    if ! aicli get cluster ${CLUSTER_NAME} >/dev/null 2>&1; then
+        log "INFO" "Cluster ${CLUSTER_NAME} not found, creating..."
         
-        # Create cluster based on VM_COUNT
-        if [ "$VM_COUNT" -eq 1 ]; then
-            log "Detected VM_COUNT=1; creating a Single-Node OpenShift (SNO) cluster."
-            aicli create cluster \
-                -P openshift_version=$OPENSHIFT_VERSION \
-                -P base_dns_domain=$BASE_DOMAIN \
-                -P pull_secret=$OPENSHIFT_PULL_SECRET \
-                -P high_availability_mode=None \
-                -P user_managed_networking=True \
-                $CLUSTER_NAME
+        if [ "${SINGLE_NODE}" = "true" ]; then
+            log "INFO" "Creating single-node cluster..."
+            aicli create cluster ${CLUSTER_NAME} \
+                --base-domain ${BASE_DOMAIN} \
+                --pull-secret ${PULL_SECRET} \
+                --ssh-key ${SSH_KEY} \
+                --single-node
         else
-            aicli create cluster \
-                -P openshift_version=$OPENSHIFT_VERSION \
-                -P base_dns_domain=$BASE_DOMAIN \
-                -P api_vips=$API_VIPS \
-                -P pull_secret=$OPENSHIFT_PULL_SECRET \
-                -P ingress_vips=$INGRESS_VIPS \
-                $CLUSTER_NAME
+            log "INFO" "Creating multi-node cluster..."
+            aicli create cluster ${CLUSTER_NAME} \
+                --base-domain ${BASE_DOMAIN} \
+                --pull-secret ${PULL_SECRET} \
+                --ssh-key ${SSH_KEY} \
+                --workers ${NUM_WORKERS}
         fi
+        
+        log "INFO" "Cluster ${CLUSTER_NAME} created successfully"
     else
-        log "Using existing cluster: $CLUSTER_NAME"
+        log "INFO" "Cluster ${CLUSTER_NAME} already exists"
     fi
 }
 
 function delete_cluster() {
-    log "Deleting cluster $CLUSTER_NAME..."
-    aicli delete cluster $CLUSTER_NAME -y || true
+    log "INFO" "Deleting cluster ${CLUSTER_NAME}..."
+    aicli delete cluster ${CLUSTER_NAME} -y
+    log "INFO" "Cluster ${CLUSTER_NAME} deleted successfully"
 }
 
 function wait_for_cluster_status() {
-    local target_status=$1
-    local max_retries=${2:-$MAX_RETRIES}
-    local sleep_time=${3:-$SLEEP_TIME}
-    
-    log "Waiting for cluster $CLUSTER_NAME to reach status: $target_status"
+    local status=$1
+    local max_retries=${2:-60}
+    local sleep_time=${3:-10}
     local retries=0
-
+    
+    log "INFO" "Waiting for cluster ${CLUSTER_NAME} to reach status: ${status}"
+    
     while [ $retries -lt $max_retries ]; do
-        local current_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v)
-        log "Current status: $current_status"
-
-        if [ "$current_status" = "$target_status" ]; then
-            log "Cluster $CLUSTER_NAME has reached status: $target_status"
+        if aicli get cluster ${CLUSTER_NAME} -o jsonpath='{.status}' | grep -q "^${status}$"; then
+            log "INFO" "Cluster ${CLUSTER_NAME} reached status: ${status}"
             return 0
         fi
-
-        log "Attempt $retries of $max_retries. Waiting $sleep_time seconds..."
+        log "DEBUG" "Current status: $(aicli get cluster ${CLUSTER_NAME} -o jsonpath='{.status}')"
+        log "INFO" "Waiting for status ${status}... (attempt $((retries + 1))/${max_retries})"
         sleep $sleep_time
-        ((retries++))
+        retries=$((retries + 1))
     done
-
-    log "Timeout waiting for cluster to reach status: $target_status"
+    
+    log "ERROR" "Timeout waiting for cluster ${CLUSTER_NAME} to reach status: ${status}"
     return 1
 }
 
 function start_cluster_installation() {
-    log "Starting installation of cluster $CLUSTER_NAME"
-    aicli start cluster "$CLUSTER_NAME"
-}
-
-function cluster_install() {
+    log "INFO" "Starting installation for cluster ${CLUSTER_NAME}..."
+    
+    aicli start cluster ${CLUSTER_NAME}
+    log "INFO" "Waiting for cluster to be ready..."
     wait_for_cluster_status "ready"
-    start_cluster_installation
+    log "INFO" "Waiting for installation to complete..."
     wait_for_cluster_status "installed"
-    log "Cluster installation completed successfully!"
+    log "INFO" "Cluster installation completed successfully"
 }
 
 function get_kubeconfig() {
-    log "Managing kubeconfig..."
+    log "INFO" "Getting kubeconfig..."
     
-    if [ ! -f "$KUBECONFIG" ]; then
-        log "Downloading kubeconfig for $CLUSTER_NAME"
-        aicli download kubeconfig "$CLUSTER_NAME"
-        log "Kubeconfig downloaded to $KUBECONFIG"
-    else
-        log "Using existing kubeconfig at: $KUBECONFIG"
+    # Determine the kubeconfig path (from environment or env.sh)
+    local kubeconfig_path="${KUBECONFIG:-}"
+    
+    if [ -z "${kubeconfig_path}" ]; then
+        log "INFO" "KUBECONFIG not set in environment, checking env.sh..."
+        source "$(dirname "$0")/env.sh"
+        kubeconfig_path="${KUBECONFIG:-}"
     fi
 
-    # Set KUBECONFIG environment variable
-    export KUBECONFIG="$(pwd)/$KUBECONFIG"
-    log "KUBECONFIG is set to: $KUBECONFIG"
+    # Trim leading and trailing whitespace
+    kubeconfig_path="${kubeconfig_path#"${kubeconfig_path%%[![:space:]]*}"}"  # Trim leading spaces
+    kubeconfig_path="${kubeconfig_path%"${kubeconfig_path##*[![:space:]]}"}"  # Trim trailing spaces
+
+    # Validate the kubeconfig path
+    if [ -n "${kubeconfig_path}" ] && [ -f "${kubeconfig_path}" ] && [ -r "${kubeconfig_path}" ]; then
+        log "INFO" "Using KUBECONFIG: ${kubeconfig_path}"
+        export KUBECONFIG="${kubeconfig_path}"
+        return 0
+    else
+        log "ERROR" "KUBECONFIG file not found or inaccessible: ${kubeconfig_path}"
+        exit 1
+    fi
 }
 
 function clean_all() {
@@ -147,7 +139,7 @@ function main() {
             delete_cluster
             ;;
         cluster-install)
-            cluster_install
+            start_cluster_installation
             ;;
         wait-for-status)
             wait_for_cluster_status "$1"

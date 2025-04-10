@@ -45,15 +45,50 @@ if [ -z "$DPU_INTERFACE" ]; then
   exit 1
 fi
 
-# Prepare DPF manifests
-echo "Preparing DPF manifests..."
-rm -rf "$GENERATED_DIR"
-mkdir -p "$GENERATED_DIR"
+# Function to prepare DPF manifests
+prepare_dpf_manifests() {
+    log "INFO" "Starting DPF manifest preparation..."
+    
+    # Create generated directory if it doesn't exist
+    if [ ! -d "${GENERATED_DIR}" ]; then
+        log "INFO" "Creating generated directory: ${GENERATED_DIR}"
+        mkdir -p "${GENERATED_DIR}"
+    fi
 
-# Copy all manifests except NFD
-find "$MANIFESTS_DIR/dpf-installation" -maxdepth 1 -type f -name "*.yaml" \
-  | grep -v "dpf-nfd.yaml" \
-  | xargs -I {} cp {} "$GENERATED_DIR/"
+    # Copy and process manifests
+    log "INFO" "Processing manifests from ${MANIFESTS_DIR} to ${GENERATED_DIR}"
+    
+    # Process each manifest file
+    for file in "${MANIFESTS_DIR}"/*.yaml; do
+        if [ -f "$file" ]; then
+            local filename=$(basename "$file")
+            log "INFO" "Processing manifest: ${filename}"
+            
+            # Skip NFD manifests if disabled
+            if [[ "${DISABLE_NFD}" = "true" && "${filename}" == *"nfd"* ]]; then
+                log "INFO" "Skipping NFD manifest: ${filename} (NFD is disabled)"
+                continue
+            fi
+            
+            # Process the manifest
+            sed -e "s|{{CLUSTER_NAME}}|${CLUSTER_NAME}|g" \
+                -e "s|{{BASE_DOMAIN}}|${BASE_DOMAIN}|g" \
+                -e "s|{{PULL_SECRET}}|${PULL_SECRET}|g" \
+                -e "s|{{SSH_KEY}}|${SSH_KEY}|g" \
+                -e "s|{{NUM_WORKERS}}|${NUM_WORKERS}|g" \
+                "$file" > "${GENERATED_DIR}/${filename}"
+            
+            log "DEBUG" "Manifest processed: ${filename} -> ${GENERATED_DIR}/${filename}"
+        fi
+    done
+    
+    log "INFO" "DPF manifest preparation completed successfully"
+}
+
+# If script is executed directly, run the preparation
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    prepare_dpf_manifests
+fi
 
 # Update manifests with configuration
 sed -i "s|value: api.CLUSTER_FQDN|value: $HOST_CLUSTER_API|g" "$GENERATED_DIR/dpf-operator-manifests.yaml"

@@ -4,35 +4,69 @@
 # Exit on error
 set -e
 
+# Source environment variables
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+
 # -----------------------------------------------------------------------------
 # Logging utility
 # -----------------------------------------------------------------------------
-function log() {
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
+log() {
+    local level=${1:-INFO}
+    shift
+    local message="$*"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+    # Debugging output
+
+    # Skip empty messages
+    if [ -z "$message" ]; then
+        echo "DEBUG: log function received an empty message, skipping..." >&2
+        return
+    fi
+
+    case "$level" in
+        "INFO")
+            echo -e "\033[0;32m[${timestamp}] [INFO] ${message}\033[0m"
+            ;;
+        "WARN")
+            echo -e "\033[0;33m[${timestamp}] [WARN] ${message}\033[0m"
+            ;;
+        "ERROR")
+            echo -e "\033[0;31m[${timestamp}] [ERROR] ${message}\033[0m" >&2
+            ;;
+        "DEBUG")
+            if [ "${DEBUG:-false}" = "true" ]; then
+                echo -e "\033[0;36m[${timestamp}] [DEBUG] ${message}\033[0m"
+            fi
+            ;;
+        *)
+            echo -e "[${timestamp}] [${level}] ${message}"
+            ;;
+    esac
 }
 
 # -----------------------------------------------------------------------------
 # File verification functions
 # -----------------------------------------------------------------------------
 function verify_files() {
-    log "Verifying required files..."
+    log "INFO" "Verifying required files..."
     
     if [ ! -f "${OPENSHIFT_PULL_SECRET}" ]; then
-        log "Error: ${OPENSHIFT_PULL_SECRET} not found"
+        log "ERROR" "${OPENSHIFT_PULL_SECRET} not found"
         exit 1
     fi
 
     if [ ! -f "${DPF_PULL_SECRET}" ]; then
-        log "Error: ${DPF_PULL_SECRET} not found"
+        log "ERROR" "${DPF_PULL_SECRET} not found"
         exit 1
     fi
 
     if [ ! -f "${MANIFESTS_DIR}/cluster-installation/ovn-values.yaml" ]; then
-        log "Error: ${MANIFESTS_DIR}/cluster-installation/ovn-values.yaml not found"
+        log "ERROR" "${MANIFESTS_DIR}/cluster-installation/ovn-values.yaml not found"
         exit 1
     fi
 
-    log "All required files verified successfully."
+    log "INFO" "All required files verified successfully"
 }
 
 # -----------------------------------------------------------------------------
@@ -45,18 +79,18 @@ function wait_for_resource() {
     local max_attempts=${4:-30}
     local delay=${5:-5}
 
-    log "Waiting for $resource_type/$resource_name in namespace $namespace..."
+    log "INFO" "Waiting for $resource_type/$resource_name in namespace $namespace..."
 
     for i in $(seq 1 "$max_attempts"); do
         if oc get "$resource_type" -n "$namespace" "$resource_name" &>/dev/null; then
-            log "$resource_type/$resource_name found in namespace $namespace"
+            log "INFO" "$resource_type/$resource_name found in namespace $namespace"
             return 0
         fi
-        log "Waiting for $resource_type/$resource_name (attempt $i/$max_attempts)..."
+        log "INFO" "Waiting for $resource_type/$resource_name (attempt $i/$max_attempts)..."
         sleep "$delay"
     done
 
-    log "Timed out waiting for $resource_type/$resource_name in namespace $namespace"
+    log "ERROR" "Timed out waiting for $resource_type/$resource_name in namespace $namespace"
     return 1
 }
 
@@ -71,14 +105,14 @@ function wait_for_pods() {
     for i in $(seq 1 "$max_attempts"); do
         oc get pods -n "$namespace" -l "$label" --field-selector "$selector"
         if oc get pods -n "$namespace" -l "$label" --field-selector "$selector" 2>/dev/null | grep -q "$expected_state"; then
-            log "$label pods are ready"
+            log "INFO" "$label pods are ready"
             return 0
         fi
-        log "Waiting for $label pods (attempt $i/$max_attempts)..."
+        log "INFO" "Waiting for $label pods (attempt $i/$max_attempts)..."
         sleep "$delay"
     done
 
-    log "$label pods failed to become ready"
+    log "ERROR" "$label pods failed to become ready"
     oc get pods -n "$namespace"
     oc describe pod -n "$namespace" -l "$label"
     exit 1
@@ -89,11 +123,11 @@ function wait_for_pods() {
 # -----------------------------------------------------------------------------
 function apply_manifest() {
     local file=$1
-    log "Applying $file..."
+    log "INFO" "Applying $file..."
     oc apply -f "$file"
     local exit_code=$?
     if [ $exit_code -ne 0 ]; then
-        log "Failed to apply $file (exit code: $exit_code)"
+        log "ERROR" "Failed to apply $file (exit code: $exit_code)"
         return $exit_code
     fi
     return 0
@@ -103,18 +137,27 @@ function apply_manifest() {
 # Cleanup functions
 # -----------------------------------------------------------------------------
 function clean_resources() {
-    log "Cleaning up resources..."
+    log "INFO" "Cleaning up resources..."
     
     # Clean up generated files
     rm -rf "$GENERATED_DIR" || true
     rm -f "kubeconfig.$CLUSTER_NAME" || true
     rm -f "$HOSTED_CLUSTER_NAME.kubeconfig" || true
     
-    log "Cleanup complete"
+    log "INFO" "Cleanup complete"
 }
 
-# If script is executed directly (not sourced), show usage
+# If script is executed directly (not sourced), handle commands
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    log "This script should be sourced, not executed directly"
-    exit 1
+    command=$1
+    case $command in
+        verify-files)
+            verify_files
+            ;;
+        *)
+            log "ERROR" "Unknown command: $command"
+            echo "Available commands: verify-files"
+            exit 1
+            ;;
+    esac
 fi 

@@ -7,6 +7,7 @@ MANIFESTS_SCRIPT := scripts/manifests.sh
 TOOLS_SCRIPT := scripts/tools.sh
 DPF_SCRIPT := scripts/dpf.sh
 VM_SCRIPT := scripts/vm.sh
+UTILS_SCRIPT := scripts/utils.sh
 
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
@@ -16,7 +17,7 @@ VM_SCRIPT := scripts/vm.sh
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf
 
 verify-files:
-	@$(CLUSTER_SCRIPT) verify-files
+	@$(UTILS_SCRIPT) verify-files
 
 clean:
 	@$(CLUSTER_SCRIPT) clean
