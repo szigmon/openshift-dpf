@@ -10,6 +10,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/tools.sh"
 
+HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
+
 # -----------------------------------------------------------------------------
 # DPF deployment functions
 # -----------------------------------------------------------------------------
@@ -45,13 +47,14 @@ function deploy_nfd() {
     # Create NFD instance with custom operand image
     log [INFO] "Creating NFD instance with custom operand image..."
     mkdir -p "$GENERATED_DIR"
-    cp "$MANIFESTS_DIR/dpf-installation/nfd-cr-template.yaml" "$GENERATED_DIR/nfd-cr.yaml"
-    sed -i "s|api.CLUSTER_FQDN|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr.yaml"
-    sed -i "s|image: quay.io/yshnaidm/node-feature-discovery:dpf|image: $NFD_OPERAND_IMAGE|g" "$GENERATED_DIR/nfd-cr.yaml"
+    cp "$MANIFESTS_DIR/dpf-installation/nfd-cr-template.yaml" "$GENERATED_DIR/nfd-cr-template.yaml"
+    echo
+    sed -i "s|api.CLUSTER_FQDN|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr-template.yaml"
+    sed -i "s|image: quay.io/yshnaidm/node-feature-discovery:dpf|image: $NFD_OPERAND_IMAGE|g" "$GENERATED_DIR/nfd-cr-template.yaml"
 
     get_kubeconfig
     # Apply the NFD CR
-    KUBECONFIG=$KUBECONFIG oc apply -f "$GENERATED_DIR/nfd-cr.yaml"
+    KUBECONFIG=$KUBECONFIG oc apply -f "$GENERATED_DIR/nfd-cr-template.yaml"
 
     log [INFO] "NFD deployment completed successfully!"
 }
@@ -106,25 +109,31 @@ function deploy_kamaji() {
 }
 
 function deploy_hypershift() {
-    log [INFO] "Waiting for hypershift operator"
-    wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
-    log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
-    oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
-    hypershift create cluster none --name=${HOSTED_CLUSTER_NAME} \
-      --base-domain=${BASE_DOMAIN} \
-      --release-image="${OCP_RELEASE_IMAGE}" \
-      --ssh-key=${HOME}/.ssh/id_rsa.pub \
-      --network-type=Other \
-      --etcd-storage-class=${ETCD_STORAGE_CLASS} \
-      --pull-secret=${OPENSHIFT_PULL_SECRET}
+
+    log [INFO] "Checking if Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists..."
+    if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
+        log [INFO] "Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists. Skipping creation."
+    else
+        log [INFO] "Waiting for hypershift operator"
+        wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
+        log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
+        oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
+        hypershift create cluster none --name=${HOSTED_CLUSTER_NAME} \
+          --base-domain=${BASE_DOMAIN} \
+          --release-image="${OCP_RELEASE_IMAGE}" \
+          --ssh-key=${HOME}/.ssh/id_rsa.pub \
+          --network-type=Other \
+          --etcd-storage-class=${ETCD_STORAGE_CLASS} \
+          --pull-secret=${OPENSHIFT_PULL_SECRET}
+    fi
 
     log [INFO] "Checking hosted control plane pods..."
     oc -n ${HOSTED_CONTROL_PLANE_NAMESPACE} get pods
     log [INFO] "Waiting for etcd pods..."
     wait_for_pods ${HOSTED_CONTROL_PLANE_NAMESPACE} "app=etcd" "status.phase=Running" "3/3" 60 10
 
-    log [INFO] "Pausing nodepool to disable rhcos update..."
-    oc patch nodepool -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} --type=merge -p '{"spec":{"pausedUntil":"true"}}'
+    log [INFO] "Patching nodepool to replica 0..."
+    oc patch nodepool -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} --type=merge -p '{"spec":{"replicas":0}}'
 
     configure_hypershift
 }
@@ -132,6 +141,10 @@ function deploy_hypershift() {
 function configure_hypershift() {
     log [INFO] "Creating kubeconfig for Hypershift hosted cluster..."
 
+    if oc get secret -n dpf-operator-system "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" &>/dev/null; then
+        log [INFO] "Secret ${HOSTED_CLUSTER_NAME}-admin-kubeconfig already exists. Skipping creation."
+        return
+    fi
     # Wait for the HostedCluster resource to be created before proceeding
     wait_for_resource "${CLUSTERS_NAMESPACE}" "secret" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" 60 10
 
@@ -204,21 +217,22 @@ function main() {
     shift
 
     log [INFO] "Executing command: $command"
-    echo "Arguments: $1"
-    echo "AAAAAAAAAAAAAA: $command"
     case "$command" in
-        deploy-nfd)
-            deploy_nfd
-            ;;
-        apply-dpf)
-            apply_dpf
-            ;;
-        *)
-            log [INFO] "Unknown command: $command"
-            log [INFO] "Available commands: deploy-nfd, apply-dpf"
-            exit 1
-            ;;
-    esac
+            deploy-nfd)
+                deploy_nfd
+                ;;
+            apply-dpf)
+                apply_dpf
+                ;;
+            deploy-hypershift)
+                deploy_hypershift
+                ;;
+            *)
+                log [INFO] "Unknown command: $command"
+                log [INFO] "Available commands: deploy-nfd, apply-dpf, deploy-hypershift"
+                exit 1
+                ;;
+        esac
 }
 
 # If script is executed directly (not sourced), run the main function

@@ -73,6 +73,9 @@ prepare-dpf-manifests:
 deploy-dpf:
 	@$(DPF_SCRIPT) apply-dpf
 
+deploy-hypershift:
+	@$(DPF_SCRIPT) deploy-hypershift
+
 update-etc-hosts:
 	@scripts/update-etc-hosts.sh $(API_VIP) $(HOST_CLUSTER_API) $(VM_PREFIX)
 

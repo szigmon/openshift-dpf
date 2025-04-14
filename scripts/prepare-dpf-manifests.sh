@@ -2,6 +2,7 @@
 set -e
 
 # Source environment variables
+echo "DDDDDDDDDDDDDDDD"
 source "$(dirname "$0")/env.sh"
 source "$(dirname "$0")/utils.sh"
 
@@ -14,6 +15,8 @@ DPU_INTERFACE=${DPU_INTERFACE:-"ens7f0np0"}
 DPF_PULL_SECRET=${DPF_PULL_SECRET:-"pull-secret.txt"}
 ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"ocs-storagecluster-ceph-rbd"}
 BFB_STORAGE_CLASS=${BFB_STORAGE_CLASS:-"ocs-storagecluster-cephfs"}
+
+echo "VVVVVVVVVVVVVVVVV"
 
 # Check required variables
 if [ -z "$MANIFESTS_DIR" ]; then
@@ -47,7 +50,8 @@ fi
 
 # Function to prepare DPF manifests
 prepare_dpf_manifests() {
-    log "INFO" "Starting DPF manifest preparation..."
+    log [INFO] "Starting DPF manifest preparation..."
+    echo "Using manifests directory: ${MANIFESTS_DIR}"
     
     # Create generated directory if it doesn't exist
     if [ ! -d "${GENERATED_DIR}" ]; then
@@ -85,8 +89,11 @@ prepare_dpf_manifests() {
     log "INFO" "DPF manifest preparation completed successfully"
 }
 
+echo "AAAAAAAAAAAAAAAAAAAA"
+
 # If script is executed directly, run the preparation
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo "BBBBBBBBBBB"
     prepare_dpf_manifests
 fi
 

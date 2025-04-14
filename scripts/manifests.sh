@@ -7,12 +7,14 @@ set -e
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
+HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
+
 # -----------------------------------------------------------------------------
 # Manifest preparation functions
 # -----------------------------------------------------------------------------
 function prepare_manifests() {
     local manifest_type=$1
-    log "Preparing $manifest_type manifests..."
+    log [INFO] "Preparing $manifest_type manifests..."
     
     # Clean and recreate generated directory
     rm -rf "$GENERATED_DIR"
@@ -26,61 +28,61 @@ function prepare_manifests() {
             prepare_dpf_manifests
             ;;
         *)
-            log "Error: Unknown manifest type: $manifest_type"
-            log "Valid types are: cluster, dpf"
+            log [INFO] "Error: Unknown manifest type: $manifest_type"
+            log [INFO] "Valid types are: cluster, dpf"
             exit 1
             ;;
     esac
 }
 
 function prepare_cluster_manifests() {
-    log "Preparing cluster installation manifests..."
+    log [INFO] "Preparing cluster installation manifests..."
     
     # Copy all manifests
-    log "Copying static manifests..."
+    log [INFO] "Copying static manifests..."
     find "$MANIFESTS_DIR/cluster-installation" -maxdepth 1 -type f -name "*.yaml" -o -name "*.yml" \
         | grep -v "ovn-values.yaml" \
         | xargs -I {} cp {} "$GENERATED_DIR/"
 
     # Configure cluster components
-    log "Configuring cluster installation..."
+    log [INFO] "Configuring cluster installation..."
     aicli update installconfig "$CLUSTER_NAME" -P network_type=NVIDIA-OVN
 
     # Generate Cert-Manager manifests if enabled
     if [ "$ENABLE_CERT_MANAGER" = "true" ]; then
-        log "Generating Cert-Manager manifests..."
+        log [INFO] "Generating Cert-Manager manifests..."
         cp "$MANIFESTS_DIR/cluster-installation/openshift-cert-manager.yaml" "$GENERATED_DIR/"
     else
-        log "Skipping Cert-Manager manifests (ENABLE_CERT_MANAGER=false)"
+        log [INFO] "Skipping Cert-Manager manifests (ENABLE_CERT_MANAGER=false)"
     fi
 
     generate_ovn_manifests
     enable_storage
     
     # Install manifests to cluster
-    log "Installing manifests to cluster via AICLI..."
+    log [INFO] "Installing manifests to cluster via AICLI..."
     aicli create manifests --dir "$GENERATED_DIR" "$CLUSTER_NAME"
 
-    log "Cluster manifests preparation complete."
+    log [INFO] "Cluster manifests preparation complete."
 }
 
 function prepare_dpf_manifests() {
-    log "Preparing DPF manifests..."
+    log [INFO] "Preparing DPF manifests..."
     
     # Validate required variables
     if [ -z "$HOST_CLUSTER_API" ]; then
-        log "Error: HOST_CLUSTER_API must be set"
+        log [INFO] "Error: HOST_CLUSTER_API must be set"
         exit 1
     fi
 
     if [ -z "$DPU_INTERFACE" ]; then
-        log "Error: DPU_INTERFACE must be set"
+        log [INFO] "Error: DPU_INTERFACE must be set"
         exit 1
     fi
 
     # Only validate KAMAJI_VIP if using kamaji cluster type
     if [ "${DPF_CLUSTER_TYPE}" = "kamaji" ] && [ -z "$KAMAJI_VIP" ]; then
-        log "Error: KAMAJI_VIP must be set when using kamaji cluster type"
+        log [INFO] "Error: KAMAJI_VIP must be set when using kamaji cluster type"
         exit 1
     fi
 
@@ -112,11 +114,11 @@ function prepare_dpf_manifests() {
     local PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64 -w 0)
     sed -i "s|.dockerconfigjson: = xxx|.dockerconfigjson: $PULL_SECRET|g" "$GENERATED_DIR/dpf-operator-manifests.yaml"
 
-    log "DPF manifests prepared successfully."
+    log [INFO] "DPF manifests prepared successfully."
 }
 
 function generate_ovn_manifests() {
-    log "Generating OVN manifests..."
+    log [INFO] "Generating OVN manifests..."
     
     # Ensure helm is installed
     ensure_helm_installed
@@ -143,19 +145,19 @@ function generate_ovn_manifests() {
     rm -rf "$GENERATED_DIR/temp"
 
     # Update paths in manifests
-    log "Updating paths in manifests..."
+    log [INFO] "Updating paths in manifests..."
     sed -i 's|path: /etc/cni/net.d|path: /run/multus/cni/net.d|g' "$GENERATED_DIR/ovn-manifests.yaml"
     sed -i 's|path: /opt/cni/bin|path: /var/lib/cni/bin/|g' "$GENERATED_DIR/ovn-manifests.yaml"
 }
 
 function enable_storage() {
-    log "Enabling storage operator"
+    log [INFO] "Enabling storage operator"
     
     if [ "$VM_COUNT" -eq 1 ]; then
-        log "Enable LVM operator"
+        log [INFO] "Enable LVM operator"
         aicli update cluster "$CLUSTER_NAME" -P olm_operators='[{"name": "lvm"}]'
     else
-        log "Enable ODF operator"
+        log [INFO] "Enable ODF operator"
         aicli update cluster "$CLUSTER_NAME" -P olm_operators='[{"name": "odf"}]'
     fi
 }
@@ -175,8 +177,8 @@ function main() {
             prepare_manifests "dpf"
             ;;
         *)
-            log "Unknown command: $command"
-            log "Available commands: prepare-manifests, prepare-dpf-manifests"
+            log [INFO] "Unknown command: $command"
+            log [INFO] "Available commands: prepare-manifests, prepare-dpf-manifests"
             exit 1
             ;;
     esac
@@ -185,7 +187,7 @@ function main() {
 # If script is executed directly (not sourced), run the main function
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     if [ $# -lt 1 ]; then
-        log "Usage: $0 <command> [arguments...]"
+        log [INFO] "Usage: $0 <command> [arguments...]"
         exit 1
     fi
     
