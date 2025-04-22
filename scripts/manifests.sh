@@ -6,6 +6,7 @@ set -e
 
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/tools.sh"
 
 HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
 
@@ -170,6 +171,9 @@ function main() {
     shift
 
     case "$command" in
+        generate-ovn-manifests)
+            generate_ovn_manifests
+            ;;
         prepare-manifests)
             prepare_manifests "cluster"
             ;;

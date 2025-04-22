@@ -35,7 +35,7 @@ prepare-manifests:
 	@$(MANIFESTS_SCRIPT) prepare-manifests
 
 generate-ovn:
-	@$(MANIFESTS_SCRIPT) prepare-manifests
+	@$(MANIFESTS_SCRIPT) generate-ovn-manifests
 
 update-paths:
 	@$(MANIFESTS_SCRIPT) prepare-manifests
