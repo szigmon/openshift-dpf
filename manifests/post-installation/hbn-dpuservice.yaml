@@ -24,8 +24,8 @@ spec:
       chart: doca-hbn
     values:
       image:
-        repository: nvcr.io/nvidia/doca/doca_hbn
-        tag: 2.4.1-doca2.9.1
+        repository: quay.io/itsoiref/hbn
+        tag: 24-fix
       resources:
         memory: 6Gi
         nvidia.com/bf_sf: 3
