@@ -89,11 +89,9 @@ prepare_dpf_manifests() {
     log "INFO" "DPF manifest preparation completed successfully"
 }
 
-echo "AAAAAAAAAAAAAAAAAAAA"
 
 # If script is executed directly, run the preparation
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    echo "BBBBBBBBBBB"
     prepare_dpf_manifests
 fi
 
