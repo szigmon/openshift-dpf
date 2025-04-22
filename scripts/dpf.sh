@@ -11,6 +11,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/tools.sh"
 
 HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
+ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"ocs-storagecluster-ceph-rbd"}
 
 # -----------------------------------------------------------------------------
 # DPF deployment functions
@@ -124,6 +125,8 @@ function deploy_hypershift() {
           --ssh-key=${HOME}/.ssh/id_rsa.pub \
           --network-type=Other \
           --etcd-storage-class=${ETCD_STORAGE_CLASS} \
+          --node-upgrade-type=Replace \
+          --disable-cluster-capabilities=ImageRegistry \
           --pull-secret=${OPENSHIFT_PULL_SECRET}
     fi
 
