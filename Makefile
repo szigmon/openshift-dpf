@@ -8,13 +8,14 @@ TOOLS_SCRIPT := scripts/tools.sh
 DPF_SCRIPT := scripts/dpf.sh
 VM_SCRIPT := scripts/vm.sh
 UTILS_SCRIPT := scripts/utils.sh
+POST_INSTALL_SCRIPT := scripts/post-install.sh
 
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
-        install-hypershift install-helm
+        install-hypershift install-helm deploy-dpu-services prepare-dpu-files
 
-all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf
+all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
 
 verify-files:
 	@$(UTILS_SCRIPT) verify-files
@@ -73,6 +74,12 @@ prepare-dpf-manifests:
 deploy-dpf: prepare-dpf-manifests
 	@$(DPF_SCRIPT) apply-dpf
 
+prepare-dpu-files:
+	@$(POST_INSTALL_SCRIPT) prepare
+
+deploy-dpu-services: prepare-dpu-files
+	@$(POST_INSTALL_SCRIPT) apply
+
 deploy-hypershift:
 	@$(DPF_SCRIPT) deploy-hypershift
 
@@ -123,6 +130,8 @@ help:
 	@echo "  prepare-dpf-manifests - Prepare DPF installation manifests"
 	@echo "  update-etc-hosts - Update /etc/hosts with cluster entries"
 	@echo "  deploy-nfd       - Deploy NFD operator directly from source"
+	@echo "  prepare-dpu-files - Prepare post-installation manifests with custom values"
+	@echo "  deploy-dpu-services - Deploy DPU services to the cluster"
 	@echo ""
 	@echo "Hypershift Management:"
 	@echo "  install-hypershift - Install Hypershift binary and operator"
@@ -163,10 +172,13 @@ help:
 	@echo "  DISK_SIZE2       - Secondary disk size in GB (default: $(DISK_SIZE2))"
 	@echo ""
 	@echo "DPF Configuration:"
-	@echo "  HOST_CLUSTER_API  - Management cluster API FQDN (default: api.<cluster>.<domain>)"
 	@echo "  KAMAJI_VIP       - VIP for Kamaji hosted cluster (default: $(KAMAJI_VIP))"
 	@echo "  ETCD_STORAGE_CLASS - StorageClass for Kamaji etcd (default: $(ETCD_STORAGE_CLASS))"
 	@echo "  BFB_STORAGE_CLASS - StorageClass for BFB PVC (default: $(BFB_STORAGE_CLASS))"
+	@echo ""
+	@echo "Post-installation Configuration:"
+	@echo "  BFB_URL          - URL for BFB file (default: http://10.8.2.236/bfb/rhcos_4.19.0-ec.4_installer_2025-04-23_07-48-42.bfb)"
+	@echo "  HBN_OVN_NETWORK  - Network for HBN OVN IPAM (default: 10.0.120.0/22)"
 	@echo ""
 	@echo "Wait Configuration:"
 	@echo "  MAX_RETRIES      - Maximum number of retries for status checks (default: $(MAX_RETRIES))"
