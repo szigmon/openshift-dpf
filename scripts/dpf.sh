@@ -141,6 +141,10 @@ function deploy_hypershift() {
     if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
         log [INFO] "Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists. Skipping creation."
     else
+
+        log [INFO] "Installing latest hypershift operator"
+        install_hypershift
+        wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
         log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
         hypershift create cluster none --name=${HOSTED_CLUSTER_NAME} \
@@ -195,6 +199,7 @@ function apply_remaining() {
         fi
 
         if [[ ! "$file" =~ .*(-ns)\.yaml$ && \
+              ! "$file" =~ .*(-crd)\.yaml$ && \
               "$file" != "$GENERATED_DIR/cert-manager-manifests.yaml" && \
               "$file" != "$GENERATED_DIR/kamaji-manifests.yaml" && \
               "$file" != "$GENERATED_DIR/scc.yaml" ]]; then
@@ -208,9 +213,9 @@ function apply_remaining() {
 }
 
 function apply_dpf() {
-    log [INFO] "Starting DPF deployment sequence..."
-    log [INFO] "Provided kubeconfig ${KUBECONFIG}"
-    log [INFO] "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
+    log "INFO" "Starting DPF deployment sequence..."
+    log "INFO" "Provided kubeconfig ${KUBECONFIG}"
+    log "INFO" "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
     
     # Check if prepare-dpf-manifests.sh exists
     local prepare_script="$(dirname "${BASH_SOURCE[0]}")/prepare-dpf-manifests.sh"
@@ -223,7 +228,6 @@ function apply_dpf() {
     "$prepare_script"
     
     get_kubeconfig
-    install_hypershift
     deploy_nfd
     
     apply_namespaces
