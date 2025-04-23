@@ -86,8 +86,11 @@ function check_create_cluster() {
 
 function delete_cluster() {
     log "INFO" "Deleting cluster ${CLUSTER_NAME}..."
-    aicli delete cluster ${CLUSTER_NAME} -y
-    log "INFO" "Cluster ${CLUSTER_NAME} deleted successfully"
+    if ! aicli delete cluster ${CLUSTER_NAME} -y; then
+        log "WARNING" "Failed to delete cluster ${CLUSTER_NAME}, continuing anyway"
+    else
+        log "INFO" "Cluster ${CLUSTER_NAME} deleted successfully"
+    fi
 }
 
 function wait_for_cluster_status() {
