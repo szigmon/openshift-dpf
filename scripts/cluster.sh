@@ -52,7 +52,7 @@ function is_valid_ip() {
 function check_create_cluster() {
     log "INFO" "Checking if cluster ${CLUSTER_NAME} exists..."
     
-    if ! aicli get cluster ${CLUSTER_NAME} >/dev/null 2>&1; then
+    if ! aicli info cluster ${CLUSTER_NAME} >/dev/null 2>&1; then
         log "INFO" "Cluster ${CLUSTER_NAME} not found, creating..."
 
         if [ "${SINGLE_NODE}" = "true" ]; then
@@ -118,10 +118,10 @@ function wait_for_cluster_status() {
 
 function start_cluster_installation() {
     log "INFO" "Starting installation for cluster ${CLUSTER_NAME}..."
-    
-    aicli start cluster ${CLUSTER_NAME}
+
     log "INFO" "Waiting for cluster to be ready..."
     wait_for_cluster_status "ready"
+    aicli start cluster ${CLUSTER_NAME}
     log "INFO" "Waiting for installation to complete..."
     wait_for_cluster_status "installed"
     log "INFO" "Cluster installation completed successfully"
@@ -170,13 +170,34 @@ function clean_all() {
     delete_cluster
     
     # Delete VMs
-    log "Deleting VMs with prefix $VM_PREFIX..."
+    log "INFO" "Deleting VMs with prefix $VM_PREFIX..."
     env VM_PREFIX="$VM_PREFIX" scripts/delete_vms.sh || true
     
     # Clean resources
     clean_resources
     
     log "Full cleanup complete"
+}
+
+function download_iso() {
+    log "INFO" "Downloading ISO for cluster ${CLUSTER_NAME} to ${ISO_FOLDER}"
+    
+    if [ -z "${ISO_FOLDER}" ]; then
+        log "ERROR" "ISO_FOLDER is not set. Please provide a valid ISO_FOLDER path."
+        exit 1
+    fi
+
+    if [ ! -d "${ISO_FOLDER}" ]; then
+        log "INFO" "Creating ISO folder: ${ISO_FOLDER}"
+        mkdir -p "${ISO_FOLDER}"
+    fi
+
+    if ! aicli download iso "${CLUSTER_NAME}" -p "${ISO_FOLDER}"; then
+        log "ERROR" "Failed to download ISO for cluster ${CLUSTER_NAME}"
+        exit 1
+    fi
+    
+    log "INFO" "ISO downloaded successfully to ${ISO_FOLDER}"
 }
 
 # -----------------------------------------------------------------------------
@@ -205,10 +226,13 @@ function main() {
         clean-all)
             clean_all
             ;;
+        download-iso)
+            download_iso
+            ;;
         *)
             log "Unknown command: $command"
             log "Available commands: check-create-cluster, delete-cluster, cluster-install,"
-            log "  wait-for-status, get-kubeconfig, clean-all"
+            log "  wait-for-status, get-kubeconfig, clean-all, download-iso"
             exit 1
             ;;
     esac
@@ -217,7 +241,7 @@ function main() {
 # If script is executed directly (not sourced), run the main function
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     if [ $# -lt 1 ]; then
-        log "Usage: $0 <command> [arguments...]"
+        log "INFO" "Usage: $0 <command> [arguments...]"
         exit 1
     fi
     

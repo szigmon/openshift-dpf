@@ -6,47 +6,75 @@ set -e
 
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+
+# Configuration with defaults
+VM_PREFIX=${VM_PREFIX:-"vm-dpf"}
+VM_COUNT=${VM_COUNT:-3}
+
+# Get the default physical NIC
+PHYSICAL_NIC=${PHYSICAL_NIC:-$(ip route | awk '/default/ {print $5; exit}')}
+API_VIP=${API_VIP}
+RAM=${RAM:-16384}  # Memory in MB
+VCPUS=${VCPUS:-8}   # Number of virtual CPUs
+DISK_SIZE1=${DISK_SIZE1:-120}  # Size of first disk
+DISK_SIZE2=${DISK_SIZE2:-40}  # Size of second disk
+DISK_PATH=${DISK_PATH:-"/var/lib/libvirt/images"}
+ISO_PATH="${ISO_FOLDER}/${CLUSTER_NAME}.iso"
+
 
 # -----------------------------------------------------------------------------
 # VM Management Functions
 # -----------------------------------------------------------------------------
+# * Create VMs with prefix $VM_PREFIX.
+# *
+# * This function creates $VM_COUNT number of VMs with the given prefix.
+# * The VMs are created with the given memory, number of virtual CPUs,
+# * and disk sizes. The VMs are also configured with a direct network
+# * connection to the given physical NIC and a VNC graphics device.
+# * The function waits for all VMs to be running using a retry mechanism
+# * and prints a success message upon completion.
+
 function create_vms() {
     log "Creating VMs with prefix $VM_PREFIX..."
-    
-    # Create primary disk for each VM
-    for i in $(seq 1 $VM_COUNT); do
-        log "Creating primary disk for ${VM_PREFIX}-$i"
-        qemu-img create -f qcow2 ${DISK_PATH}/${VM_PREFIX}-$i.qcow2 ${DISK_SIZE1}G
-    done
-
-    # Create secondary disk for each VM
-    for i in $(seq 1 $VM_COUNT); do
-        log "Creating secondary disk for ${VM_PREFIX}-$i"
-        qemu-img create -f qcow2 ${DISK_PATH}/${VM_PREFIX}-$i-2.qcow2 ${DISK_SIZE2}G
-    done
 
     # Create VMs
-    for i in $(seq 1 $VM_COUNT); do
-        log "Creating VM ${VM_PREFIX}-$i"
-        virt-install \
-            --name=${VM_PREFIX}-$i \
-            --ram=${RAM} \
-            --vcpus=${VCPUS} \
-            --cpu host-passthrough \
-            --os-type linux \
-            --os-variant rhel8.0 \
-            --network type=direct,source="${PHYSICAL_NIC}",mac="52:54:00:12:34:5${i}",source_mode=bridge,model=virtio \
-            --network network=default \
-            --network network=default,model=virtio \
-            --graphics none \
-            --noautoconsole \
-            --location=${ISO_FOLDER}/rhcos-live.x86_64.iso,kernel=images/pxeboot/vmlinuz,initrd=images/pxeboot/initramfs.img \
-            --extra-args "nomodeset rd.neednet=1 coreos.inst=yes coreos.inst.install_dev=vda coreos.live.rootfs_url=http://192.168.122.1:8080/rhcos-rootfs coreos.inst.insecure=yes coreos.inst.ignition_url=http://192.168.122.1:8080/bootstrap.ign" \
-            --disk path=${DISK_PATH}/${VM_PREFIX}-$i.qcow2,device=disk,bus=virtio,format=qcow2 \
-            --disk path=${DISK_PATH}/${VM_PREFIX}-$i-2.qcow2,device=disk,bus=virtio,format=qcow2 \
-            --memorybacking hugepages=on
+    for i in $(seq 1 "$VM_COUNT"); do
+        VM_NAME="${VM_PREFIX}${i}"
+        echo "Creating VM: $VM_NAME"
+        nohup virt-install --name "$VM_NAME" --memory $RAM \
+                --vcpus "$VCPUS" \
+                --os-variant=rhel9.4 \
+                --disk pool=default,size="${DISK_SIZE1}" \
+                --disk pool=default,size="${DISK_SIZE2}" \
+                --network type=direct,source="${PHYSICAL_NIC}",mac="52:54:00:12:34:5${i}",source_mode=bridge,model=virtio \
+                --network network=default \
+                --graphics=vnc \
+                --events on_reboot=restart \
+                --cdrom "$ISO_PATH" \
+                --cpu host-passthrough \
+                --noautoconsole \
+                --wait=-1 &
     done
 
+    # Wait for all VMs to be running using retry mechanism
+    MAX_RETRIES=24  # 2 minutes (24 retries * 5s)
+    INTERVAL=5      # Check every 5 seconds
+
+    for i in $(seq 1 "$VM_COUNT"); do
+        VM_NAME="${VM_PREFIX}${i}"
+        retries=0
+        until [[ "$(virsh domstate "$VM_NAME" 2>/dev/null || true )" == "running" ]]; do
+            if [[ $retries -ge $MAX_RETRIES ]]; then
+                echo "Error: VM $VM_NAME did not reach running state within 2 minutes."
+                exit 1
+            fi
+            echo "Waiting for VM $VM_NAME to start... (Attempt: $((retries + 1))/$MAX_RETRIES)"
+            sleep $INTERVAL
+            ((retries+=1))
+        done
+        echo "VM $VM_NAME is running."
+    done
     log "VM creation completed successfully!"
 }
 
@@ -98,4 +126,4 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     fi
     
     main "$@"
-fi 
+fi
