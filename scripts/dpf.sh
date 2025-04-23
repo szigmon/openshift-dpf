@@ -39,6 +39,7 @@ function deploy_nfd() {
         log [INFO] "NFD operator repository not found. Cloning..."
         git clone https://github.com/openshift/cluster-nfd-operator.git
     fi
+    get_kubeconfig
 
     # Deploy the NFD operator
     make -C cluster-nfd-operator deploy IMAGE_TAG=$NFD_OPERATOR_IMAGE KUBECONFIG=$KUBECONFIG
@@ -53,7 +54,6 @@ function deploy_nfd() {
     sed -i "s|api.CLUSTER_FQDN|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr-template.yaml"
     sed -i "s|image: quay.io/yshnaidm/node-feature-discovery:dpf|image: $NFD_OPERAND_IMAGE|g" "$GENERATED_DIR/nfd-cr-template.yaml"
 
-    get_kubeconfig
     # Apply the NFD CR
     KUBECONFIG=$KUBECONFIG oc apply -f "$GENERATED_DIR/nfd-cr-template.yaml"
 

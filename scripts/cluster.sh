@@ -10,6 +10,42 @@ source "$(dirname "$0")/env.sh"
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 
+function validate_vips() {
+    if [ -z "${API_VIP}" ] || [ "${API_VIP}" = "[]" ]; then
+        log "ERROR" "API_VIPS is not set or invalid. Please provide a valid API_VIP."
+        exit 1
+    fi
+
+    if [ -z "${INGRESS_VIP}" ] || [ "${INGRESS_VIP}" = "[]" ]; then
+        log "ERROR" "INGRESS_VIPS is not set or invalid. Please provide a valid INGRESS_VIP."
+        exit 1
+    fi
+    # Validate API_VIP and INGRESS_VIP
+    if is_valid_ip "${API_VIP}"; then
+        export API_VIPS="[${API_VIP}]"
+    else
+        log "ERROR" "Invalid API_VIP: ${API_VIP}"
+        exit 1
+    fi
+
+    # Construct INGRESS_VIPS
+    if is_valid_ip "${INGRESS_VIP}"; then
+        export INGRESS_VIPS="[${INGRESS_VIP}]"
+    else
+        log "ERROR" "Invalid INGRESS_VIP: ${INGRESS_VIP}"
+        exit 1
+    fi
+}
+
+function is_valid_ip() {
+    local ip=$1
+    if [[ $ip =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ || $ip =~ ^([0-9a-fA-F]*:[0-9a-fA-F]*){2,}$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # -----------------------------------------------------------------------------
 # Cluster management functions
 # -----------------------------------------------------------------------------
@@ -18,21 +54,28 @@ function check_create_cluster() {
     
     if ! aicli get cluster ${CLUSTER_NAME} >/dev/null 2>&1; then
         log "INFO" "Cluster ${CLUSTER_NAME} not found, creating..."
-        
+
         if [ "${SINGLE_NODE}" = "true" ]; then
             log "INFO" "Creating single-node cluster..."
-            aicli create cluster ${CLUSTER_NAME} \
-                --base-domain ${BASE_DOMAIN} \
-                --pull-secret ${PULL_SECRET} \
-                --ssh-key ${SSH_KEY} \
-                --single-node
+            aicli create cluster \
+                -P openshift_version="${OPENSHIFT_VERSION}" \
+                -P base_dns_domain="${BASE_DOMAIN}" \
+                -P pull_secret="${OPENSHIFT_PULL_SECRET}" \
+                -P high_availability_mode=None \
+                -P user_managed_networking=True \
+                "${CLUSTER_NAME}"
         else
             log "INFO" "Creating multi-node cluster..."
-            aicli create cluster ${CLUSTER_NAME} \
-                --base-domain ${BASE_DOMAIN} \
-                --pull-secret ${PULL_SECRET} \
-                --ssh-key ${SSH_KEY} \
-                --workers ${NUM_WORKERS}
+            validate_vips
+            echo "API_VIPS: ${API_VIPS}"
+            echo "INGRESS_VIPS: ${INGRESS_VIPS}"
+            aicli create cluster \
+                -P openshift_version="${OPENSHIFT_VERSION}" \
+                -P base_dns_domain="${BASE_DOMAIN}" \
+                -P api_vips="${API_VIPS}" \
+                -P pull_secret="${OPENSHIFT_PULL_SECRET}" \
+                -P ingress_vips="${INGRESS_VIPS}" \
+                "${CLUSTER_NAME}"
         fi
         
         log "INFO" "Cluster ${CLUSTER_NAME} created successfully"
@@ -49,19 +92,19 @@ function delete_cluster() {
 
 function wait_for_cluster_status() {
     local status=$1
-    local max_retries=${2:-60}
-    local sleep_time=${3:-10}
+    local max_retries=${2:-120}
+    local sleep_time=${3:-60}
     local retries=0
     
     log "INFO" "Waiting for cluster ${CLUSTER_NAME} to reach status: ${status}"
-    
     while [ $retries -lt $max_retries ]; do
-        if aicli get cluster ${CLUSTER_NAME} -o jsonpath='{.status}' | grep -q "^${status}$"; then
+        current_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v)
+        if [ "$current_status" == "$status" ]; then
             log "INFO" "Cluster ${CLUSTER_NAME} reached status: ${status}"
             return 0
         fi
-        log "DEBUG" "Current status: $(aicli get cluster ${CLUSTER_NAME} -o jsonpath='{.status}')"
-        log "INFO" "Waiting for status ${status}... (attempt $((retries + 1))/${max_retries})"
+        log "DEBUG" "Attempt $retries of $MAX_RETRIES. Waiting $SLEEP_TIME seconds..."
+        log "INFO" "Waiting for status ${status}... (attempt $((retries + 1))/${max_retries}) current_status is ${current_status}..."
         sleep $sleep_time
         retries=$((retries + 1))
     done
@@ -97,6 +140,15 @@ function get_kubeconfig() {
     kubeconfig_path="${kubeconfig_path#"${kubeconfig_path%%[![:space:]]*}"}"  # Trim leading spaces
     kubeconfig_path="${kubeconfig_path%"${kubeconfig_path##*[![:space:]]}"}"  # Trim trailing spaces
 
+    echo "KUBECONFIG: $kubeconfig_path"
+    if [ ! -f "$kubeconfig_path" ]; then
+        log "INFO" "Downloading kubeconfig for $CLUSTER_NAME"
+        aicli download kubeconfig "$CLUSTER_NAME"
+        cp "kubeconfig.$CLUSTER_NAME" "$kubeconfig_path"
+        log "INFO" "Kubeconfig downloaded to $KUBECONFIG"
+    else
+        log "INFO" "Using existing kubeconfig at: $KUBECONFIG"
+    fi
     # Validate the kubeconfig path
     if [ -n "${kubeconfig_path}" ] && [ -f "${kubeconfig_path}" ] && [ -r "${kubeconfig_path}" ]; then
         log "INFO" "Using KUBECONFIG: ${kubeconfig_path}"

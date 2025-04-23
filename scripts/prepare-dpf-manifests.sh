@@ -2,7 +2,6 @@
 set -e
 
 # Source environment variables
-echo "DDDDDDDDDDDDDDDD"
 source "$(dirname "$0")/env.sh"
 source "$(dirname "$0")/utils.sh"
 
@@ -16,7 +15,6 @@ DPF_PULL_SECRET=${DPF_PULL_SECRET:-"pull-secret.txt"}
 ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"ocs-storagecluster-ceph-rbd"}
 BFB_STORAGE_CLASS=${BFB_STORAGE_CLASS:-"ocs-storagecluster-cephfs"}
 
-echo "VVVVVVVVVVVVVVVVV"
 
 # Check required variables
 if [ -z "$MANIFESTS_DIR" ]; then
