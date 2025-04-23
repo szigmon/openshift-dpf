@@ -114,6 +114,6 @@ sed -i "s|vip: KAMAJI_VIP|vip: $KAMAJI_VIP|g" "$GENERATED_DIR/kamaji-manifests.y
 
 # Update pull secret
 PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64 -w 0)
-sed -i "s|.dockerconfigjson: = xxx|.dockerconfigjson: $PULL_SECRET|g" "$GENERATED_DIR/dpf-operator-manifests.yaml"
+sed -i "s|.dockerconfigjson: PULL_SECRET_BASE64|.dockerconfigjson: $PULL_SECRET|g" "$GENERATED_DIR/dpf-operator-manifests.yaml"
 
 echo "DPF manifests prepared successfully." 
