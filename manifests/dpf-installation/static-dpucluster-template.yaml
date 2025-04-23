@@ -7,4 +7,4 @@ spec:
   type: static
   maxNodes: 10
   version: KUBERNETES_VERSION
-  kubeconfig: KUBECONFIG_SECRET_NAME
+  kubeconfig: ${HOSTED_CLUSTER_NAME}-admin-kubeconfig
