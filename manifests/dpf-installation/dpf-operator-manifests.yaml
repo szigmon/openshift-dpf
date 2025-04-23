@@ -6,7 +6,7 @@ metadata:
   name: dpf-pull-secret
   namespace: dpf-operator-system
 data:
-  .dockerconfigjson: = xxx
+  .dockerconfigjson: PULL_SECRET_BASE64
 type: kubernetes.io/dockerconfigjson
 ---
 # Source: dpf-operator/charts/argo-cd/templates/argocd-application-controller/serviceaccount.yaml
