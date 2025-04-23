@@ -5,5 +5,5 @@ metadata:
   name: bf-bundle
   namespace: dpf-operator-system
 spec:
-  fileName: rhcos_4.19.0-ec.3_installer_2025-04-10_14-04-24.bfb
-  url: "http://10.8.2.231:8000/rhcos_4.19.0-ec.3_installer_2025-04-10_14-04-24.bfb"
+  fileName: BFB_FILENAME
+  url: "BFB_URL"

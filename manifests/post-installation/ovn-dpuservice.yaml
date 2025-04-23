@@ -24,7 +24,7 @@ spec:
         ipamPoolType: cidrpool
         ipamVTEPIPIndex: 0
         kubernetesSecretName: ovn-dpu
-        vtepCIDR: 10.0.120.0/22
+        vtepCIDR: HBN_OVN_NETWORK
       podNetwork: 10.128.0.0/16/24
       serviceNetwork: 172.30.0.0/16
       tags:
