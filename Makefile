@@ -70,7 +70,7 @@ enable-storage:
 prepare-dpf-manifests:
 	@$(MANIFESTS_SCRIPT) prepare-dpf-manifests
 
-deploy-dpf:
+deploy-dpf: prepare-dpf-manifests
 	@$(DPF_SCRIPT) apply-dpf
 
 deploy-hypershift:
