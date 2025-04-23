@@ -35,7 +35,8 @@ function create_vms() {
             --cpu host-passthrough \
             --os-type linux \
             --os-variant rhel8.0 \
-            --network network=default,model=virtio \
+            --network type=direct,source="${PHYSICAL_NIC}",mac="52:54:00:12:34:5${i}",source_mode=bridge,model=virtio \
+            --network network=default \
             --network network=default,model=virtio \
             --graphics none \
             --noautoconsole \
@@ -50,24 +51,18 @@ function create_vms() {
 }
 
 function delete_vms() {
-    log "Deleting VMs with prefix $VM_PREFIX..."
-    
-    # Get list of VMs with the specified prefix
-    local vms=$(virsh list --all --name | grep "^${VM_PREFIX}-")
-    
-    if [ -z "$vms" ]; then
-        log "No VMs found with prefix $VM_PREFIX"
-        return 0
-    fi
-
-    # Delete each VM
-    for vm in $vms; do
-        log "Deleting VM $vm"
-        virsh destroy "$vm" 2>/dev/null || true
-        virsh undefine "$vm" --remove-all-storage
+    local prefix=${VM_PREFIX}
+    log "INFO" "Deleting VMs with prefix ${prefix}..."
+    local vms=$(virsh list --all | grep ${prefix} | awk '{print $2}')
+    for vm in ${vms}; do
+        if ! virsh destroy ${vm} 2>/dev/null; then
+            log "WARNING" "Failed to destroy VM ${vm}, continuing anyway"
+        fi
+        if ! virsh undefine ${vm} 2>/dev/null; then
+            log "WARNING" "Failed to undefine VM ${vm}, continuing anyway"
+        fi
     done
-
-    log "VM deletion completed successfully!"
+    log "INFO" "VMs with prefix ${prefix} deleted successfully"
 }
 
 # -----------------------------------------------------------------------------
