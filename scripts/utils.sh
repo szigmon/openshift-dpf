@@ -123,6 +123,23 @@ function wait_for_pods() {
 # -----------------------------------------------------------------------------
 function apply_manifest() {
     local file=$1
+    # Extract resource type, name and namespace from the manifest
+    local resource_type=$(grep -m 1 "kind:" "$file" | awk '{print $2}')
+    local resource_name=$(grep -m 1 "name:" "$file" | awk '{print $2}')
+    local namespace=$(grep -m 1 "namespace:" "$file" | awk '{print $2}')
+    
+    if [ -n "$namespace" ]; then
+        if oc get "$resource_type" -n "$namespace" "$resource_name" &>/dev/null; then
+            log "INFO" "$resource_type/$resource_name already exists in namespace $namespace. Skipping."
+            return 0
+        fi
+    else
+        if oc get "$resource_type" "$resource_name" &>/dev/null; then
+            log "INFO" "$resource_type/$resource_name already exists. Skipping."
+            return 0
+        fi
+    fi
+    
     log "INFO" "Applying $file..."
     oc apply -f "$file"
     local exit_code=$?

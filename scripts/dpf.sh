@@ -17,26 +17,32 @@ ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"ocs-storagecluster-ceph-rbd"}
 # DPF deployment functions
 # -----------------------------------------------------------------------------
 function deploy_nfd() {
-    log [INFO] "Managing NFD deployment..."
+    log "INFO" "Managing NFD deployment..."
     
     # Check if NFD should be disabled
     if [ "$DISABLE_NFD" = "true" ]; then
-        log [INFO] "NFD deployment is disabled (DISABLE_NFD=true). Skipping..."
+        log "INFO" "NFD deployment is disabled (DISABLE_NFD=true). Skipping..."
         return 0
     fi
 
-    log [INFO] "Deploying NFD operator directly from source..."
+    # Check if NFD operator is already installed
+    if oc get deployment -n openshift-nfd nfd-operator &>/dev/null; then
+        log "INFO" "NFD operator already installed. Skipping deployment."
+        return 0
+    fi
+
+    log "INFO" "Deploying NFD operator directly from source..."
 
     # Check if Go is installed
     if ! command -v go &> /dev/null; then
-        log [INFO] "Error: Go is not installed but required for NFD operator deployment"
-        log [INFO] "Please install Go before continuing"
+        log "INFO" "Error: Go is not installed but required for NFD operator deployment"
+        log "INFO" "Please install Go before continuing"
         exit 1
     fi
 
     # Clone the NFD operator repository if not exists
     if [ ! -d "cluster-nfd-operator" ]; then
-        log [INFO] "NFD operator repository not found. Cloning..."
+        log "INFO" "NFD operator repository not found. Cloning..."
         git clone https://github.com/openshift/cluster-nfd-operator.git
     fi
     get_kubeconfig
@@ -44,10 +50,10 @@ function deploy_nfd() {
     # Deploy the NFD operator
     make -C cluster-nfd-operator deploy IMAGE_TAG=$NFD_OPERATOR_IMAGE KUBECONFIG=$KUBECONFIG
 
-    log [INFO] "NFD operator deployment from source completed"
+    log "INFO" "NFD operator deployment from source completed"
 
     # Create NFD instance with custom operand image
-    log [INFO] "Creating NFD instance with custom operand image..."
+    log "INFO" "Creating NFD instance with custom operand image..."
     mkdir -p "$GENERATED_DIR"
     cp "$MANIFESTS_DIR/dpf-installation/nfd-cr-template.yaml" "$GENERATED_DIR/nfd-cr-template.yaml"
     echo
@@ -57,7 +63,7 @@ function deploy_nfd() {
     # Apply the NFD CR
     KUBECONFIG=$KUBECONFIG oc apply -f "$GENERATED_DIR/nfd-cr-template.yaml"
 
-    log [INFO] "NFD deployment completed successfully!"
+    log "INFO" "NFD deployment completed successfully!"
 }
 
 function apply_crds() {
@@ -86,10 +92,16 @@ function apply_namespaces() {
 function deploy_cert_manager() {
     local cert_manager_file="$GENERATED_DIR/cert-manager-manifests.yaml"
     if [ -f "$cert_manager_file" ]; then
-        log [INFO] "Deploying cert-manager..."
+        # Check if cert-manager is already installed
+        if oc get deployment -n cert-manager cert-manager-operator &>/dev/null; then
+            log "INFO" "Cert-manager already installed. Skipping deployment."
+            return 0
+        fi
+        
+        log "INFO" "Deploying cert-manager..."
         apply_manifest "$cert_manager_file"
         wait_for_pods "cert-manager-operator" "app=webhook" "status.phase=Running" "1/1" 30 5
-        log [INFO] "Waiting for cert-manager to stabilize..."
+        log "INFO" "Waiting for cert-manager to stabilize..."
         sleep 5
     fi
 }
@@ -110,14 +122,19 @@ function deploy_kamaji() {
 }
 
 function deploy_hypershift() {
-
-    log [INFO] "Checking if Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists..."
-    if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
-        log [INFO] "Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists. Skipping creation."
+    # Check if Hypershift operator is already installed
+    if oc get deployment -n hypershift hypershift-operator &>/dev/null; then
+        log "INFO" "Hypershift operator already installed. Skipping deployment."
     else
-        log [INFO] "Waiting for hypershift operator"
+        log "INFO" "Waiting for hypershift operator"
         wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
-        log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
+    fi
+
+    log "INFO" "Checking if Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists..."
+    if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
+        log "INFO" "Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists. Skipping creation."
+    else
+        log "INFO" "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
         hypershift create cluster none --name=${HOSTED_CLUSTER_NAME} \
           --base-domain=${BASE_DOMAIN} \
@@ -130,12 +147,12 @@ function deploy_hypershift() {
           --pull-secret=${OPENSHIFT_PULL_SECRET}
     fi
 
-    log [INFO] "Checking hosted control plane pods..."
+    log "INFO" "Checking hosted control plane pods..."
     oc -n ${HOSTED_CONTROL_PLANE_NAMESPACE} get pods
-    log [INFO] "Waiting for etcd pods..."
+    log "INFO" "Waiting for etcd pods..."
     wait_for_pods ${HOSTED_CONTROL_PLANE_NAMESPACE} "app=etcd" "status.phase=Running" "3/3" 60 10
 
-    log [INFO] "Patching nodepool to replica 0..."
+    log "INFO" "Patching nodepool to replica 0..."
     oc patch nodepool -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} --type=merge -p '{"spec":{"replicas":0}}'
 
     configure_hypershift
