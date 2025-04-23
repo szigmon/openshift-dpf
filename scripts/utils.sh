@@ -119,6 +119,37 @@ function wait_for_pods() {
 }
 
 # -----------------------------------------------------------------------------
+# Resource checking functions
+# -----------------------------------------------------------------------------
+function check_namespace_exists() {
+    local namespace=$1
+    if oc get namespace "$namespace" &>/dev/null; then
+        log [INFO] "Namespace $namespace already exists"
+        return 0
+    fi
+    return 1
+}
+
+function check_crd_exists() {
+    local crd=$1
+    if oc get crd "$crd" &>/dev/null; then
+        log [INFO] "CRD $crd already exists"
+        return 0
+    fi
+    return 1
+}
+
+function check_secret_exists() {
+    local namespace=$1
+    local secret=$2
+    if oc get secret -n "$namespace" "$secret" &>/dev/null; then
+        log [INFO] "Secret $secret already exists in namespace $namespace"
+        return 0
+    fi
+    return 1
+}
+
+# -----------------------------------------------------------------------------
 # Manifest application functions
 # -----------------------------------------------------------------------------
 function apply_manifest() {
