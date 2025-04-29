@@ -149,26 +149,41 @@ function check_secret_exists() {
     return 1
 }
 
-# -----------------------------------------------------------------------------
-# Manifest application functions
-# -----------------------------------------------------------------------------
-function apply_manifest() {
+function check_resource_exists() {
     local file=$1
-    # Extract resource type, name and namespace from the manifest
     local resource_type=$(grep -m 1 "kind:" "$file" | awk '{print $2}')
     local resource_name=$(grep -m 1 "name:" "$file" | awk '{print $2}')
     local namespace=$(grep -m 1 "namespace:" "$file" | awk '{print $2}')
     
     if [ -n "$namespace" ]; then
         if oc get "$resource_type" -n "$namespace" "$resource_name" &>/dev/null; then
-            log "INFO" "$resource_type/$resource_name already exists in namespace $namespace. Skipping."
+            log "INFO" "$resource_type/$resource_name already exists in namespace $namespace."
             return 0
         fi
     else
         if oc get "$resource_type" "$resource_name" &>/dev/null; then
-            log "INFO" "$resource_type/$resource_name already exists. Skipping."
+            log "INFO" "$resource_type/$resource_name already exists."
             return 0
         fi
+    fi
+    return 1
+}
+
+# -----------------------------------------------------------------------------
+# Manifest application functions
+# -----------------------------------------------------------------------------
+function apply_manifest() {
+    local file=$1
+    local apply_always=${2:-false}
+
+    # Skip existence check if apply_always is true
+    if [ "$apply_always" != "true" ]; then
+        if check_resource_exists "$file"; then
+            log "INFO" "Skipping application of $file as it already exists."
+            return 0
+        fi
+    else
+        log "INFO" "Applying $file (apply_always=true)..."
     fi
     
     log "INFO" "Applying $file..."

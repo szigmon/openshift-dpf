@@ -18,7 +18,6 @@ load_env() {
         # Skip comments and empty lines
         [[ $key =~ ^#.*$ ]] && continue
         [[ -z $key ]] && continue
-        
         # Remove any quotes from the value
         value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//")
         
@@ -29,7 +28,6 @@ load_env() {
 
 # Load environment variables from .env file
 load_env
-
 # Directory Configuration
 MANIFESTS_DIR=${MANIFESTS_DIR:-"manifests"}
 GENERATED_DIR=${GENERATED_DIR:-"$MANIFESTS_DIR/generated"}
@@ -68,6 +66,7 @@ HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
 KAMAJI_VIP=${KAMAJI_VIP:-"10.1.178.225"}
 ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"ocs-storagecluster-ceph-rbd"}
 BFB_STORAGE_CLASS=${BFB_STORAGE_CLASS:-"ocs-storagecluster-cephfs"}
+NUM_VFS=${NUM_VFS:-"46"}
 
 # Feature Configuration
 DISABLE_NFD=${DISABLE_NFD:-"false"}
