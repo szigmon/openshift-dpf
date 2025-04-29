@@ -6,4 +6,4 @@ metadata:
   namespace: dpf-operator-system
 spec:
   fileName: BFB_FILENAME
-  url: "BFB_URL"
+  url: BFB_URL

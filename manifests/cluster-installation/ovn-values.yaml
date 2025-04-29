@@ -10,5 +10,5 @@ ovnkube-node-dpu-host:
 podNetwork: $POD_CIDR/24
 serviceNetwork: $SERVICE_CIDR
 ovn-kubernetes-resource-injector:
-  resourceName: nvidia.com/bf3-p0-vfs
+  resourceName: openshift/bf3-p0-vfs
 dpuServiceAccountNamespace: dpf-operator-system

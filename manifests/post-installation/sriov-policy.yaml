@@ -9,10 +9,10 @@ spec:
     deviceID: "a2dc"
     vendor: "15b3"
     pfNames:
-    - ens7f0np0#2-15
+    - ens7f0np0#2-<NUM_VFS-1>
   nodeSelector:
     node-role.kubernetes.io/worker: ""
-  numVfs: 16
+  numVfs: <NUM_VFS>
   resourceName: bf3-p0-vfs
   resourcePrefix: openshift.io
   isRdma: true
