@@ -28745,7 +28745,6 @@ spec:
   overrides:
     dpuCNIBinPath: /var/lib/cni/bin/
     dpuCNIPath: /run/multus/cni/net.d/
-    dpuOpenvSwitchSystemShared64Path: /lib64
   provisioningController:
     bfCFGTemplateConfigMap: custom-bfb.cfg
     bfbPVCName: bfb-pvc

@@ -133,29 +133,26 @@ function deploy_hypershift() {
     if oc get deployment -n hypershift hypershift-operator &>/dev/null; then
         log [INFO] "Hypershift operator already installed. Skipping deployment."
     else
-        log [INFO] "Waiting for hypershift operator"
-        wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
+        log [INFO] "Installing latest hypershift operator"
+        install_hypershift
     fi
 
     log [INFO] "Checking if Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists..."
     if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
         log [INFO] "Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists. Skipping creation."
     else
-
-        log [INFO] "Installing latest hypershift operator"
-        install_hypershift
         wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
         log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
-        hypershift create cluster none --name=${HOSTED_CLUSTER_NAME} \
-          --base-domain=${BASE_DOMAIN} \
+        hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
+          --base-domain="${BASE_DOMAIN}" \
           --release-image="${OCP_RELEASE_IMAGE}" \
-          --ssh-key=${HOME}/.ssh/id_rsa.pub \
+          --ssh-key="${SSH_KEY}" \
           --network-type=Other \
-          --etcd-storage-class=${ETCD_STORAGE_CLASS} \
+          --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
           --node-upgrade-type=Replace \
           --disable-cluster-capabilities=ImageRegistry \
-          --pull-secret=${OPENSHIFT_PULL_SECRET}
+          --pull-secret="${OPENSHIFT_PULL_SECRET}"
     fi
 
     log [INFO] "Checking hosted control plane pods..."
