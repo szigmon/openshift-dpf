@@ -74,6 +74,7 @@ function check_create_cluster() {
                 -P base_dns_domain="${BASE_DOMAIN}" \
                 -P api_vips="${API_VIPS}" \
                 -P pull_secret="${OPENSHIFT_PULL_SECRET}" \
+                -P public_key="${SSH_KEY}" \
                 -P ingress_vips="${INGRESS_VIPS}" \
                 "${CLUSTER_NAME}"
         fi
