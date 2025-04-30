@@ -46,6 +46,7 @@ BASE_DOMAIN=${BASE_DOMAIN:-"lab.nvidia.com"}
 OPENSHIFT_VERSION=${OPENSHIFT_VERSION:-"4.14.0"}
 KUBECONFIG=${KUBECONFIG:-"$HOME/.kube/config"}
 DPF_CLUSTER_TYPE=${DPF_CLUSTER_TYPE:-"kamaji"}
+SSH_KEY=${SSH_KEY:-"~/.ssh/id_rsa.pub"}
 
 # Network Configuration
 POD_CIDR=${POD_CIDR:-"10.128.0.0/14"}
