@@ -21,3 +21,14 @@ kubeconfig*
 # Temporary files
 *.log
 *.tmp
+
+# Repos 
+cluster-nfd-operator
+node-feature-discovery
+
+# kubeconfigs
+*kubeconfig*
+
+# discovery iso
+discovery_image*
+	
