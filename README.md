@@ -25,7 +25,7 @@ openshift-dpf/
 
 ## Prerequisites
 - OpenShift CLI (`oc`)
-- Assisted Installer CLI (`aicli`)
+- Assisted Installer CLI ([`aicli`](https://aicli.readthedocs.io))
 - Helm
 - Go (for NFD operator deployment)
 - jq (for JSON processing)
@@ -34,6 +34,14 @@ openshift-dpf/
 - Required pull secrets:
   - OpenShift pull secret (`openshift_pull.json`)
   - DPF pull secret (`pull-secret.txt`)
+    - https://catalog.ngc.nvidia.com -> Setup -> Generate API Key
+    - `echo "$oauthtoken:<nvapi-key>" | base64`
+    - write following format to pull-secret.txt:
+      `{"auths":{"nvcr.io":{"username":"$oauthtoken","password":"<nvapi-key>","auth":"<base64 of ($oauthtoken:<nvapi-key>)>"}`
+- Openshift offline token
+  - Create token via https://cloud.redhat.com/openshift/token
+  - Write token to ~/.aicli/offlinetoken.txt
+  - Verify with `aicli list clusters`
 
 ## Features
 This automation provides:
