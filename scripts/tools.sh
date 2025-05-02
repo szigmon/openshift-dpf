@@ -34,8 +34,9 @@ function install_hypershift() {
     log "Installing Hypershift binary and operator..."
 
     # Create a temporary container and copy the hypershift binary
-    podman cp $(podman create --name hypershift --rm --pull always $HYPERSHIFT_IMAGE):/usr/bin/hypershift /tmp/hypershift
-    podman rm -f hypershift
+    CONTAINER_COMMAND=${CONTAINER_COMMAND:-podman}
+    $CONTAINER_COMMAND cp $(docker create --name hypershift --rm --pull always $HYPERSHIFT_IMAGE):/usr/bin/hypershift /tmp/hypershift
+    $CONTAINER_COMMAND rm -f hypershift
 
     # Install the hypershift binary
     sudo install -m 0755 -o root -g root /tmp/hypershift /usr/local/bin/hypershift
