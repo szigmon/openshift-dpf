@@ -83,6 +83,12 @@ deploy-dpu-services: prepare-dpu-files
 deploy-hypershift:
 	@$(DPF_SCRIPT) deploy-hypershift
 
+create-ignition-template:
+	@$(DPF_SCRIPT) create-ignition-template
+
+redeploy-dpu:
+	@$(POST_INSTALL_SCRIPT) redeploy
+
 update-etc-hosts:
 	@scripts/update-etc-hosts.sh $(API_VIP) $(HOST_CLUSTER_API) $(VM_PREFIX)
 
