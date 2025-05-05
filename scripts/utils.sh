@@ -196,6 +196,23 @@ function apply_manifest() {
     return 0
 }
 
+function retry() {
+    local retries=$1
+    local delay=$2
+    shift 2
+    local attempt=0
+
+    while (( attempt < retries )); do
+        "$@" && return 0
+        attempt=$(( attempt + 1 ))
+        echo "Attempt $attempt failed. Retrying in $delay seconds..."
+        sleep "$delay"
+    done
+
+    echo "All $retries attempts failed."
+    return 1
+}
+
 # -----------------------------------------------------------------------------
 # Cleanup functions
 # -----------------------------------------------------------------------------
