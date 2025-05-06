@@ -55,7 +55,7 @@ function check_create_cluster() {
     if ! aicli info cluster ${CLUSTER_NAME} >/dev/null 2>&1; then
         log "INFO" "Cluster ${CLUSTER_NAME} not found, creating..."
 
-        if [ "${SINGLE_NODE}" = "true" ]; then
+        if [ "$VM_COUNT" -eq 1 ]; then
             log "INFO" "Creating single-node cluster..."
             aicli create cluster \
                 -P openshift_version="${OPENSHIFT_VERSION}" \
