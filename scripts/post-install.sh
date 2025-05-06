@@ -182,6 +182,23 @@ function apply_post_installation() {
     log [INFO] "Post-installation manifest application completed successfully"
 }
 
+function redeploy() {
+    log [INFO] "Redeploying DPU..."
+    prepare_post_installation
+
+    log [INFO] "Deleting existing manifests..."
+    oc delete -f "${GENERATED_POST_INSTALL_DIR}/dpuset.yaml" || true
+    oc delete -f "${GENERATED_POST_INSTALL_DIR}/bfb.yaml" || true
+
+    # wait till all dpu are removed
+    retry 60 5 oc wait --for=delete dpu -A --all || exit 1
+
+    oc delete -f "${GENERATED_POST_INSTALL_DIR}/dpuflavor-1500.yaml" || true
+
+    apply_post_installation
+
+}
+
 # If script is executed directly (not sourced), run the appropriate function
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     if [ $# -lt 1 ]; then
@@ -196,9 +213,12 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         apply)
             apply_post_installation
             ;;
+        redeploy)
+            redeploy
+            ;;
         *)
             log [ERROR] "Unknown command: $1"
-            log [ERROR] "Available commands: prepare, apply"
+            log [ERROR] "Available commands: prepare, apply, redeploy"
             exit 1
             ;;
     esac
