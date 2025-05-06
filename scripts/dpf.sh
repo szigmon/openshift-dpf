@@ -181,11 +181,39 @@ function configure_hypershift() {
         log [INFO] "Secret ${HOSTED_CLUSTER_NAME}-admin-kubeconfig already exists. Skipping creation."
         return
     fi
-    # Wait for the HostedCluster resource to be created before proceeding
-    wait_for_resource "${CLUSTERS_NAMESPACE}" "secret" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" 60 10
+    
+    # Wait for the HostedCluster resource to create the admin-kubeconfig secret with valid data
+    wait_for_secret_with_data "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" "kubeconfig" 60 10
 
-    # Then create the kubeconfig
-    hypershift create kubeconfig --namespace ${CLUSTERS_NAMESPACE} --name ${HOSTED_CLUSTER_NAME} > ${HOSTED_CLUSTER_NAME}.kubeconfig
+    # Then create the kubeconfig with retries
+    log [INFO] "Generating kubeconfig file for ${HOSTED_CLUSTER_NAME}..."
+    local max_attempts=5
+    local delay=10
+    local created=false
+    
+    for i in $(seq 1 "$max_attempts"); do
+        if hypershift create kubeconfig --namespace ${CLUSTERS_NAMESPACE} --name ${HOSTED_CLUSTER_NAME} > ${HOSTED_CLUSTER_NAME}.kubeconfig; then
+            # Check if the file actually contains valid kubeconfig data
+            if grep -q "apiVersion: v1" ${HOSTED_CLUSTER_NAME}.kubeconfig && grep -q "kind: Config" ${HOSTED_CLUSTER_NAME}.kubeconfig; then
+                log [INFO] "Successfully created kubeconfig for ${HOSTED_CLUSTER_NAME} on attempt $i"
+                created=true
+                break
+            else
+                log [INFO] "Kubeconfig file was created but appears to be invalid (attempt $i/$max_attempts)"
+                rm -f ${HOSTED_CLUSTER_NAME}.kubeconfig || true
+            fi
+        else
+            log [INFO] "Failed to create kubeconfig on attempt $i/$max_attempts"
+        fi
+        
+        log [INFO] "Retrying kubeconfig creation in $delay seconds..."
+        sleep "$delay"
+    done
+    
+    if [ "$created" = "false" ]; then
+        log [ERROR] "Failed to create valid kubeconfig after $max_attempts attempts"
+        exit 1
+    fi
 
     # Create the admin kubeconfig secret
     oc create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig -n dpf-operator-system \

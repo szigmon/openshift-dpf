@@ -94,6 +94,35 @@ function wait_for_resource() {
     return 1
 }
 
+function wait_for_secret_with_data() {
+    local namespace=$1
+    local secret_name=$2
+    local key=$3
+    local max_attempts=${4:-30}
+    local delay=${5:-5}
+
+    log "INFO" "Waiting for secret/$secret_name with valid data for key $key in namespace $namespace..."
+
+    for i in $(seq 1 "$max_attempts"); do
+        # First check if the secret exists
+        if oc get secret -n "$namespace" "$secret_name" &>/dev/null; then
+            # Then check if the data key exists and has content
+            local data=$(oc get secret -n "$namespace" "$secret_name" -o jsonpath="{.data.${key}}" 2>/dev/null)
+            if [ -n "$data" ]; then
+                log "INFO" "Secret $secret_name with valid data for key $key found in namespace $namespace"
+                return 0
+            fi
+            log "INFO" "Secret $secret_name exists but waiting for valid data for key $key (attempt $i/$max_attempts)..."
+        else
+            log "INFO" "Waiting for secret/$secret_name (attempt $i/$max_attempts)..."
+        fi
+        sleep "$delay"
+    done
+
+    log "ERROR" "Timed out waiting for secret/$secret_name with valid data for key $key in namespace $namespace"
+    return 1
+}
+
 function wait_for_pods() {
     local namespace=$1
     local label=$2
@@ -147,6 +176,34 @@ function check_secret_exists() {
         return 0
     fi
     return 1
+}
+
+function check_secret_data_exists() {
+    local namespace=$1
+    local secret=$2
+    local key=$3
+    
+    # First check if the secret exists
+    if ! oc get secret -n "$namespace" "$secret" &>/dev/null; then
+        log [INFO] "Secret $secret does not exist in namespace $namespace"
+        return 1
+    fi
+    
+    # Then check if the key exists in the secret
+    if oc get secret -n "$namespace" "$secret" -o jsonpath="{.data.${key}}" &>/dev/null; then
+        # Check if the key contains actual data
+        local data=$(oc get secret -n "$namespace" "$secret" -o jsonpath="{.data.${key}}" 2>/dev/null)
+        if [ -n "$data" ]; then
+            log [INFO] "Secret $secret in namespace $namespace contains valid data for key $key"
+            return 0
+        else
+            log [INFO] "Secret $secret in namespace $namespace exists but has empty data for key $key"
+            return 1
+        fi
+    else
+        log [INFO] "Secret $secret in namespace $namespace exists but does not contain key $key"
+        return 1
+    fi
 }
 
 function check_resource_exists() {
