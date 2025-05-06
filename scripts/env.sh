@@ -75,9 +75,10 @@ NFD_OPERAND_IMAGE=${NFD_OPERAND_IMAGE:-"quay.io/yshnaidm/node-feature-discovery:
 
 # Hypershift Configuration
 HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/hypershift/hypershift:latest"}
-HOSTED_CLUSTER_NAME=${HOSTED_CLUSTER_NAME:-"doca-hosted"}
+HOSTED_CLUSTER_NAME=${HOSTED_CLUSTER_NAME:-"doca"}
 CLUSTERS_NAMESPACE=${CLUSTERS_NAMESPACE:-"clusters"}
 OCP_RELEASE_IMAGE=${OCP_RELEASE_IMAGE:-"quay.io/openshift-release-dev/ocp-release:4.14.0-ec.4-x86_64"}
+HOSTED_CONTROL_PLANE_NAMESPACE="${CLUSTERS_NAMESPACE}-${HOSTED_CLUSTER_NAME}"
 
 # Wait Configuration
 MAX_RETRIES=${MAX_RETRIES:-"30"}

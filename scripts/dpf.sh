@@ -164,6 +164,14 @@ function deploy_hypershift() {
     oc patch nodepool -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} --type=merge -p '{"spec":{"replicas":0}}'
 
     configure_hypershift
+    create_ignition_template
+}
+
+function create_ignition_template() {
+    log [INFO] "Creating ignition template..."
+    retry 5 30 "$(dirname "${BASH_SOURCE[0]}")/gen_template.py" -f "${GENERATED_DIR}/hcp_template.yaml" -c "${HOSTED_CLUSTER_NAME}" -hc "${CLUSTERS_NAMESPACE}"
+    log [INFO] "Ignition template created"
+    oc apply -f "$GENERATED_DIR/hcp_template.yaml"
 }
 
 function configure_hypershift() {
@@ -233,7 +241,6 @@ function apply_dpf() {
     apply_remaining
     apply_scc
     deploy_hosted_cluster
-    
     log [INFO] "DPF deployment complete"
 }
 
@@ -254,6 +261,9 @@ function main() {
                 ;;
             deploy-hypershift)
                 deploy_hypershift
+                ;;
+            create-ignition-template)
+                create_ignition_template
                 ;;
             *)
                 log [INFO] "Unknown command: $command"

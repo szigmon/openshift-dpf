@@ -18,8 +18,6 @@ spec:
       bfb:
         name: bf-bundle
       nodeEffect:
-        taint:
-          key: "dpu"
-          value: "provisioning"
-          effect: NoSchedule
-      automaticNodeReboot: true
+        drain:
+          automaticNodeReboot: true
+
