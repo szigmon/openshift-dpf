@@ -90,7 +90,7 @@ redeploy-dpu:
 	@$(POST_INSTALL_SCRIPT) redeploy
 
 update-etc-hosts:
-	@scripts/update-etc-hosts.sh $(API_VIP) $(HOST_CLUSTER_API) $(VM_PREFIX)
+	@scripts/update-etc-hosts.sh
 
 clean-all:
 	@$(CLUSTER_SCRIPT) clean-all
