@@ -38,6 +38,14 @@ ISO_PATH="${ISO_FOLDER}/${CLUSTER_NAME}.iso"
 function create_vms() {
     log "Creating VMs with prefix $VM_PREFIX..."
 
+    # Construct the network option
+    if [ -n "$LIBVIRT_NETWORK" ]; then
+      NETWORK_OPTS="--network network=${LIBVIRT_NETWORK},mac=52:54:00:12:34:5${i}"
+    else
+      NETWORK_OPTS="--network type=direct,source=${PHYSICAL_NIC},mac=52:54:00:12:34:5${i},source_mode=bridge,model=virtio \
+        --network network=default"
+    fi
+
     # Create VMs
     for i in $(seq 1 "$VM_COUNT"); do
         VM_NAME="${VM_PREFIX}${i}"
@@ -47,8 +55,7 @@ function create_vms() {
                 --os-variant=rhel9.4 \
                 --disk pool=default,size="${DISK_SIZE1}" \
                 --disk pool=default,size="${DISK_SIZE2}" \
-                --network type=direct,source="${PHYSICAL_NIC}",mac="52:54:00:12:34:5${i}",source_mode=bridge,model=virtio \
-                --network network=default \
+                $NETWORK_OPTS \
                 --graphics=vnc \
                 --events on_reboot=restart \
                 --cdrom "$ISO_PATH" \
