@@ -103,7 +103,6 @@ function prepare_dpf_manifests() {
     sed -i "s|password: xxx|password: $NGC_API_KEY|g" "$GENERATED_DIR/ngc-secrets.yaml"
 
     # Update interface configurations
-    sed -i "s|ens7f0np0|$DPU_INTERFACE|g" "$GENERATED_DIR/sriov-policy.yaml"
     sed -i "s|interface: br-ex|interface: $DPU_INTERFACE|g" "$GENERATED_DIR/kamaji-manifests.yaml"
     
     # Only update KAMAJI_VIP if using kamaji cluster type

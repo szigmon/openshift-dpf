@@ -108,7 +108,6 @@ NGC_API_KEY=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET")
 sed -i "s|password: xxx|password: $NGC_API_KEY|g" "$GENERATED_DIR/ngc-secrets.yaml"
 
 # Update interface configurations
-sed -i "s|ens7f0np0|$DPU_INTERFACE|g" "$GENERATED_DIR/sriov-policy.yaml"
 sed -i "s|interface: br-ex|interface: $DPU_INTERFACE|g" "$GENERATED_DIR/kamaji-manifests.yaml"
 sed -i "s|vip: KAMAJI_VIP|vip: $KAMAJI_VIP|g" "$GENERATED_DIR/kamaji-manifests.yaml"
 
