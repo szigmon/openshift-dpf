@@ -5,6 +5,8 @@ HOSTS_FILE="/etc/hosts"
 PING_TIMEOUT=2
 PING_COUNT=1
 
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+
 # Print usage information
 print_usage() {
     echo "Usage: $0 <ip_address> <fqdn> [vm_prefix]"
@@ -72,7 +74,7 @@ find_vm_ip() {
 # Update hosts file entry
 update_hosts_file() {
     local ip=$1
-    local fqdn=$2
+    local fqdn=${HOST_CLUSTER_API}
     local temp_file=$(mktemp)
     local updated=0
 
@@ -106,8 +108,8 @@ update_hosts_file() {
 # Main function
 main() {
     local ip=$1
-    local fqdn=$2
-    local vm_prefix=${3:-""}
+    local fqdn=${}
+    local vm_prefix=${VM_PREFIX}
     local final_ip=$ip
 
     if ! check_ip_reachable "$ip"; then
