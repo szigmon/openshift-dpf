@@ -15,8 +15,10 @@ print_usage() {
 # Check if script is run with sudo/root privileges
 check_root() {
     if [ "$EUID" -ne 0 ]; then
-        echo "Please run with sudo privileges"
-        exit 1
+        echo "This script requires root privileges to modify $HOSTS_FILE"
+        echo "Rerunning with sudo..."
+        exec sudo "$0" "$@"
+        exit 1  # This will only execute if sudo fails
     fi
 }
 
