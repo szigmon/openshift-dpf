@@ -10,7 +10,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/tools.sh"
 
-HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
 ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"ocs-storagecluster-ceph-rbd"}
 
 # -----------------------------------------------------------------------------
