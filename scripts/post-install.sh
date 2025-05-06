@@ -109,6 +109,7 @@ function update_vf_configuration() {
     
     # Update sriov-policy.yaml
     cp "${POST_INSTALL_DIR}/sriov-policy.yaml" "${GENERATED_POST_INSTALL_DIR}/sriov-policy.yaml"
+    sed -i "s|<DPU_INTERFACE>|$DPU_INTERFACE|g" "${GENERATED_POST_INSTALL_DIR}/sriov-policy.yaml"
     sed -i "s|<NUM_VFS>|${NUM_VFS}|g" "${GENERATED_POST_INSTALL_DIR}/sriov-policy.yaml"
     sed -i "s|<NUM_VFS-1>|${vf_range_upper}|g" "${GENERATED_POST_INSTALL_DIR}/sriov-policy.yaml"
     

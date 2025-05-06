@@ -9,7 +9,7 @@ spec:
     deviceID: "a2dc"
     vendor: "15b3"
     pfNames:
-    - ens7f0np0#2-<NUM_VFS-1>
+    - <DPU_INTERFACE>#2-<NUM_VFS-1>
   nodeSelector:
     node-role.kubernetes.io/worker: ""
   numVfs: <NUM_VFS>
