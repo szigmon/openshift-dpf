@@ -103,24 +103,12 @@ function wait_for_secret_with_data() {
 
     log "INFO" "Waiting for secret/$secret_name with valid data for key $key in namespace $namespace..."
 
-    for i in $(seq 1 "$max_attempts"); do
-        # First check if the secret exists
-        if oc get secret -n "$namespace" "$secret_name" &>/dev/null; then
-            # Then check if the data key exists and has content
-            local data=$(oc get secret -n "$namespace" "$secret_name" -o jsonpath="{.data.${key}}" 2>/dev/null)
-            if [ -n "$data" ]; then
-                log "INFO" "Secret $secret_name with valid data for key $key found in namespace $namespace"
-                return 0
-            fi
-            log "INFO" "Secret $secret_name exists but waiting for valid data for key $key (attempt $i/$max_attempts)..."
-        else
-            log "INFO" "Waiting for secret/$secret_name (attempt $i/$max_attempts)..."
-        fi
-        sleep "$delay"
-    done
-
-    log "ERROR" "Timed out waiting for secret/$secret_name with valid data for key $key in namespace $namespace"
-    return 1
+    # Use retry to check for secret data existence
+    retry "$max_attempts" "$delay" bash -c '
+        ns="$1"; secret="$2"; key="$3"
+        data=$(oc get secret -n "$ns" "$secret" -o jsonpath="{.data.${key}}" 2>/dev/null)
+        [ -n "$data" ]
+    ' _ "$namespace" "$secret_name" "$key"
 }
 
 function wait_for_pods() {

@@ -189,31 +189,13 @@ function configure_hypershift() {
     log [INFO] "Generating kubeconfig file for ${HOSTED_CLUSTER_NAME}..."
     local max_attempts=5
     local delay=10
-    local created=false
-    
-    for i in $(seq 1 "$max_attempts"); do
-        if hypershift create kubeconfig --namespace ${CLUSTERS_NAMESPACE} --name ${HOSTED_CLUSTER_NAME} > ${HOSTED_CLUSTER_NAME}.kubeconfig; then
-            # Check if the file actually contains valid kubeconfig data
-            if grep -q "apiVersion: v1" ${HOSTED_CLUSTER_NAME}.kubeconfig && grep -q "kind: Config" ${HOSTED_CLUSTER_NAME}.kubeconfig; then
-                log [INFO] "Successfully created kubeconfig for ${HOSTED_CLUSTER_NAME} on attempt $i"
-                created=true
-                break
-            else
-                log [INFO] "Kubeconfig file was created but appears to be invalid (attempt $i/$max_attempts)"
-                rm -f ${HOSTED_CLUSTER_NAME}.kubeconfig || true
-            fi
-        else
-            log [INFO] "Failed to create kubeconfig on attempt $i/$max_attempts"
-        fi
-        
-        log [INFO] "Retrying kubeconfig creation in $delay seconds..."
-        sleep "$delay"
-    done
-    
-    if [ "$created" = "false" ]; then
-        log [ERROR] "Failed to create valid kubeconfig after $max_attempts attempts"
-        exit 1
-    fi
+    # Use retry to generate a valid kubeconfig file
+    retry "$max_attempts" "$delay" bash -c '
+        ns="$1"; name="$2"
+        hypershift create kubeconfig --namespace "$ns" --name "$name" > "$name.kubeconfig" && \
+        grep -q "apiVersion: v1" "$name.kubeconfig" && \
+        grep -q "kind: Config" "$name.kubeconfig"
+    ' _ "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}"
 
     # Create the admin kubeconfig secret
     oc create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig -n dpf-operator-system \
