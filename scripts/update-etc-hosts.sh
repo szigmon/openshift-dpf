@@ -12,16 +12,6 @@ print_usage() {
     echo "Example with VM prefix: $0 192.168.1.100 myserver.example.com myvm"
 }
 
-# Check if script is run with sudo/root privileges
-check_root() {
-    if [ "$EUID" -ne 0 ]; then
-        echo "This script requires root privileges to modify $HOSTS_FILE"
-        echo "Rerunning with sudo..."
-        exec sudo "$0" "$@"
-        exit 1  # This will only execute if sudo fails
-    fi
-}
-
 # Validate command line arguments
 validate_args() {
     if [ $# -lt 2 ] || [ $# -gt 3 ]; then
@@ -101,11 +91,11 @@ update_hosts_file() {
         printf "%s\t%s\n" "$ip" "$fqdn" >> "$temp_file"
     fi
 
-    # Backup original hosts file
-    cp "$HOSTS_FILE" "${HOSTS_FILE}.bak"
+    # Backup original hosts file (requires sudo)
+    sudo cp "$HOSTS_FILE" "${HOSTS_FILE}.bak"
 
-    # Replace original hosts file
-    cat "$temp_file" > "$HOSTS_FILE"
+    # Replace original hosts file (requires sudo)
+    sudo cp "$temp_file" "$HOSTS_FILE"
     rm "$temp_file"
 
     echo "Updated $HOSTS_FILE (Backup created at ${HOSTS_FILE}.bak)"
@@ -141,6 +131,5 @@ main() {
 }
 
 # Script execution starts here
-check_root
 validate_args "$@"
 main "$@"
