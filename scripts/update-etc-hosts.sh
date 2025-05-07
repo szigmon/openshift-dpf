@@ -14,10 +14,10 @@ print_usage() {
     echo "Example with VM prefix: $0 192.168.1.100 myserver.example.com myvm"
 }
 
-# Validate command line arguments
-validate_args() {
-    if [ $# -lt 2 ] || [ $# -gt 3 ]; then
-        print_usage
+# Check if script is run with sudo/root privileges
+check_root() {
+    if [ "$EUID" -ne 0 ]; then
+        echo "Please run with sudo privileges"
         exit 1
     fi
 }
@@ -74,7 +74,7 @@ find_vm_ip() {
 # Update hosts file entry
 update_hosts_file() {
     local ip=$1
-    local fqdn=${HOST_CLUSTER_API}
+    local fqdn=$2
     local temp_file=$(mktemp)
     local updated=0
 
@@ -108,8 +108,8 @@ update_hosts_file() {
 # Main function
 main() {
     local ip=$1
-    local fqdn=${}
-    local vm_prefix=${VM_PREFIX}
+    local fqdn=${HOST_CLUSTER_API}
+    local vm_prefix="${VM_PREFIX}"
     local final_ip=$ip
 
     if ! check_ip_reachable "$ip"; then
@@ -133,5 +133,5 @@ main() {
 }
 
 # Script execution starts here
-validate_args "$@"
+check_root
 main "$@"
