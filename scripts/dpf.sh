@@ -181,11 +181,21 @@ function configure_hypershift() {
         log [INFO] "Secret ${HOSTED_CLUSTER_NAME}-admin-kubeconfig already exists. Skipping creation."
         return
     fi
-    # Wait for the HostedCluster resource to be created before proceeding
-    wait_for_resource "${CLUSTERS_NAMESPACE}" "secret" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" 60 10
+    
+    # Wait for the HostedCluster resource to create the admin-kubeconfig secret with valid data
+    wait_for_secret_with_data "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" "kubeconfig" 60 10
 
-    # Then create the kubeconfig
-    hypershift create kubeconfig --namespace ${CLUSTERS_NAMESPACE} --name ${HOSTED_CLUSTER_NAME} > ${HOSTED_CLUSTER_NAME}.kubeconfig
+    # Then create the kubeconfig with retries
+    log [INFO] "Generating kubeconfig file for ${HOSTED_CLUSTER_NAME}..."
+    local max_attempts=5
+    local delay=10
+    # Use retry to generate a valid kubeconfig file
+    retry "$max_attempts" "$delay" bash -c '
+        ns="$1"; name="$2"
+        hypershift create kubeconfig --namespace "$ns" --name "$name" > "$name.kubeconfig" && \
+        grep -q "apiVersion: v1" "$name.kubeconfig" && \
+        grep -q "kind: Config" "$name.kubeconfig"
+    ' _ "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}"
 
     # Create the admin kubeconfig secret
     oc create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig -n dpf-operator-system \

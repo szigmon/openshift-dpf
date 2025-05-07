@@ -94,6 +94,23 @@ function wait_for_resource() {
     return 1
 }
 
+function wait_for_secret_with_data() {
+    local namespace=$1
+    local secret_name=$2
+    local key=$3
+    local max_attempts=${4:-30}
+    local delay=${5:-5}
+
+    log "INFO" "Waiting for secret/$secret_name with valid data for key $key in namespace $namespace..."
+
+    # Use retry to check for secret data existence
+    retry "$max_attempts" "$delay" bash -c '
+        ns="$1"; secret="$2"; key="$3"
+        data=$(oc get secret -n "$ns" "$secret" -o jsonpath="{.data.${key}}" 2>/dev/null)
+        [ -n "$data" ]
+    ' _ "$namespace" "$secret_name" "$key"
+}
+
 function wait_for_pods() {
     local namespace=$1
     local label=$2
