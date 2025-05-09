@@ -86,7 +86,7 @@ function delete_vms() {
         if ! virsh destroy ${vm} 2>/dev/null; then
             log "WARNING" "Failed to destroy VM ${vm}, continuing anyway"
         fi
-        if ! virsh undefine ${vm} 2>/dev/null; then
+        if ! virsh undefine ${vm} --remove-all-storage 2>/dev/null; then
             log "WARNING" "Failed to undefine VM ${vm}, continuing anyway"
         fi
     done
