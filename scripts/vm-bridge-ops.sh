@@ -13,35 +13,173 @@
 # Environment variables:
 #        BRIDGE_NAME The name of the bridge to create (default: br0)
 
-# Process command line arguments and environment variables
-
-source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
-FORCE_MODE=false
-CLEANUP_MODE=false
-BRIDGE_NAME=${BRIDGE_NAME:-br0}  # Default to br0 if not set
-
-if [ "$1" = "--force" ]; then
-  FORCE_MODE=true
-  echo "Force mode enabled. All confirmations will be skipped."
-elif [ "$1" = "--cleanup" ]; then
-  CLEANUP_MODE=true
-  echo "Cleanup mode enabled. Bridge configuration will be removed."
-fi
-
-echo "Using bridge name: $BRIDGE_NAME"
-
-# Exit on error
-set -e
-
-# Must run as root
-if [ "$EUID" -ne 0 ]; then
-  echo "This script must be run as root"
-  exit 1
-fi
+#############################
+# Utility Functions
+#############################
 
 # Function to check if a command exists
 command_exists() {
   command -v "$1" >/dev/null 2>&1
+}
+
+# Function to detect the default interface
+detect_default_interface() {
+  local DEFAULT_INTERFACE=$(ip route | grep default | head -n1 | awk '{print $5}')
+  echo "$DEFAULT_INTERFACE"
+}
+
+# Function to safely get IP information for an interface
+get_ip_info() {
+  local INTERFACE="$1"
+  if [ -n "$INTERFACE" ]; then
+    ip -o -4 addr show dev "$INTERFACE" 2>/dev/null | awk '{print $4}' || echo "None"
+  else
+    echo "None"
+  fi
+}
+
+# Function to get gateway information
+get_gateway_info() {
+  ip route | grep default | head -n1 | awk '{print $3}' || echo "None"
+}
+
+# Function to detect network manager type
+detect_network_manager() {
+  if command_exists nmcli && systemctl is-active --quiet NetworkManager; then
+    echo "networkmanager"
+  elif [ -d /etc/netplan ]; then
+    echo "netplan"
+  else
+    echo "unsupported"
+  fi
+}
+
+# Function to handle user confirmation
+confirm_action() {
+  local MESSAGE="$1"
+  local INSTRUCTIONS="$2"
+
+  if [ "$FORCE_MODE" = false ]; then
+    echo "WARNING: $MESSAGE"
+    echo "If you're connected via SSH on this interface, you might lose connectivity."
+    echo "Make sure you have an alternative way to access the system if needed."
+    read -p "Continue? (y/n): " -n 1 -r
+    echo
+
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+      echo "Operation paused before activation."
+      echo "$INSTRUCTIONS"
+      return 1
+    fi
+  fi
+  return 0
+}
+
+#############################
+# Bridge Check Functions
+#############################
+
+# Function to check if bridge already exists and is properly configured
+check_bridge_exists() {
+  local BRIDGE_NAME="$1"
+  local DEFAULT_INTERFACE="$2"
+
+  # Check if the bridge already exists
+  if ip link show dev $BRIDGE_NAME >/dev/null 2>&1; then
+    echo "Bridge $BRIDGE_NAME already exists."
+
+    # First, check if the bridge has an IP address (is functioning)
+    if ip -4 addr show dev $BRIDGE_NAME | grep -q 'inet '; then
+      echo "Bridge $BRIDGE_NAME is up and has an IP address."
+
+      # Check if it's a bridge to our default interface
+      # There are two ways to consider a bridge properly configured:
+      # 1. The default route is through the bridge (bridge became the default interface)
+      # 2. The specific physical interface we want is enslaved to the bridge
+
+      if ip route | grep default | grep -q $BRIDGE_NAME; then
+        echo "Bridge $BRIDGE_NAME is already the default interface. No action needed."
+        echo "You can use bridge=$BRIDGE_NAME in your VM configuration."
+        return 0  # Bridge exists and is properly configured
+      fi
+
+      # Check if our desired interface is enslaved to the bridge
+      if bridge link show | grep -q "$DEFAULT_INTERFACE.*master $BRIDGE_NAME"; then
+        echo "Bridge $BRIDGE_NAME is already configured with $DEFAULT_INTERFACE. No action needed."
+        echo "You can use bridge=$BRIDGE_NAME in your VM configuration."
+        return 0  # Bridge exists and is properly configured
+      fi
+
+      # If we get here, the bridge exists but isn't configured with our interface
+      echo "Bridge exists but is not configured with $DEFAULT_INTERFACE."
+      echo "Consider running with --cleanup first to remove the existing bridge."
+      return 2  # Bridge exists but is not properly configured
+    else
+      echo "Bridge $BRIDGE_NAME exists but doesn't have an IP address."
+      echo "Consider running with --cleanup first to remove the existing bridge."
+      return 2  # Bridge exists but is not properly configured
+    fi
+  fi
+
+  return 1  # Bridge does not exist
+}
+
+#############################
+# NetworkManager Functions
+#############################
+
+# Function to extract physical interface from slave connection name
+extract_interface_from_slave() {
+  local SLAVE_CONNECTION="$1"
+  local BRIDGE_NAME="$2"
+
+  if [ -n "$SLAVE_CONNECTION" ]; then
+    # Extract the interface name from the connection name (format: bridge-slave-INTERFACE-BRIDGE_NAME)
+    local PHYSICAL_INTERFACE=$(echo "$SLAVE_CONNECTION" | sed -E "s/bridge-slave-(.*)-$BRIDGE_NAME/\\1/")
+    echo "$PHYSICAL_INTERFACE"
+  fi
+}
+
+# Function to find a suitable connection for an interface
+find_original_connection() {
+  local INTERFACE="$1"
+
+  if [ -n "$INTERFACE" ]; then
+    # Look for a regular ethernet connection for this interface
+    # Filter out bridge, slave, virbr, docker and other virtual connection types
+    local ORIGINAL_CONN=$(nmcli -g NAME,DEVICE con show |
+                 grep "$INTERFACE" |
+                 grep -v "bridge\|slave\|virbr\|docker\|veth\|tun\|tap" |
+                 head -n1 |
+                 cut -d: -f1)
+    echo "$ORIGINAL_CONN"
+  fi
+}
+
+# Function to restore connectivity to a physical interface
+restore_interface_connectivity() {
+  local INTERFACE="$1"
+
+  if [ -n "$INTERFACE" ]; then
+    local ORIGINAL_CONN=$(find_original_connection "$INTERFACE")
+
+    if [ -n "$ORIGINAL_CONN" ]; then
+      echo "Activating original connection: $ORIGINAL_CONN"
+      nmcli con up "$ORIGINAL_CONN" || true
+      # Give it time to establish
+      sleep 3
+      return 0
+    else
+      echo "No suitable original connection found for $INTERFACE"
+      echo "Creating a temporary DHCP connection to maintain connectivity"
+      nmcli con add type ethernet con-name "temp-$INTERFACE" ifname "$INTERFACE" ipv4.method auto
+      nmcli con up "temp-$INTERFACE" || true
+      # Give it time to establish
+      sleep 3
+      return 0
+    fi
+  fi
+  return 1
 }
 
 # Function to clean up NetworkManager configuration
@@ -55,12 +193,11 @@ cleanup_networkmanager() {
   if [ -n "$SLAVE_CONNECTIONS" ]; then
     # Take the first slave connection if there are multiple
     FIRST_SLAVE=$(echo "$SLAVE_CONNECTIONS" | head -n1)
-    # Extract the interface name from the connection name (format: bridge-slave-INTERFACE-BRIDGE_NAME)
-    PHYSICAL_INTERFACE=$(echo "$FIRST_SLAVE" | sed -E "s/bridge-slave-(.*)-$BRIDGE_NAME/\\1/")
+    # Extract the interface name
+    DEFAULT_INTERFACE=$(extract_interface_from_slave "$FIRST_SLAVE" "$BRIDGE_NAME")
 
-    if [ -n "$PHYSICAL_INTERFACE" ]; then
-      echo "Extracted physical interface from slave connection: $PHYSICAL_INTERFACE"
-      DEFAULT_INTERFACE="$PHYSICAL_INTERFACE"
+    if [ -n "$DEFAULT_INTERFACE" ]; then
+      echo "Extracted physical interface from slave connection: $DEFAULT_INTERFACE"
     fi
   fi
 
@@ -76,29 +213,7 @@ cleanup_networkmanager() {
   fi
 
   # Try to find and activate the original connection for default interface BEFORE removing the bridge
-  if [ -n "$DEFAULT_INTERFACE" ]; then
-    # Look for a regular ethernet connection for this interface
-    # Filter out bridge, slave, virbr, docker and other virtual connection types
-    ORIGINAL_CONN=$(nmcli -g NAME,DEVICE con show |
-                    grep "$DEFAULT_INTERFACE" |
-                    grep -v "bridge\|slave\|virbr\|docker\|veth\|tun\|tap" |
-                    head -n1 |
-                    cut -d: -f1)
-
-    if [ -n "$ORIGINAL_CONN" ]; then
-      echo "Activating original connection: $ORIGINAL_CONN"
-      nmcli con up "$ORIGINAL_CONN" || true
-      # Give it time to establish
-      sleep 3
-    else
-      echo "No suitable original connection found for $DEFAULT_INTERFACE"
-      echo "Creating a temporary DHCP connection to maintain connectivity"
-      nmcli con add type ethernet con-name "temp-$DEFAULT_INTERFACE" ifname "$DEFAULT_INTERFACE" ipv4.method auto
-      nmcli con up "temp-$DEFAULT_INTERFACE" || true
-      # Give it time to establish
-      sleep 3
-    fi
-  fi
+  restore_interface_connectivity "$DEFAULT_INTERFACE"
 
   # Now down and delete all slave connections
   for CONN in $SLAVE_CONNECTIONS; do
@@ -113,40 +228,6 @@ cleanup_networkmanager() {
   nmcli con delete "bridge-$BRIDGE_NAME" 2>/dev/null || true
 
   echo "NetworkManager cleanup complete."
-}
-
-# Function to clean up Netplan configuration
-cleanup_netplan() {
-  echo "Cleaning up Netplan bridge configuration..."
-
-  # First, restore backups if they exist
-  NETPLAN_BACKUPS=$(find /etc/netplan -name "*.yaml.bak")
-  for BACKUP in $NETPLAN_BACKUPS; do
-    ORIGINAL="${BACKUP%.bak}"
-    echo "Restoring $BACKUP to $ORIGINAL"
-    cp "$BACKUP" "$ORIGINAL"
-  done
-
-  # Then apply the restored configuration first to ensure connectivity
-  echo "Applying restored Netplan configuration..."
-  netplan apply
-
-  # Give it time to establish
-  sleep 3
-
-  # Now, remove our bridge configuration file
-  if [ -f "/etc/netplan/99-bridge-$BRIDGE_NAME.yaml" ]; then
-    echo "Removing /etc/netplan/99-bridge-$BRIDGE_NAME.yaml"
-    rm "/etc/netplan/99-bridge-$BRIDGE_NAME.yaml"
-  fi
-
-  # Remove backup files
-  for BACKUP in $NETPLAN_BACKUPS; do
-    echo "Removing backup: $BACKUP"
-    rm "$BACKUP"
-  done
-
-  echo "Netplan cleanup complete."
 }
 
 # Function to configure using NetworkManager
@@ -182,22 +263,13 @@ configure_with_networkmanager() {
 
   echo "NetworkManager configurations created. Ready to activate."
 
-  if [ "$FORCE_MODE" = false ]; then
-    echo "WARNING: The next step will change your network configuration."
-    echo "If you're connected via SSH on this interface, you might lose connectivity."
-    echo "Make sure you have an alternative way to access the system if needed."
-    read -p "Continue? (y/n): " -n 1 -r
-    echo
+  # Ask for confirmation before modifying network
+  INSTRUCTIONS="To activate manually, run:
+  sudo nmcli con up bridge-$BRIDGE_NAME
+  sudo nmcli con down \"$CONN_NAME\"
+  sudo nmcli con up bridge-slave-$DEFAULT_INTERFACE-$BRIDGE_NAME"
 
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      echo "Bridge setup paused before activation."
-      echo "To activate manually, run:"
-      echo "  sudo nmcli con up bridge-$BRIDGE_NAME"
-      echo "  sudo nmcli con down \"$CONN_NAME\""
-      echo "  sudo nmcli con up bridge-slave-$DEFAULT_INTERFACE-$BRIDGE_NAME"
-      exit 0
-    fi
-  fi
+  confirm_action "The next step will change your network configuration." "$INSTRUCTIONS" || exit 0
 
   echo "Activating bridge..."
 
@@ -214,6 +286,44 @@ configure_with_networkmanager() {
   nmcli con up bridge-slave-"$DEFAULT_INTERFACE-$BRIDGE_NAME"
 
   echo "Bridge activation complete."
+}
+
+#############################
+# Netplan Functions
+#############################
+
+# Function to clean up Netplan configuration
+cleanup_netplan() {
+  echo "Cleaning up Netplan bridge configuration..."
+
+  # First, restore backups if they exist
+  NETPLAN_BACKUPS=$(find /etc/netplan -name "*.yaml.bak")
+  for BACKUP in $NETPLAN_BACKUPS; do
+    ORIGINAL="${BACKUP%.bak}"
+    echo "Restoring $BACKUP to $ORIGINAL"
+    cp "$BACKUP" "$ORIGINAL"
+  done
+
+  # Then apply the restored configuration first to ensure connectivity
+  echo "Applying restored Netplan configuration..."
+  netplan apply
+
+  # Give it time to establish
+  sleep 3
+
+  # Now, remove our bridge configuration file
+  if [ -f "/etc/netplan/99-bridge-$BRIDGE_NAME.yaml" ]; then
+    echo "Removing /etc/netplan/99-bridge-$BRIDGE_NAME.yaml"
+    rm "/etc/netplan/99-bridge-$BRIDGE_NAME.yaml"
+  fi
+
+  # Remove backup files
+  for BACKUP in $NETPLAN_BACKUPS; do
+    echo "Removing backup: $BACKUP"
+    rm "$BACKUP"
+  done
+
+  echo "Netplan cleanup complete."
 }
 
 # Function to configure using Netplan
@@ -243,57 +353,65 @@ EOF
 
   echo "Netplan configuration created."
 
-  if [ "$FORCE_MODE" = false ]; then
-    echo "WARNING: The next step will change your network configuration."
-    echo "If you're connected via SSH on this interface, you might lose connectivity."
-    echo "Make sure you have an alternative way to access the system if needed."
-    read -p "Continue with 'netplan try'? (y/n): " -n 1 -r
-    echo
+  # Ask for confirmation before modifying network
+  INSTRUCTIONS="To activate manually, run:
+  sudo netplan try
+  sudo netplan apply"
 
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      echo "Bridge setup paused before activation."
-      echo "To activate manually, run:"
-      echo "  sudo netplan try"
-      echo "  sudo netplan apply"
-      exit 0
-    fi
-  fi
+  confirm_action "The next step will change your network configuration." "$INSTRUCTIONS" || exit 0
 
   echo "Trying new configuration (will automatically revert if not confirmed within 120 seconds)..."
   netplan try
   echo "Configuration applied successfully."
 }
 
-# Main execution flow starts here
-if [ "$CLEANUP_MODE" = true ]; then
+#############################
+# Main Functions
+#############################
+
+# Function to handle cleanup mode
+do_cleanup() {
+  echo "Cleanup mode enabled. Bridge configuration will be removed."
+  echo "Using bridge name: $BRIDGE_NAME"
+
   # Detect the interface with the default route (for reference in cleanup)
-  DEFAULT_INTERFACE=$(ip route | grep default | head -n1 | awk '{print $5}')
+  DEFAULT_INTERFACE=$(detect_default_interface)
 
   if [ -z "$DEFAULT_INTERFACE" ]; then
     echo "Warning: Could not identify the default interface, continuing anyway."
   else
     echo "Default route uses interface: $DEFAULT_INTERFACE"
-    echo "Current IP configuration: $(ip -o -4 addr show dev "$DEFAULT_INTERFACE" | awk '{print $4}'), Gateway: $(ip route | grep default | head -n1 | awk '{print $3}')"
+    echo "Current IP configuration: $(get_ip_info "$DEFAULT_INTERFACE"), Gateway: $(get_gateway_info)"
   fi
 
   # Detect which network manager is in use
-  if command_exists nmcli && systemctl is-active --quiet NetworkManager; then
-    echo "NetworkManager detected"
-    cleanup_networkmanager
-  elif [ -d /etc/netplan ]; then
-    echo "Netplan detected"
-    cleanup_netplan
-  else
-    echo "Error: Unsupported network configuration system"
-    echo "This script only supports NetworkManager and Netplan"
-    exit 1
-  fi
+  NETWORK_MANAGER=$(detect_network_manager)
+
+  case "$NETWORK_MANAGER" in
+    networkmanager)
+      echo "NetworkManager detected"
+      cleanup_networkmanager
+      ;;
+    netplan)
+      echo "Netplan detected"
+      cleanup_netplan
+      ;;
+    *)
+      echo "Error: Unsupported network configuration system"
+      echo "This script only supports NetworkManager and Netplan"
+      exit 1
+      ;;
+  esac
 
   echo "Bridge cleanup complete."
-  exit 0
-else
-  # Normal bridge creation flow - detect the default interface
-  DEFAULT_INTERFACE=$(ip route | grep default | head -n1 | awk '{print $5}')
+}
+
+# Function to handle create mode
+do_create() {
+  echo "Using bridge name: $BRIDGE_NAME"
+
+  # Detect the default interface
+  DEFAULT_INTERFACE=$(detect_default_interface)
 
   if [ -z "$DEFAULT_INTERFACE" ]; then
     echo "Error: Could not identify the default interface"
@@ -301,38 +419,68 @@ else
   fi
 
   echo "Default route uses interface: $DEFAULT_INTERFACE"
-  echo "Current IP configuration: $(ip -o -4 addr show dev "$DEFAULT_INTERFACE" | awk '{print $4}'), Gateway: $(ip route | grep default | head -n1 | awk '{print $3}')"
+  echo "Current IP configuration: $(get_ip_info "$DEFAULT_INTERFACE"), Gateway: $(get_gateway_info)"
+
+  # Check if the bridge already exists
+  check_bridge_exists "$BRIDGE_NAME" "$DEFAULT_INTERFACE"
+  BRIDGE_CHECK_RESULT=$?
+
+  if [ $BRIDGE_CHECK_RESULT -eq 0 ]; then
+    # Bridge exists and is properly configured
+    exit 0
+  elif [ $BRIDGE_CHECK_RESULT -eq 2 ]; then
+    # Bridge exists but is not properly configured
+    exit 1
+  fi
 
   # Detect which network manager is in use
-  USING_NETWORKMANAGER=false
-  USING_NETPLAN=false
+  NETWORK_MANAGER=$(detect_network_manager)
 
-  if command_exists nmcli && systemctl is-active --quiet NetworkManager; then
-    echo "NetworkManager detected"
-    USING_NETWORKMANAGER=true
-  elif [ -d /etc/netplan ]; then
-    echo "Netplan detected"
-    USING_NETPLAN=true
-  else
-    echo "Error: Unsupported network configuration system"
-    echo "This script only supports NetworkManager and Netplan"
-    exit 1
-  fi
-
-  # Create the bridge
-  echo "Creating bridge br0 on interface $DEFAULT_INTERFACE..."
-
-  # Configure based on detected network manager
-  if [ "$USING_NETWORKMANAGER" = true ]; then
-    configure_with_networkmanager
-  elif [ "$USING_NETPLAN" = true ]; then
-    configure_with_netplan
-  else
-    echo "Error: Only NetworkManager and Netplan are supported in this script."
-    echo "Your system appears to be using a legacy network configuration system."
-    exit 1
-  fi
+  case "$NETWORK_MANAGER" in
+    networkmanager)
+      echo "NetworkManager detected"
+      configure_with_networkmanager
+      ;;
+    netplan)
+      echo "Netplan detected"
+      configure_with_netplan
+      ;;
+    *)
+      echo "Error: Unsupported network configuration system"
+      echo "This script only supports NetworkManager and Netplan"
+      exit 1
+      ;;
+  esac
 
   echo "Bridge setup complete."
-  echo "You can now use bridge=br0 in your VM configuration."
+  echo "You can now use bridge=$BRIDGE_NAME in your VM configuration."
+}
+
+#############################
+# Main Script Execution
+#############################
+
+# Process command line arguments and environment variables
+FORCE_MODE=false
+CLEANUP_MODE=false
+BRIDGE_NAME=${BRIDGE_NAME:-br0}  # Default to br0 if not set
+
+if [ "$1" = "--force" ]; then
+  FORCE_MODE=true
+  echo "Force mode enabled. All confirmations will be skipped."
+elif [ "$1" = "--cleanup" ]; then
+  CLEANUP_MODE=true
+fi
+
+# Must run as root
+if [ "$EUID" -ne 0 ]; then
+  echo "This script must be run as root"
+  exit 1
+fi
+
+# Main execution flow starts here
+if [ "$CLEANUP_MODE" = true ]; then
+  do_cleanup
+else
+  do_create
 fi

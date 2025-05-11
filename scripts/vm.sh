@@ -8,9 +8,7 @@ set -e
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 
-# Ensure the bridge is created before creating VMs
-echo "Creating bridge with force mode..."
-"$(dirname "${BASH_SOURCE[0]}")/vm-bridge-ops.sh" --force
+
 
 # Configuration with defaults
 VM_PREFIX=${VM_PREFIX:-"vm-dpf"}
@@ -42,6 +40,10 @@ ISO_PATH="${ISO_FOLDER}/${CLUSTER_NAME}.iso"
 
 function create_vms() {
     log "Creating VMs with prefix $VM_PREFIX..."
+
+    # Ensure the bridge is created before creating VMs
+    echo "Creating bridge with force mode..."
+    "$(dirname "${BASH_SOURCE[0]}")/vm-bridge-ops.sh" --force
 
     # Create VMs
     for i in $(seq 1 "$VM_COUNT"); do
