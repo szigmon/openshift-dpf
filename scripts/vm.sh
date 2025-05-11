@@ -41,9 +41,13 @@ ISO_PATH="${ISO_FOLDER}/${CLUSTER_NAME}.iso"
 function create_vms() {
     log "Creating VMs with prefix $VM_PREFIX..."
 
-    # Ensure the bridge is created before creating VMs
-    echo "Creating bridge with force mode..."
-    "$(dirname "${BASH_SOURCE[0]}")/vm-bridge-ops.sh" --force
+    if [ "$SKIP_BRIDGE_CONFIG" != "true" ]; then
+        # Ensure the bridge is created before creating VMs
+        echo "Creating bridge with force mode..."
+        "$(dirname "${BASH_SOURCE[0]}")/vm-bridge-ops.sh" --force
+    else
+        echo "Skipping bridge creation as SKIP_BRIDGE_CONFIG is set to true."
+    fi
 
     # Create VMs
     for i in $(seq 1 "$VM_COUNT"); do
