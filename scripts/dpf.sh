@@ -149,6 +149,7 @@ function deploy_hypershift() {
           --ssh-key="${SSH_KEY}" \
           --network-type=Other \
           --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
+          --node-selector='node-role.kubernetes.io/master=""' \
           --node-upgrade-type=Replace \
           --disable-cluster-capabilities=ImageRegistry \
           --pull-secret="${OPENSHIFT_PULL_SECRET}"
@@ -217,7 +218,7 @@ function apply_remaining() {
               "$file" != "$GENERATED_DIR/cert-manager-manifests.yaml" && \
               "$file" != "$GENERATED_DIR/kamaji-manifests.yaml" && \
               "$file" != "$GENERATED_DIR/scc.yaml" ]]; then
-            retry 5 30 apply_manifest "$file"
+            retry 5 30 apply_manifest "$file" true
             if [[ "$file" =~ .*operator.*\.yaml$ ]]; then
                 log [INFO] "Waiting for operator resources..."
                 sleep 10
