@@ -8,6 +8,10 @@ set -e
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 
+# Ensure the bridge is created before creating VMs
+echo "Creating bridge with force mode..."
+"$(dirname "${BASH_SOURCE[0]}")/vm-bridge-ops.sh" --force
+
 # Configuration with defaults
 VM_PREFIX=${VM_PREFIX:-"vm-dpf"}
 VM_COUNT=${VM_COUNT:-3}
@@ -15,6 +19,7 @@ VM_COUNT=${VM_COUNT:-3}
 # Get the default physical NIC
 PHYSICAL_NIC=${PHYSICAL_NIC:-$(ip route | awk '/default/ {print $5; exit}')}
 API_VIP=${API_VIP}
+BRIDGE_NAME=${BRIDGE_NAME:-br0}
 RAM=${RAM:-16384}  # Memory in MB
 VCPUS=${VCPUS:-8}   # Number of virtual CPUs
 DISK_SIZE1=${DISK_SIZE1:-120}  # Size of first disk
@@ -47,7 +52,7 @@ function create_vms() {
                 --os-variant=rhel9.4 \
                 --disk pool=default,size="${DISK_SIZE1}" \
                 --disk pool=default,size="${DISK_SIZE2}" \
-                --network type=direct,source="${PHYSICAL_NIC}",mac="52:54:00:12:34:5${i}",source_mode=bridge,model=virtio \
+                --network bridge=${BRIDGE_NAME},mac="52:54:00:12:34:5${i}",model=e1000e \
                 --network network=default \
                 --graphics=vnc \
                 --events on_reboot=restart \
