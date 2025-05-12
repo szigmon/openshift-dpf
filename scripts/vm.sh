@@ -59,7 +59,6 @@ function create_vms() {
                 --disk pool=default,size="${DISK_SIZE1}" \
                 --disk pool=default,size="${DISK_SIZE2}" \
                 --network bridge=${BRIDGE_NAME},mac="52:54:00:12:34:5${i}",model=e1000e \
-                --network network=default \
                 --graphics=vnc \
                 --events on_reboot=restart \
                 --cdrom "$ISO_PATH" \
