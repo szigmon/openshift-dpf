@@ -84,7 +84,7 @@ prepare_dpf_manifests() {
         fi
     done
 
-    helm template -n dpf-operator-system dpf-operator oci://ghcr.io/nvidia/dpf-operator /
+    helm template -n dpf-operator-system dpf-operator oci://ghcr.io/nvidia/dpf-operator \
     --version v25.1.1 -f "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"  > "${GENERATED_DIR}/00-dpf-operator-manifests.yaml"
     log "INFO" "DPF manifest preparation completed successfully"
 }
@@ -98,6 +98,9 @@ fi
 # Update manifests with configuration
 sed -i "s|storageClassName: lvms-vg1|storageClassName: $ETCD_STORAGE_CLASS|g" "$GENERATED_DIR/kamaji-manifests.yaml"
 sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
+
+sed -i "s|NFS_STORAGE_CLASS|storageClassName: \"$ETCD_STORAGE_CLASS\"|g" "$GENERATED_DIR/nfs-pvc.yaml"
+
 
 # Update static DPU cluster template
 sed -i "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"

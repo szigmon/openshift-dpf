@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nfs-server
+---
+apiVersion: cache.jhouse.com/v1alpha1
+kind: NFSProvisioner
+metadata:
+  name: cluster-nfs-server
+  namespace: nfs-server
+spec:
+  # Use the LVMS storage class for the NFS server's PVC
+  scForNFSPvc: NFS_STORAGE_CLASS
+  # Set the storage size
+  storageSize: 10Gi
+  # Set the storage class that this NFS provisioner will create
+  scForNFS: nfs-client
+
+---
+# Expose the NFS server service via NodePort
+apiVersion: v1
+kind: Service
+metadata:
+  name: nfs-server-external
+  namespace: nfs-server
+  labels:
+    app: nfs-server
+spec:
+  type: NodePort
+  ports:
+    - name: nfs
+      port: 2049
+      targetPort: 2049
+      nodePort: 30049
+      protocol: TCP
+    - name: mountd
+      port: 20048
+      targetPort: 20048
+      nodePort: 30048
+      protocol: TCP
+    - name: rpcbind-tcp
+      port: 111
+      targetPort: 111
+      nodePort: 30111
+      protocol: TCP
+  selector:
+    # This should match the selector used by the NFSProvisioner operator
+    # The typical label applied by the operator would be:
+    app.kubernetes.io/name: nfs-server
