@@ -33,7 +33,7 @@ MANIFESTS_DIR=${MANIFESTS_DIR:-"manifests"}
 GENERATED_DIR=${GENERATED_DIR:-"$MANIFESTS_DIR/generated"}
 POST_INSTALL_DIR="${MANIFESTS_DIR}/post-installation"
 GENERATED_POST_INSTALL_DIR="${GENERATED_DIR}/post-install"
-HELM_CHARTS_DIR=${HELM_CHARTS_DIR:-"helm-charts-values"}
+HELM_CHARTS_DIR=${HELM_CHARTS_DIR:-"$MANIFESTS_DIR/helm-charts-values"}
 
 # BFB Configuration
 BFB_URL=${BFB_URL:-"http://10.8.2.236/bfb/rhcos_4.19.0-ec.4_installer_2025-04-23_07-48-42.bfb"}

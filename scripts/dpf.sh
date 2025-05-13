@@ -249,12 +249,6 @@ function apply_dpf() {
     apply_namespaces
     apply_crds
     deploy_cert_manager
-
-    helm install dpf-operator oci://ghcr.io/nvidia/dpf-operator \
-      --version v25.1.1 \
-      -n dpf-operator-system \
-      -f ${HELM_CHARTS_DIR}/hbn_ovn_values.yaml
-
     apply_remaining
     apply_scc
     deploy_hosted_cluster

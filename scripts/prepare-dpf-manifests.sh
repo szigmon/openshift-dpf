@@ -83,7 +83,9 @@ prepare_dpf_manifests() {
             log "DEBUG" "Manifest processed: ${filename} -> ${GENERATED_DIR}/${filename}"
         fi
     done
-    
+
+    helm template -n dpf-operator-system dpf-operator oci://ghcr.io/nvidia/dpf-operator /
+    --version v25.1.1 -f "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"  > "${GENERATED_DIR}/00-dpf-operator-manifests.yaml"
     log "INFO" "DPF manifest preparation completed successfully"
 }
 
