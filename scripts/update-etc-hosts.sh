@@ -36,9 +36,41 @@ get_matching_vms() {
 }
 
 # Get IP address for a specific VM
+# Get IP address for a specific VM
 get_vm_ip() {
     local vm_name=$1
-    virsh domifaddr "$vm_name" 2>/dev/null | grep -v "^$" | tail -n +3 | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -1
+    local vm_mac
+    local vm_ip
+
+    # Try to get the IP using virsh domifaddr
+    vm_ip=$(virsh domifaddr "$vm_name" 2>/dev/null | grep -v "^$" | tail -n +3 | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -1)
+
+    if [ -n "$vm_ip" ]; then
+        echo "$vm_ip"
+        return 0
+    fi
+
+    # Fallback: Get the MAC address of the VM
+    vm_mac=$(virsh domiflist "$vm_name" 2>/dev/null | tail -n +3 | awk '{print $5}' | head -n 1)
+
+    if [ -z "$vm_mac" ]; then
+        echo "Error: Could not retrieve MAC address for VM: $vm_name" >&2
+        return 1
+    fi
+
+    # Use arp or ip neigh to find the IP address based on the MAC address
+    vm_ip=$(arp -an | grep "$vm_mac" | awk '{print $2}' | tr -d '()')
+    if [ -z "$vm_ip" ]; then
+        vm_ip=$(ip neigh | grep "$vm_mac" | awk '{print $1}')
+    fi
+
+    if [ -n "$vm_ip" ]; then
+        echo "$vm_ip"
+        return 0
+    else
+        echo "Error: Could not find IP address for VM: $vm_name" >&2
+        return 1
+    fi
 }
 
 # Find IP address for any VM matching prefix
