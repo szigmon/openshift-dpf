@@ -93,8 +93,6 @@ function prepare_dpf_manifests() {
         | xargs -I {} cp {} "$GENERATED_DIR/"
 
     # Update manifests with configuration
-    sed -i "s|value: api.CLUSTER_FQDN|value: $HOST_CLUSTER_API|g" "$GENERATED_DIR/dpf-operator-manifests.yaml"
-    sed -i "s|storageClassName: lvms-vg1|storageClassName: $ETCD_STORAGE_CLASS|g" "$GENERATED_DIR/dpf-operator-manifests.yaml"
     sed -i "s|storageClassName: lvms-vg1|storageClassName: $ETCD_STORAGE_CLASS|g" "$GENERATED_DIR/kamaji-manifests.yaml"
     sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
 
@@ -112,7 +110,7 @@ function prepare_dpf_manifests() {
 
     # Update pull secret
     local PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64 -w 0)
-    sed -i "s|.dockerconfigjson: = xxx|.dockerconfigjson: $PULL_SECRET|g" "$GENERATED_DIR/dpf-operator-manifests.yaml"
+    sed -i "s|.dockerconfigjson: = xxx|.dockerconfigjson: $PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
 
     log [INFO] "DPF manifests prepared successfully."
 }

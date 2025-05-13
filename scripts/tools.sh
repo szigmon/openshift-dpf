@@ -12,26 +12,26 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 # -----------------------------------------------------------------------------
 function ensure_helm_installed() {
     if ! command -v helm &> /dev/null; then
-        log "Helm not found. Installing helm..."
+        log "INFO" "Helm not found. Installing helm..."
         install_helm
     else
-        log "Helm is already installed. Version: $(helm version --short)"
+        log "INFO" "Helm is already installed. Version: $(helm version --short)"
     fi
 }
 
 function install_helm() {
-    log "Installing Helm $(if [ -n "$HELM_VERSION" ]; then echo $HELM_VERSION; else echo "latest"; fi)..."
+    log "INFO" "Installing Helm $(if [ -n "$HELM_VERSION" ]; then echo $HELM_VERSION; else echo "latest"; fi)..."
     
     curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
     chmod 700 get_helm.sh
     DESIRED_VERSION=$HELM_VERSION ./get_helm.sh
     rm get_helm.sh
 
-    log "Helm installation complete. Installed version: $(helm version --short)"
+    log "INFO" "Helm installation complete. Installed version: $(helm version --short)"
 }
 
 function install_hypershift() {
-    log "Installing Hypershift binary and operator..."
+    log "INFO" "Installing Hypershift binary and operator..."
 
     # Create a temporary container and copy the hypershift binary
     CONTAINER_COMMAND=${CONTAINER_COMMAND:-podman}
@@ -46,10 +46,25 @@ function install_hypershift() {
     KUBECONFIG=$KUBECONFIG hypershift install --hypershift-image $HYPERSHIFT_IMAGE
 
     # Check the Hypershift operator status
-    log "Checking Hypershift operator status..."
+    log "INFO" "Checking Hypershift operator status..."
     KUBECONFIG=$KUBECONFIG oc -n hypershift get pods
 
-    log "Hypershift installation completed successfully!"
+    log "INFO" "Hypershift installation completed successfully!"
+}
+
+function install_oc() {
+    # Download the OpenShift CLI
+    log "INFO" "Downloading OpenShift CLI..."
+    wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz
+
+    # Extract the archive
+    tar -xzf openshift-client-linux.tar.gz
+
+    # Move the oc binary to a directory in your PATH
+    sudo mv oc /usr/local/bin/
+
+    # Verify the installation
+    oc version
 }
 
 # -----------------------------------------------------------------------------
