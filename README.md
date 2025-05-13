@@ -169,3 +169,5 @@ This project is licensed under the Apache License 2.0 - see the LICENSE file for
 
 ## Support
 For issues and feature requests, please open an issue in the GitHub repository.
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/szigmon/openshift-dpf)
