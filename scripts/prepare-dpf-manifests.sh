@@ -94,8 +94,6 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 
 # Update manifests with configuration
-sed -i "s|value: api.CLUSTER_FQDN|value: $HOST_CLUSTER_API|g" "$GENERATED_DIR/dpf-operator-manifests.yaml"
-sed -i "s|storageClassName: lvms-vg1|storageClassName: $ETCD_STORAGE_CLASS|g" "$GENERATED_DIR/dpf-operator-manifests.yaml"
 sed -i "s|storageClassName: lvms-vg1|storageClassName: $ETCD_STORAGE_CLASS|g" "$GENERATED_DIR/kamaji-manifests.yaml"
 sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
 
@@ -113,6 +111,6 @@ sed -i "s|vip: KAMAJI_VIP|vip: $KAMAJI_VIP|g" "$GENERATED_DIR/kamaji-manifests.y
 
 # Update pull secret
 PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64 -w 0)
-sed -i "s|PULL_SECRET_BASE64|$PULL_SECRET|g" "$GENERATED_DIR/dpf-operator-manifests.yaml"
+sed -i "s|PULL_SECRET_BASE64|$PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
 
 echo "DPF manifests prepared successfully." 

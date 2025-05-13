@@ -179,23 +179,24 @@ function configure_hypershift() {
 
     if oc get secret -n dpf-operator-system "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" &>/dev/null; then
         log [INFO] "Secret ${HOSTED_CLUSTER_NAME}-admin-kubeconfig already exists. Skipping creation."
-        return
+    else
+      # Wait for the HostedCluster resource to create the admin-kubeconfig secret with valid data
+          wait_for_secret_with_data "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" "kubeconfig" 60 10
+
+          # Then create the kubeconfig with retries
+          log [INFO] "Generating kubeconfig file for ${HOSTED_CLUSTER_NAME}..."
+          local max_attempts=5
+          local delay=10
+          # Use retry to generate a valid kubeconfig file
+          retry "$max_attempts" "$delay" bash -c '
+              ns="$1"; name="$2"
+              hypershift create kubeconfig --namespace "$ns" --name "$name" > "$name.kubeconfig" && \
+              grep -q "apiVersion: v1" "$name.kubeconfig" && \
+              grep -q "kind: Config" "$name.kubeconfig"
+          ' _ "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}"
+
     fi
     
-    # Wait for the HostedCluster resource to create the admin-kubeconfig secret with valid data
-    wait_for_secret_with_data "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" "kubeconfig" 60 10
-
-    # Then create the kubeconfig with retries
-    log [INFO] "Generating kubeconfig file for ${HOSTED_CLUSTER_NAME}..."
-    local max_attempts=5
-    local delay=10
-    # Use retry to generate a valid kubeconfig file
-    retry "$max_attempts" "$delay" bash -c '
-        ns="$1"; name="$2"
-        hypershift create kubeconfig --namespace "$ns" --name "$name" > "$name.kubeconfig" && \
-        grep -q "apiVersion: v1" "$name.kubeconfig" && \
-        grep -q "kind: Config" "$name.kubeconfig"
-    ' _ "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}"
 
     # Create the admin kubeconfig secret
     oc create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig -n dpf-operator-system \
@@ -248,6 +249,12 @@ function apply_dpf() {
     apply_namespaces
     apply_crds
     deploy_cert_manager
+
+    helm install dpf-operator oci://ghcr.io/nvidia/dpf-operator \
+      --version v25.1.1 \
+      -n dpf-operator-system \
+      -f ${HELM_CHARTS_DIR}/hbn_ovn_values.yaml
+
     apply_remaining
     apply_scc
     deploy_hosted_cluster
