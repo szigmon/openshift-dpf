@@ -410,7 +410,7 @@ The DMS pod logs provide detailed step-by-step information about the provisionin
 
 ## Monitoring and Verification
 
-### 1. Monitor Provisioning Progress
+### 9. Monitor Provisioning Progress
 
 Track the provisioning process in real-time using several methods:
 
@@ -445,7 +445,7 @@ The DPUs will transition through these states:
 
 When a DPU is fully provisioned, its status will show `READY: True` and `PHASE: Ready`.
 
-### 2. Approve CSRs from Hosted Cluster
+### 10. Approve CSRs from Hosted Cluster
 
 After DPUs register with the Hypershift hosted control plane, you need to approve their certificate signing requests (CSRs) in the hosted cluster. First, get the kubeconfig from the Hypershift secret:
 
@@ -472,7 +472,7 @@ oc get nodes
 
 The DPUs should appear as worker nodes with `Ready` status in the hosted cluster.
 
-### 3. Verify DPU Status
+### 11. Verify DPU Status
 
 Confirm that your DPUs have been successfully provisioned:
 
@@ -496,9 +496,9 @@ A successfully provisioned DPU will show:
 - All specified interfaces configured
 - Connection to the host established
 
-### 4. Verify Virtual Function Allocation
+### 12. Verify Virtual Function Allocation
 
-After successful DPU provisioning, verify that Virtual Functions (VFs) have been properly allocated on worker nodes:
+Verify that Virtual Functions (VFs) have been properly allocated on worker nodes:
 
 ```bash
 # Check worker node details for VF allocation
@@ -521,7 +521,7 @@ The `openshift.io/bf3-p0-vfs` entry indicates how many VFs are allocated for the
 
 These VFs are created on the worker nodes in the management cluster, while VF representors are created on the DPU. Together they enable the offload capabilities of the DPU.
 
-### 5. Verify Node Labels
+### 13. Verify Node Labels
 
 Confirm that the DPU detector and NFD have properly labeled the nodes:
 
@@ -538,7 +538,7 @@ feature.node.kubernetes.io/dpu-enabled: "true"
 k8s.ovn.org/dpu-host: ""
 ```
 
-### 6. Verify DPU Integration with Hypershift
+### 14. Verify DPU Integration with Hypershift
 
 Confirm that the DPUs are integrated with the Hypershift hosted environment:
 
@@ -550,7 +550,7 @@ oc get network-attachment-definitions -A
 oc get pods -n dpf-operator-system | grep hosted-connection
 ```
 
-### 7. Verify OVN Components and DPU Services
+### 15. Verify OVN Components and DPU Services
 
 After DPU provisioning, specific OVN components should be running:
 
@@ -597,7 +597,7 @@ sriov-device-plugin          True    Success   6h
 
 These services are deployed to the hosted cluster (running on the DPUs) via ArgoCD after provisioning. Each service provides specific functionality required for DPU operation and network offload.
 
-### 8. Verify DPU Services
+### 16. Verify DPU Services
 
 Check that basic DPU services are running:
 

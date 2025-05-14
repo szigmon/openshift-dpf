@@ -60,4 +60,4 @@ This guide covers common issues and solutions for deploying DPF and DOCA on Open
 
 ---
 
-For further help, see the [FAQ](faq.md) or reach out via the project resources.
+[Next: FAQ](faq.md)

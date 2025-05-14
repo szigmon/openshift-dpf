@@ -1,88 +1,141 @@
-# Full Installation Guide: DPF & DOCA on OpenShift
+# Complete Deployment Path: End-to-End Installation
 
-This guide walks you through the complete process of deploying NVIDIA DPF and DOCA services on OpenShift, from bare metal to running workloads, using the provided automation.
+This guide provides a comprehensive, step-by-step process for deploying NVIDIA DPF with DOCA services on OpenShift, starting from bare hardware setup through to running production workloads.
 
----
+## Deployment Overview
 
-## 1. Prerequisites
-- Review [prerequisites.md](prerequisites.md) for hardware, software, and network requirements.
-- Ensure you have:
-  - Access to the lab hardware (hypervisor, OCP worker nodes, DPUs, switches)
-  - OpenShift CLI (`oc`), `hypershift`, and other required tools installed
-  - Sufficient permissions (sudo/root for some steps)
-  - Pull secrets and SSH keys as needed
+The complete deployment process follows these stages:
 
-## 2. (Optional) Install OpenShift Cluster
-- If you already have a compatible OpenShift cluster, skip to the next step.
-- Otherwise, follow your organization's standard procedure or see [cluster-install.md](cluster-install.md) for guidance.
+1. **Environment Preparation** - Hardware setup, network configuration, prerequisites
+2. **OpenShift Cluster Installation** - Deploying the base OpenShift platform
+3. **DPF Operator Deployment** - Installing and configuring the DPF Operator 
+4. **DPU Provisioning** - Adding and provisioning BlueField DPUs
+5. **DOCA Services Deployment** - Deploying and validating DOCA services
+6. **Validation and Testing** - Ensuring functionality and performance
 
-## 3. Prepare the Environment
-- Clone this repository:
-  ```bash
-  git clone <your-repo-url>
-  cd openshift-dpf
-  ```
-- Copy and edit the `env.sh` file with your environment details (cluster name, domains, secrets, etc).
-- Source the environment:
-  ```bash
-  source scripts/env.sh
-  ```
+![Deployment Workflow](assets/deployment-workflow.png)
 
-## 4. Generate Manifests
-- Prepare manifests for your deployment:
-  ```bash
-  make prepare-dpf-manifests
-  # or run scripts/prepare-dpf-manifests.sh directly
-  ```
+## Automated Deployment
 
-## 5. Install DPF Operator and Dependencies
-- Deploy the DPF operator and all required CRDs, namespaces, and dependencies:
-  ```bash
-  make apply-dpf
-  # This will:
-  # - Apply namespaces
-  # - Apply CRDs
-  # - Deploy cert-manager
-  # - Deploy DPF operator
-  # - Deploy NFD (unless disabled)
-  # - Apply SCCs
-  # - Deploy the hosted cluster (Hypershift or Kamaji)
-  ```
-- For advanced/stepwise install, see [dpf-operator.md](dpf-operator.md).
+For standard deployments, use the provided automation:
 
-## 6. Provision DPUs
-- Provision DPUs using the automation:
-  ```bash
-  make provision-dpu
-  # or run scripts/provision-dpu.sh directly (if available)
-  ```
-- For details and manual steps, see [dpu-provisioning.md](dpu-provisioning.md).
+```bash
+# Clone the repository
+git clone https://github.com/szigmon/openshift-dpf.git
+cd openshift-dpf
 
-## 7. Deploy DOCA Services
-- Deploy DOCA services on the hosted cluster:
-  ```bash
-  make deploy-doca
-  # or run scripts/deploy-doca.sh directly (if available)
-  ```
-- For details, see [doca-services.md](doca-services.md).
+# Configure environment variables
+cp .env.example .env
+vim .env  # Edit parameters as needed
 
-## 8. Verification
-- Check that all pods are running:
-  ```bash
-  oc get pods -A
-  # Check for DPF, DOCA, and related pods in their namespaces
-  ```
-- Verify DPU status and DOCA service health as described in the [verification section](doca-services.md#verification).
+# Place required pull secrets
+# - OpenShift pull secret (openshift_pull.json)
+# - DPF pull secret (pull-secret.txt)
 
-## 9. Troubleshooting
-- If you encounter issues, see [troubleshooting.md](troubleshooting.md) for common problems and solutions.
+# Run complete installation
+make all
+```
 
-## 10. Additional Resources
-- [NVIDIA DPF on OpenShift Blog](https://developers.redhat.com/articles/2025/03/20/dpu-enabled-networking-openshift-and-nvidia-dpf)
-- MCP Servers:
-  - doca-platform Docs: https://gitmcp.io/NVIDIA/doca-platform
-  - Deepwiki: https://deepwiki.com/szigmon/openshift-dpf
+The `make all` target performs the entire deployment sequence. Progress can be monitored in the terminal output.
 
----
+## Manual Step-by-Step Deployment
 
-For modular, building-block instructions, see the other docs in this folder.
+For environments requiring more control or customization, follow these individual steps:
+
+### 1. Environment Preparation
+
+Verify that all [prerequisites](prerequisites.md) are met:
+
+```bash
+# Verify tool installation
+oc version
+aicli --version
+helm version
+go version
+jq --version
+virsh --version
+
+# Configure Red Hat access
+# Create token at https://cloud.redhat.com/openshift/token
+mkdir -p ~/.aicli
+echo "your-offline-token" > ~/.aicli/offlinetoken.txt
+
+# Verify Red Hat access
+aicli list clusters
+```
+
+### 2. OpenShift Cluster Installation
+
+Deploy a new OpenShift cluster:
+
+```bash
+# Install OpenShift with automation
+make create-cluster cluster-install
+
+# Verify installation
+oc get nodes
+oc get co
+```
+
+For detailed steps and customization options, see the [Cluster Creation Guide](cluster-creation.md).
+
+### 3. DPF Operator Deployment
+
+Install and configure the DPF Operator:
+
+```bash
+# Deploy DPF Operator
+make deploy-dpf
+
+# Verify installation
+oc get pods -n dpf-operator-system
+```
+
+For detailed operator configuration options, see the [DPF Operator Guide](dpf-operator.md).
+
+### 4. DPU Provisioning
+
+Prepare and provision DPUs:
+
+```bash
+# Upload BFB image
+make upload-bfb-image
+
+# Provision DPUs
+make provision-dpus
+
+# Verify provisioning
+oc get dpucluster -n dpf-operator-system
+```
+
+For detailed DPU provisioning steps, see the [DPU Provisioning Guide](dpu-provisioning.md).
+
+### 5. DOCA Services Deployment
+
+Deploy and configure DOCA services:
+
+```bash
+# Deploy DOCA services
+make deploy-doca-services
+
+# Verify services
+oc get pods -n doca-services
+```
+
+For detailed service deployment options, see the [DOCA Services Guide](doca-services.md).
+
+### 6. Validation and Testing
+
+Validate the deployment:
+
+```bash
+# Run validation tests
+make run-validation-tests
+```
+
+For performance testing methodologies and benchmarking, see the [Performance Benchmarking](benchmarking.md) page, which includes reference to the NVIDIA RDG performance testing guidelines.
+
+## Next Steps
+
+- [Troubleshooting Guide](troubleshooting.md) - Common issues and resolution steps
+- [Performance Benchmarking](benchmarking.md) - Performance testing and optimization

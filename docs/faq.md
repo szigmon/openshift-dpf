@@ -18,7 +18,7 @@ A: Yes. Each major step (DPF install, DPU provisioning, DOCA deployment) can be 
 A: Use `oc get dpu -A` and `oc get nodes` to verify DPU status and node registration.
 
 **Q: Where can I find more detailed documentation or support?**
-A: See the [Resources](index.md#resources) section for links to MCP servers, the official blog, and deepwiki. For advanced help, consult the official DOCA and DPF documentation.
+A: See the [Resources](resources.md) section for links to official documentation and support. For advanced help, consult the official DOCA and DPF documentation.
 
 **Q: What if I need to customize the manifests or automation?**
 A: You can edit the generated manifests in the `generated/` directory or modify the scripts as needed. Review the README and comments in each script for guidance.
@@ -27,5 +27,7 @@ A: You can edit the generated manifests in the `generated/` directory or modify 
 A: Open an issue or pull request in the GitHub repository, or reach out via the project's support channels.
 
 ---
+
+[Next: Resources](resources.md)
 
 For more help, see the [Troubleshooting Guide](troubleshooting.md) or the [Full Installation Guide](full-installation.md).
