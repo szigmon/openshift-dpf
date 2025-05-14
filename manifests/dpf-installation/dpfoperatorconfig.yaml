@@ -22,7 +22,7 @@ spec:
   provisioningController:
     bfCFGTemplateConfigMap: custom-bfb.cfg
     bfbPVCName: bfb-pvc
-    dmsTimeout: 900
+    dmsTimeout: 1800
   sfcController:
     helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.2
   staticClusterManager:
