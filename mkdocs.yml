@@ -1,0 +1,61 @@
+site_name: NVIDIA DPF on OpenShift
+
+# Use Material for MkDocs theme
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.top
+    - navigation.sections
+    - content.code.annotate
+    - content.tabs.link
+    - content.action.edit
+  palette:
+    - scheme: default
+      primary: blue
+      accent: light blue
+  logo: assets/logo.png  # (optional, replace with your logo if available)
+  favicon: assets/favicon.ico  # (optional, replace with your favicon if available)
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - pymdownx.details
+  - pymdownx.emoji
+  - pymdownx.tasklist
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+
+plugins:
+  - search
+  - mermaid2
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Introduction & Architecture: introduction.md
+    - Prerequisites & Planning: prerequisites.md
+  - Installation Paths:
+    - Complete Deployment: full-installation.md
+    - OpenShift Cluster Creation: cluster-creation.md
+    - DPF Operator Installation: dpf-operator.md
+    - DPU Provisioning: dpu-provisioning.md
+    - DOCA Services Deployment: doca-services.md
+  - Configuration:
+    - BFB Image Management: bfb-image.md
+  - Operations:
+    - Benchmarking: benchmarking.md
+    - Troubleshooting: troubleshooting.md
+  - Reference:
+    - Automation Reference: automation-reference.md
+  - Resources:
+    - FAQ: faq.md
+    - Additional Resources: resources.md
+
+docs_dir: docs
