@@ -1,0 +1,26 @@
+[build]
+  # Base directory
+  base = ""
+  # Command to build the site
+  command = "pip install mkdocs mkdocs-material mkdocs-mermaid2-plugin && mkdocs build"
+  # Directory where the built site is stored
+  publish = "site"
+
+# Production context: environment variables used during production builds
+[context.production.environment]
+  PYTHON_VERSION = "3.9"
+
+# Deploy specific branch
+[context.docs-update-doca-services]
+  command = "pip install mkdocs mkdocs-material mkdocs-mermaid2-plugin && mkdocs build"
+
+# Branch deployment context environment variables
+[context.branch-deploy]
+  command = "pip install mkdocs mkdocs-material mkdocs-mermaid2-plugin && mkdocs build"
+
+# Redirect domain to non-www version
+[[redirects]]
+  from = "https://www.openshift-dpf.netlify.app/*"
+  to = "https://openshift-dpf.netlify.app/:splat"
+  status = 301
+  force = true 
