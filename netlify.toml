@@ -1,8 +1,8 @@
 [build]
   # Base directory
   base = ""
-  # Command to build the site
-  command = "pip install mkdocs mkdocs-material mkdocs-mermaid2-plugin && mkdocs build"
+  # Command to build the site - explicitly use python -m for commands
+  command = "pip install mkdocs mkdocs-material mkdocs-mermaid2-plugin && python -m mkdocs build"
   # Directory where the built site is stored
   publish = "site"
 
@@ -12,11 +12,11 @@
 
 # Deploy specific branch
 [context.docs-update-doca-services]
-  command = "pip install mkdocs mkdocs-material mkdocs-mermaid2-plugin && mkdocs build"
+  command = "pip install mkdocs mkdocs-material mkdocs-mermaid2-plugin && python -m mkdocs build"
 
 # Branch deployment context environment variables
 [context.branch-deploy]
-  command = "pip install mkdocs mkdocs-material mkdocs-mermaid2-plugin && mkdocs build"
+  command = "pip install mkdocs mkdocs-material mkdocs-mermaid2-plugin && python -m mkdocs build"
 
 # Redirect domain to non-www version
 [[redirects]]
