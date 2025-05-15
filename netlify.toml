@@ -28,14 +28,14 @@
 # Fix for Getting Started navigation
 [[redirects]]
   from = "/introduction"
-  to = "/introduction/"
+  to = "/introduction.html"
   status = 301
   force = true
 
 # Fix for Reference navigation
 [[redirects]]
   from = "/automation-reference"
-  to = "/automation-reference/"
+  to = "/automation-reference.html"
   status = 301
   force = true
 

@@ -7,8 +7,8 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log(`Found ${mdLinks.length} links with .md extension`);
   
   mdLinks.forEach(link => {
-    // Remove the .md extension
-    link.href = link.href.replace('.md', '/');
+    // Replace .md with .html extension
+    link.href = link.href.replace('.md', '.html');
     console.log(`Fixed MD link: ${link.href}`);
   });
   
@@ -24,10 +24,10 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // Map of parent tab text to first child page (filename only)
       const tabRedirects = {
-        'Getting Started': 'introduction/',
-        'Installation': 'full-installation/',
-        'Operations': 'troubleshooting/',
-        'Reference': 'automation-reference/'
+        'Getting Started': 'introduction.html',
+        'Installation': 'full-installation.html',
+        'Operations': 'troubleshooting.html',
+        'Reference': 'automation-reference.html'
       };
       
       // Fix each tab's link
