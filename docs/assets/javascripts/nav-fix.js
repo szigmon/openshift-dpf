@@ -2,6 +2,16 @@ document.addEventListener('DOMContentLoaded', function() {
   // Log for debugging
   console.log("Navigation fix script loaded");
   
+  // Fix all links that end with .md
+  const mdLinks = document.querySelectorAll('a[href$=".md"]');
+  console.log(`Found ${mdLinks.length} links with .md extension`);
+  
+  mdLinks.forEach(link => {
+    // Remove the .md extension
+    link.href = link.href.replace('.md', '');
+    console.log(`Fixed MD link: ${link.href}`);
+  });
+  
   // Navigation tab fixes
   function fixNavigation() {
     console.log("Running navigation fix");
@@ -26,12 +36,8 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // Function to get the correct URL for a page
       function getPageUrl(pageName) {
-        // For Netlify, we need to use a different path structure
-        if (isNetlify) {
-          return `/${pageName}/`;
-        } else {
-          return `${pageName}.html`;
-        }
+        // For Netlify without .md extension
+        return `/${pageName}`;
       }
       
       // Fix each tab's link

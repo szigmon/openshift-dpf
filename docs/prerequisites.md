@@ -58,8 +58,8 @@ Throughout this document, you'll see these requirement labels:
 ### Required Tools
 | Tool | Version | Purpose | Required For | Installation Link |
 |------|---------|---------|-------------|-------------------|
-| **OpenShift CLI** (`oc`) | 4.19+ | Cluster management | Both | [Install OpenShift CLI](https://docs.openshift.com/container-platform/4.19/cli_reference/openshift_cli/getting-started-cli.html) |
-| **Assisted Installer CLI** (`aicli`) | Latest | Cluster deployment | Complete Installation | [Install AICLI](https://github.com/openshift/assisted-service/blob/master/docs/hive-integration/aicli.md) |
+| **OpenShift CLI** (`oc`) | 4.19+ | Cluster management | Both | [Download OpenShift CLI](https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/) |
+| **Assisted Installer CLI** (`aicli`) | Latest | Cluster deployment | Complete Installation | Install with `pip3 install aicli` or from [GitHub](https://github.com/karmab/aicli) |
 | **Helm** | 3.8+ | Managing deployments | Both | [Install Helm](https://helm.sh/docs/intro/install/) |
 | **Go** | 1.20+ | Build components | Both | [Install Go](https://golang.org/doc/install) |
 | **jq** | Latest | JSON processing | Both | [Install jq](https://stedolan.github.io/jq/download/) |
