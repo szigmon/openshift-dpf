@@ -41,23 +41,23 @@ use_directory_urls: false
 
 nav:
   - Home: index.md
-  - Getting Started:
-    - Introduction: introduction.md
-    - Prerequisites & Planning: prerequisites.md
+  - "Getting Started":
+      - Introduction: introduction.md
+      - "Prerequisites & Planning": prerequisites.md
   - Installation:
-    - Complete Deployment: full-installation.md
-    - OpenShift Cluster Creation: cluster-creation.md
-    - DPF Operator Installation: dpf-operator.md
-    - DPU Provisioning: dpu-provisioning.md
-    - DOCA Services Deployment: doca-services.md
+      - "Complete Deployment": full-installation.md
+      - "OpenShift Cluster Creation": cluster-creation.md
+      - "DPF Operator Installation": dpf-operator.md
+      - "DPU Provisioning": dpu-provisioning.md
+      - "DOCA Services Deployment": doca-services.md
   - Configuration:
-    - BFB Image Management: bfb-image.md
+      - "BFB Image Management": bfb-image.md
   - Operations:
-    - Performance Benchmarking: benchmarking.md
-    - Troubleshooting: troubleshooting.md
+      - "Performance Benchmarking": benchmarking.md
+      - Troubleshooting: troubleshooting.md
   - Reference:
-    - Automation Reference: automation-reference.md
-    - FAQ: faq.md
-    - Resources: resources.md
+      - "Automation Reference": automation-reference.md
+      - FAQ: faq.md
+      - Resources: resources.md
 
 docs_dir: docs
