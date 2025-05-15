@@ -36,12 +36,15 @@ plugins:
   - search
   - mermaid2
 
+# Disable directory URLs to prevent navigation issues
+use_directory_urls: false
+
 nav:
   - Home: index.md
   - Getting Started:
-    - Introduction & Architecture: introduction.md
+    - Introduction: introduction.md
     - Prerequisites & Planning: prerequisites.md
-  - Installation Paths:
+  - Installation:
     - Complete Deployment: full-installation.md
     - OpenShift Cluster Creation: cluster-creation.md
     - DPF Operator Installation: dpf-operator.md
@@ -50,12 +53,11 @@ nav:
   - Configuration:
     - BFB Image Management: bfb-image.md
   - Operations:
-    - Benchmarking: benchmarking.md
+    - Performance Benchmarking: benchmarking.md
     - Troubleshooting: troubleshooting.md
   - Reference:
     - Automation Reference: automation-reference.md
-  - Resources:
     - FAQ: faq.md
-    - Additional Resources: resources.md
+    - Resources: resources.md
 
 docs_dir: docs
