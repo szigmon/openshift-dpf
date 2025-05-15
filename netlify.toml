@@ -39,6 +39,20 @@
   status = 301
   force = true
 
+# Fix for Getting Started tab
+[[redirects]]
+  from = "/getting-started"
+  to = "/introduction.html"
+  status = 301
+  force = true
+
+# Fix for Reference tab
+[[redirects]]
+  from = "/reference"
+  to = "/automation-reference.html"
+  status = 301
+  force = true
+
 # Fix for other potential navigation issues
 [[redirects]]
   from = "/*"

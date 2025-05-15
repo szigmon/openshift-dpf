@@ -23,6 +23,7 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log("Found nav tabs:", navTabs.length);
       
       // Map of parent tab text to first child page (filename only)
+      // Make sure these files actually exist and have the correct content
       const tabRedirects = {
         'Getting Started': 'introduction.html',
         'Installation': 'full-installation.html',
@@ -39,12 +40,20 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tabLink && tabRedirects[tabText]) {
           const pageUrl = tabRedirects[tabText];
           console.log(`Setting ${tabText} link to ${pageUrl}`);
-          tabLink.href = pageUrl;
+          
+          // Use absolute path to ensure correct navigation
+          if (pageUrl.indexOf('/') !== 0) {
+            tabLink.href = '/' + pageUrl;
+          } else {
+            tabLink.href = pageUrl;
+          }
           
           // Add click handler as backup
           tabLink.addEventListener('click', function(e) {
-            console.log(`Redirecting to ${pageUrl}`);
-            window.location.href = pageUrl;
+            // Use direct window location for most reliable navigation
+            const targetUrl = window.location.origin + '/' + pageUrl;
+            console.log(`Redirecting to ${targetUrl}`);
+            window.location.href = targetUrl;
             e.preventDefault();
             return false;
           });
@@ -66,8 +75,9 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // Create a click handler to navigate to the first child
           parent.addEventListener('click', function(e) {
-            console.log(`Sidebar redirecting to ${pageUrl}`);
-            window.location.href = pageUrl;
+            const targetUrl = window.location.origin + '/' + pageUrl;
+            console.log(`Sidebar redirecting to ${targetUrl}`);
+            window.location.href = targetUrl;
             e.preventDefault();
             return false;
           });
@@ -77,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // Create a wrapping link element
           const wrapperLink = document.createElement('a');
-          wrapperLink.href = pageUrl;
+          wrapperLink.href = '/' + pageUrl;
           wrapperLink.className = 'md-nav__force-link';
           
           // Apply some basic styling to make it cover the parent element
@@ -94,8 +104,9 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // Add click handler to the wrapper link
           wrapperLink.addEventListener('click', function(e) {
-            console.log(`Wrapper redirecting to ${pageUrl}`);
-            window.location.href = pageUrl;
+            const targetUrl = window.location.origin + '/' + pageUrl;
+            console.log(`Wrapper redirecting to ${targetUrl}`);
+            window.location.href = targetUrl;
           });
         }
       });
@@ -106,12 +117,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tabRedirects[linkText]) {
           const pageUrl = tabRedirects[linkText];
           console.log(`Direct fix for ${linkText} tab link to ${pageUrl}`);
-          link.href = pageUrl;
+          
+          // Use absolute path to ensure correct navigation
+          if (pageUrl.indexOf('/') !== 0) {
+            link.href = '/' + pageUrl;
+          } else {
+            link.href = pageUrl;
+          }
           
           // Add click event listener with higher priority
           link.addEventListener('click', function(e) {
-            console.log(`Direct click on ${linkText} redirecting to ${pageUrl}`);
-            window.location.href = pageUrl;
+            const targetUrl = window.location.origin + '/' + pageUrl;
+            console.log(`Direct click on ${linkText} redirecting to ${targetUrl}`);
+            window.location.href = targetUrl;
             e.preventDefault();
             return false;
           }, true);
