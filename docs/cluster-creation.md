@@ -33,6 +33,30 @@ VM_NAME_PREFIX=dpf
 
 > **Important:** The automation detects VMs with matching names. If VMs with the configured naming pattern already exist, the automation might try to use them or flag conflicts.
 
+### VM Management Commands
+
+The automation provides several make targets specifically for VM management:
+
+```bash
+# Create VMs for the OpenShift cluster (downloads ISO too)
+make create-vms
+
+# Delete VMs (without deleting the cluster in Assisted Installer)
+make delete-vms
+
+# Check VM status
+virsh list --all
+
+# Start/stop specific VMs
+virsh start ${VM_NAME_PREFIX}-vm-1
+virsh stop ${VM_NAME_PREFIX}-vm-1
+
+# Clean everything (cluster and VMs)
+make clean-all
+```
+
+> **Note:** The `create-vms` command is a critical step that must be run explicitly before cluster installation. This ensures VMs are created with your specified configuration.
+
 ### Environments with Existing VMs
 
 If your server already has VMs that should not be modified, follow these steps:
@@ -108,13 +132,16 @@ The automation will only create or modify VMs that match your configured prefix.
 For **complete** cluster installation, follow these commands in sequence:
 
 ```bash
-# 1. Create VMs and register with Assisted Installer
+# 1. Create VMs specifically (downloads ISO and creates VMs)
+make create-vms
+
+# 2. Create and register cluster with Assisted Installer
 make create-cluster
 
-# 2. Complete the OpenShift installation process
+# 3. Complete the OpenShift installation process
 make cluster-install
 
-# 3. Wait for the installation to complete (monitors status)
+# 4. Wait for the installation to complete (monitors status)
 make wait-for-cluster
 ```
 
@@ -124,7 +151,7 @@ The full automation sequence performs these steps:
 3. Deploys OpenShift platform
 4. Configures networking and storage
 
-> **Shortcut:** To perform all these steps in one command, you can use `make create-install-cluster` which combines the steps above.
+> **Shortcut:** To perform all these steps in one command, you can use `make all` which combines the steps above.
 
 ### 3. Monitor Installation
 
@@ -157,8 +184,6 @@ This means the Assisted Installer is waiting for input before proceeding. The mo
 1. **VMs are not powered on or haven't booted discovery ISO**:
    ```bash
    # Start all cluster VMs
-   make start-vms
-   # Or manually start them
    virsh start ${VM_NAME_PREFIX}-vm-1
    virsh start ${VM_NAME_PREFIX}-vm-2
    virsh start ${VM_NAME_PREFIX}-vm-3
@@ -260,4 +285,4 @@ oc adm must-gather
 Once your OpenShift cluster is successfully deployed:
 
 1. [DPF Operator Installation](dpf-operator.md) - Install NVIDIA DPF Operator
-2. [DPU Provisioning](dpu-provisioning.md) - Configure and provision BlueField DPUs 
+2. [DPU Provisioning](dpu-provisioning.md) - Configure and provision BlueField DPUs
