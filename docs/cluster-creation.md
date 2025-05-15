@@ -143,17 +143,17 @@ apt-get install -y virtinst libvirt-daemon-system qemu-kvm
 
 ### 2. Deploy Cluster (60-90 minutes)
 
-> **Note:** The full cluster installation requires multiple steps. The `make create-cluster` command just prepares the VMs and registers with the Assisted Installer, but doesn't complete the full installation.
+> **Note:** The full cluster installation requires multiple steps in the correct order. Follow the steps below carefully.
 
 For **complete** cluster installation, follow these commands in sequence:
 
 ```bash
-# 1. Create VMs specifically (downloads ISO and creates VMs)
+# 1. First, register with the Assisted Installer
+make create-cluster
+
+# 2. Then create the VMs (downloads ISO and creates VMs)
 # Make sure ISO_FOLDER is set in your .env file
 make create-vms
-
-# 2. Create and register cluster with Assisted Installer
-make create-cluster
 
 # 3. Complete the OpenShift installation process
 make cluster-install
@@ -163,8 +163,8 @@ make wait-for-cluster
 ```
 
 The full automation sequence performs these steps:
-1. Creates VMs using libvirt with your configured VM_NAME_PREFIX
-2. Registers with Red Hat's Assisted Installer
+1. Registers with Red Hat's Assisted Installer
+2. Creates VMs using libvirt with your configured VM_NAME_PREFIX
 3. Deploys OpenShift platform
 4. Configures networking and storage
 
@@ -283,6 +283,46 @@ dig random-app.apps.${CLUSTER_NAME}.${BASE_DOMAIN}
 | DNS Resolution Issues | Ensure DNS resolution works for BASE_DOMAIN |
 | Pull Secret Issues | Verify pull secret validity and permissions |
 | Network Configuration | Check management network internet access |
+
+### VM Creation Fails - VMs Not Starting
+
+If your VMs are created but don't start (you see "Waiting for VM to start..." messages that eventually time out), check:
+
+1. **Check libvirt logs**:
+   ```bash
+   journalctl -u libvirtd
+   ```
+
+2. **Verify libvirt is running**:
+   ```bash
+   systemctl status libvirtd
+   ```
+
+3. **Check disk permissions and space**:
+   ```bash
+   df -h
+   ls -la /var/lib/libvirt/images/
+   ```
+
+4. **Try manually starting VMs**:
+   ```bash
+   virsh start ${VM_NAME_PREFIX}-vm-1
+   # If it fails, check the VM definition for issues
+   virsh dumpxml ${VM_NAME_PREFIX}-vm-1 > vm-config.xml
+   cat vm-config.xml
+   ```
+
+5. **Check SELinux status**:
+   ```bash
+   # If SELinux is enforcing, try temporarily setting to permissive
+   getenforce
+   setenforce 0  # Only for testing, not for production
+   make create-vms
+   ```
+
+6. **Resource issues**:
+   - Ensure your host has enough RAM and CPU for VMs (48+ CPU cores, 128+ GB RAM recommended)
+   - Check if there are CPU or memory limits set for libvirt
 
 ### Logs and Diagnostics
 
