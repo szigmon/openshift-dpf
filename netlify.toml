@@ -23,4 +23,24 @@
   from = "https://www.openshift-dpf.netlify.app/*"
   to = "https://openshift-dpf.netlify.app/:splat"
   status = 301
-  force = true 
+  force = true
+
+# Fix for Getting Started navigation
+[[redirects]]
+  from = "/introduction"
+  to = "/introduction/"
+  status = 301
+  force = true
+
+# Fix for Reference navigation
+[[redirects]]
+  from = "/automation-reference"
+  to = "/automation-reference/"
+  status = 301
+  force = true
+
+# Fix for other potential navigation issues
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 404 

@@ -9,11 +9,9 @@ theme:
     - navigation.sections
     - content.code.annotate
     - content.tabs.link
-    - content.action.edit
   palette:
-    - scheme: default
-      primary: blue
-      accent: light blue
+    primary: blue
+    accent: light blue
 
 markdown_extensions:
   - admonition
@@ -34,7 +32,7 @@ plugins:
   - search
   - mermaid2
 
-# Simplified flat navigation
+# Clean and simple navigation
 nav:
   - Home: index.md
   - Getting Started:
@@ -53,11 +51,7 @@ nav:
     - FAQ: faq.md
     - Resources: resources.md
 
-# Add custom JavaScript to fix navigation
-extra_javascript:
-  - assets/javascripts/nav-fix.js
-
 docs_dir: docs
 
-# Important: for Netlify, enable directory URLs
+# Standard format that works well with Netlify
 use_directory_urls: true
