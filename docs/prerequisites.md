@@ -149,10 +149,19 @@ A   *.apps.doca.lab.nvidia.com   →   10.8.2.101   # INGRESS_VIP
 ### Red Hat Offline Token
 **Required for**: Complete Installation only
 
-1. Create a token via https://cloud.redhat.com/openshift/token
+1. Create a token via [Red Hat Cloud Console](https://cloud.redhat.com/openshift/token)
 2. Create directory: `mkdir -p ~/.aicli`
-3. Write token to `~/.aicli/offlinetoken.txt`
+3. Write token to `~/.aicli/offlinetoken.txt` (copy the entire token string without any modification)
 4. Verify with `aicli list clusters`
+
+> **Troubleshooting Token Issues:**
+> If you receive errors like "HTTP Error 400: Bad Request" or your token is moved to "offlinetoken.txt.old", check:
+> - Ensure the token is copied exactly as provided by Red Hat (no extra spaces or line breaks)
+> - Confirm the token is fresh (hasn't expired)
+> - Try setting the token path explicitly: `export AI_OFFLINETOKEN=$HOME/.aicli/offlinetoken.txt`
+> - Check file permissions: `chmod 600 ~/.aicli/offlinetoken.txt`
+> - If using a proxy, ensure it's properly configured
+> - Verify your Red Hat account has proper entitlements for OpenShift
 
 ### SSH Keys
 **Required for**: Complete Installation only
