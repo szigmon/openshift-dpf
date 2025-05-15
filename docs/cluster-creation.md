@@ -20,6 +20,51 @@ The automation creates a virtualized OpenShift cluster with:
 
 ![Cluster Architecture](assets/cluster-architecture.png)
 
+## VM Management and Naming
+
+By default, the automation creates VMs with names following the pattern `${VM_NAME_PREFIX}-vm-{1..3}` for control plane nodes. This naming can be customized to avoid conflicts with existing VMs:
+
+```bash
+# In your .env file, set a unique prefix for your DPF VMs
+VM_NAME_PREFIX=dpf
+
+# This will create VMs named: dpf-vm-1, dpf-vm-2, dpf-vm-3, etc.
+```
+
+> **Important:** The automation detects VMs with matching names. If VMs with the configured naming pattern already exist, the automation might try to use them or flag conflicts.
+
+### Environments with Existing VMs
+
+If your server already has VMs that should not be modified, follow these steps:
+
+1. Check existing VMs first:
+   ```bash
+   virsh list --all
+   ```
+
+2. Choose a unique prefix that doesn't conflict with existing VMs:
+   ```bash
+   # In .env file
+   VM_NAME_PREFIX=dpf-ocp4
+   ```
+
+3. Verify VM creation without modifying existing VMs:
+   ```bash
+   # Dry run to check which VMs would be created
+   make vm-check
+   ```
+
+The automation will only create or modify VMs that match your configured prefix.
+
+### VM Configuration Options
+
+| Variable | Description | Default | Example |
+|----------|-------------|---------|---------|
+| `VM_NAME_PREFIX` | Prefix for VM names | Server hostname | `dpf` |
+| `VM_VCPUS` | vCPUs per control plane VM | `16` | `16` |
+| `VM_MEMORY_GB` | Memory (GB) per control plane VM | `42` | `48` |
+| `VM_DISK_GB` | Disk size (GB) per control plane VM | `120` | `150` |
+
 ## Deployment Process
 
 ### 1. Prepare Environment (5 minutes)
@@ -58,16 +103,28 @@ The automation creates a virtualized OpenShift cluster with:
 
 ### 2. Deploy Cluster (60-90 minutes)
 
-1. Start the automated deployment:
-   ```bash
-   make create-cluster
-   ```
+> **Note:** The full cluster installation requires multiple steps. The `make create-cluster` command just prepares the VMs and registers with the Assisted Installer, but doesn't complete the full installation.
 
-The automation performs these steps:
-1. Creates VMs using libvirt
+For **complete** cluster installation, follow these commands in sequence:
+
+```bash
+# 1. Create VMs and register with Assisted Installer
+make create-cluster
+
+# 2. Complete the OpenShift installation process
+make cluster-install
+
+# 3. Wait for the installation to complete (monitors status)
+make wait-for-cluster
+```
+
+The full automation sequence performs these steps:
+1. Creates VMs using libvirt with your configured VM_NAME_PREFIX
 2. Registers with Red Hat's Assisted Installer
 3. Deploys OpenShift platform
 4. Configures networking and storage
+
+> **Shortcut:** To perform all these steps in one command, you can use `make create-install-cluster` which combines the steps above.
 
 ### 3. Monitor Installation
 
@@ -78,10 +135,51 @@ Track the progress with these commands:
 aicli list clusters
 
 # View detailed cluster status
-aicli describe cluster $CLUSTER_NAME
+aicli info cluster $CLUSTER_NAME
 
 # Check VM status
 virsh list --all
+```
+
+#### Handling "pending-for-input" State
+
+If your cluster shows as "pending-for-input" status like this:
+
+```
++-----------+--------------------------------------+-------------------+-------------------------------+
+|  Cluster  |                  Id                  |       Status      |           Dns Domain          |
++-----------+--------------------------------------+-------------------+-------------------------------+
+| doca-docs | b816f8df-b3e3-4534-8067-65b2968239b4 | pending-for-input | nvidia.eng.rdu2.dc.redhat.com |
+```
+
+This means the Assisted Installer is waiting for input before proceeding. The most common reasons include:
+
+1. **VMs are not powered on or haven't booted discovery ISO**:
+   ```bash
+   # Start all cluster VMs
+   make start-vms
+   # Or manually start them
+   virsh start ${VM_NAME_PREFIX}-vm-1
+   virsh start ${VM_NAME_PREFIX}-vm-2
+   virsh start ${VM_NAME_PREFIX}-vm-3
+   ```
+
+2. **Cluster configuration is incomplete**:
+   ```bash
+   # Complete the cluster configuration and start installation
+   make cluster-install
+   ```
+
+3. **DNS validation has failed**:
+   Check your DNS records for API and apps endpoints using:
+   ```bash
+   dig api.${CLUSTER_NAME}.${BASE_DOMAIN}
+   dig random-app.apps.${CLUSTER_NAME}.${BASE_DOMAIN}
+   ```
+
+To proceed with the installation, run:
+```bash
+make cluster-install
 ```
 
 ### 4. Verify Deployment
