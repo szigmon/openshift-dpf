@@ -14,8 +14,6 @@ theme:
     - scheme: default
       primary: blue
       accent: light blue
-  logo: assets/logo.png  # (optional, replace with your logo if available)
-  favicon: assets/favicon.ico  # (optional, replace with your favicon if available)
 
 markdown_extensions:
   - admonition
@@ -36,31 +34,32 @@ plugins:
   - search
   - mermaid2
 
-# Create a simple flat navigation structure
+# Simplified flat navigation
 nav:
   - Home: index.md
-  - 'Getting Started':
+  - Getting Started:
     - Introduction: introduction.md
     - Prerequisites: prerequisites.md
-  - 'Installation':
-    - 'Complete Deployment': full-installation.md
-    - 'OpenShift Cluster Creation': cluster-creation.md
-    - 'DPF Operator Installation': dpf-operator.md
-    - 'DPU Provisioning': dpu-provisioning.md
-    - 'DOCA Services Deployment': doca-services.md
-  - 'Configuration':
-    - 'BFB Image Management': bfb-image.md
-  - 'Operations':
-    - 'Performance Benchmarking': benchmarking.md
-    - 'Troubleshooting': troubleshooting.md
-  - 'Reference':
-    - 'Automation Reference': automation-reference.md
-    - 'FAQ': faq.md
-    - 'Resources': resources.md
+  - Installation:
+    - Complete Deployment: full-installation.md
+    - OpenShift Cluster Creation: cluster-creation.md
+    - DPF Operator Installation: dpf-operator.md
+    - DPU Provisioning: dpu-provisioning.md
+    - DOCA Services Deployment: doca-services.md
+  - Operations:
+    - Troubleshooting: troubleshooting.md
+  - Reference:
+    - Automation Reference: automation-reference.md
+    - FAQ: faq.md
+    - Resources: resources.md
 
 # Add custom JavaScript to fix navigation
 extra_javascript:
   - assets/javascripts/nav-fix.js
+
+# Add custom CSS
+extra_css:
+  - assets/stylesheets/custom.css
 
 docs_dir: docs
 
