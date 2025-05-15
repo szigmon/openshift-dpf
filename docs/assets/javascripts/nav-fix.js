@@ -6,36 +6,32 @@ document.addEventListener('DOMContentLoaded', function() {
   function fixNavigation() {
     console.log("Running navigation fix");
     
-    // Get the base URL of the site
-    const baseUrl = window.location.origin;
-    console.log("Base URL:", baseUrl);
-    
     // Wait for navigation elements to be loaded
     setTimeout(function() {
       // Get all main navigation tabs
       const navTabs = document.querySelectorAll('.md-tabs__item');
       console.log("Found nav tabs:", navTabs.length);
       
-      // Map of parent tab text to first child URL (using absolute paths)
+      // Detect if we're on Netlify
+      const isNetlify = window.location.hostname.includes('netlify.app');
+      console.log("Is Netlify:", isNetlify);
+      
+      // Map of parent tab text to first child page (filename only)
       const tabRedirects = {
-        'Getting Started': `${baseUrl}/introduction.html`,
-        'Installation': `${baseUrl}/full-installation.html`,
-        'Operations': `${baseUrl}/troubleshooting.html`,
-        'Reference': `${baseUrl}/automation-reference.html`
+        'Getting Started': 'introduction',
+        'Installation': 'full-installation',
+        'Operations': 'troubleshooting',
+        'Reference': 'automation-reference'
       };
       
-      // Alternative URLs for Netlify
-      if (window.location.hostname.includes('netlify.app')) {
-        console.log("Detected Netlify environment, using alternative URLs");
-        
-        // Get current site path (for subpaths if any)
-        const sitePath = window.location.pathname.split('/').slice(0, -1).join('/');
-        
-        // Use direct paths for Netlify
-        tabRedirects['Getting Started'] = `${sitePath}/introduction.html`;
-        tabRedirects['Installation'] = `${sitePath}/full-installation.html`;
-        tabRedirects['Operations'] = `${sitePath}/troubleshooting.html`;
-        tabRedirects['Reference'] = `${sitePath}/automation-reference.html`;
+      // Function to get the correct URL for a page
+      function getPageUrl(pageName) {
+        // For Netlify, we need to use a different path structure
+        if (isNetlify) {
+          return `/${pageName}/`;
+        } else {
+          return `${pageName}.html`;
+        }
       }
       
       // Fix each tab's link
@@ -45,13 +41,14 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log("Tab text:", tabText);
         
         if (tabLink && tabRedirects[tabText]) {
-          console.log(`Setting ${tabText} link to ${tabRedirects[tabText]}`);
-          tabLink.href = tabRedirects[tabText];
+          const pageUrl = getPageUrl(tabRedirects[tabText]);
+          console.log(`Setting ${tabText} link to ${pageUrl}`);
+          tabLink.href = pageUrl;
           
           // Add click handler as backup
           tabLink.addEventListener('click', function(e) {
-            console.log(`Redirecting to ${tabRedirects[tabText]}`);
-            window.location.href = tabRedirects[tabText];
+            console.log(`Redirecting to ${pageUrl}`);
+            window.location.href = pageUrl;
             e.preventDefault();
             return false;
           });
@@ -68,12 +65,13 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log("Sidebar parent:", parentText);
         
         if (tabRedirects[parentText]) {
-          console.log(`Adding click handler for ${parentText}`);
+          const pageUrl = getPageUrl(tabRedirects[parentText]);
+          console.log(`Adding click handler for ${parentText} to ${pageUrl}`);
           
           // Create a click handler to navigate to the first child
           parent.addEventListener('click', function(e) {
-            console.log(`Sidebar redirecting to ${tabRedirects[parentText]}`);
-            window.location.href = tabRedirects[parentText];
+            console.log(`Sidebar redirecting to ${pageUrl}`);
+            window.location.href = pageUrl;
             e.preventDefault();
             return false;
           });
@@ -83,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // Create a wrapping link element
           const wrapperLink = document.createElement('a');
-          wrapperLink.href = tabRedirects[parentText];
+          wrapperLink.href = pageUrl;
           wrapperLink.className = 'md-nav__force-link';
           
           // Apply some basic styling to make it cover the parent element
@@ -100,8 +98,8 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // Add click handler to the wrapper link
           wrapperLink.addEventListener('click', function(e) {
-            console.log(`Wrapper redirecting to ${tabRedirects[parentText]}`);
-            window.location.href = tabRedirects[parentText];
+            console.log(`Wrapper redirecting to ${pageUrl}`);
+            window.location.href = pageUrl;
           });
         }
       });
@@ -110,13 +108,14 @@ document.addEventListener('DOMContentLoaded', function() {
       document.querySelectorAll('.md-tabs__link').forEach(function(link) {
         const linkText = link.textContent.trim();
         if (tabRedirects[linkText]) {
-          console.log(`Direct fix for ${linkText} tab link`);
-          link.href = tabRedirects[linkText];
+          const pageUrl = getPageUrl(tabRedirects[linkText]);
+          console.log(`Direct fix for ${linkText} tab link to ${pageUrl}`);
+          link.href = pageUrl;
           
           // Add click event listener with higher priority
           link.addEventListener('click', function(e) {
-            console.log(`Direct click on ${linkText} redirecting to ${tabRedirects[linkText]}`);
-            window.location.href = tabRedirects[linkText];
+            console.log(`Direct click on ${linkText} redirecting to ${pageUrl}`);
+            window.location.href = pageUrl;
             e.preventDefault();
             return false;
           }, true);

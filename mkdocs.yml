@@ -57,10 +57,6 @@ nav:
 extra_javascript:
   - assets/javascripts/nav-fix.js
 
-# Add custom CSS
-extra_css:
-  - assets/stylesheets/custom.css
-
 docs_dir: docs
 
 # Important: disable directory URLs to use .html extensions explicitly
