@@ -64,6 +64,7 @@ Throughout this document, you'll see these requirement labels:
 | **Go** | 1.20+ | Build components | Both | [Install Go](https://golang.org/doc/install) |
 | **jq** | Latest | JSON processing | Both | [Install jq](https://stedolan.github.io/jq/download/) |
 | **libvirt** | Latest | VM management | Complete Installation | [Install libvirt](https://libvirt.org/compiling.html) |
+| **virt-install** | Latest | Create VMs | Complete Installation | `dnf install -y virt-install` or `apt install -y virtinst` |
 
 ### Required Containers and Pull Secrets
 
@@ -210,6 +211,9 @@ The deployment uses a `.env` file to configure all aspects of the installation. 
 | `POD_CIDR` | CIDR block for pod networking | | Both | `10.128.0.0/14` | `10.128.0.0/14` |
 | `SERVICE_CIDR` | CIDR block for service networking | | Both | `172.30.0.0/16` | `172.30.0.0/16` |
 | `SKIP_BRIDGE_CONFIG` | Skip bridge creation if you already have a bridge configured on your host | | Complete Installation | `false` | `true` |
+| **VM Configuration** |
+| `ISO_FOLDER` | Directory to store downloaded ISO file | ✓ | Complete Installation | - | `/root/` |
+| `VM_NAME_PREFIX` | Prefix for VM names (to avoid conflicts with existing VMs) | | Complete Installation | Host name | `dpf` |
 | **Authentication & Credentials** |
 | `OPENSHIFT_PULL_SECRET` | Path to OpenShift pull secret file | ✓ | Complete Installation | - | `/path/to/openshift_pull.json` |
 | `DPF_PULL_SECRET` | Path to NVIDIA DPF pull secret file | ✓ | Both | - | `/path/to/pull-secret.txt` |

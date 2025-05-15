@@ -88,6 +88,22 @@ The automation will only create or modify VMs that match your configured prefix.
 | `VM_VCPUS` | vCPUs per control plane VM | `16` | `16` |
 | `VM_MEMORY_GB` | Memory (GB) per control plane VM | `42` | `48` |
 | `VM_DISK_GB` | Disk size (GB) per control plane VM | `120` | `150` |
+| `ISO_FOLDER` | Directory to store downloaded ISO file | None (required) | `/root/` |
+| `SKIP_BRIDGE_CONFIG` | Skip bridge creation if set to true | `false` | `true` |
+
+### Required Packages
+
+Before creating VMs, ensure you have the necessary packages installed:
+
+```bash
+# RHEL/CentOS
+dnf install -y virt-install libvirt qemu-kvm
+
+# Ubuntu/Debian
+apt-get install -y virtinst libvirt-daemon-system qemu-kvm
+```
+
+> **Note:** Missing the `virt-install` package will cause VM creation to fail with "nohup: failed to run command 'virt-install': No such file or directory".
 
 ## Deployment Process
 
@@ -133,6 +149,7 @@ For **complete** cluster installation, follow these commands in sequence:
 
 ```bash
 # 1. Create VMs specifically (downloads ISO and creates VMs)
+# Make sure ISO_FOLDER is set in your .env file
 make create-vms
 
 # 2. Create and register cluster with Assisted Installer
@@ -150,6 +167,8 @@ The full automation sequence performs these steps:
 2. Registers with Red Hat's Assisted Installer
 3. Deploys OpenShift platform
 4. Configures networking and storage
+
+> **Important:** If you see an error like `ISO_FOLDER is not set. Please provide a valid ISO_FOLDER path`, you need to add `ISO_FOLDER=/path/to/folder` to your .env file.
 
 > **Shortcut:** To perform all these steps in one command, you can use `make all` which combines the steps above.
 
