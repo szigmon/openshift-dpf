@@ -139,3 +139,36 @@ For performance testing methodologies and benchmarking, see the [Performance Ben
 
 - [Troubleshooting Guide](troubleshooting.md) - Common issues and resolution steps
 - [Performance Benchmarking](benchmarking.md) - Performance testing and optimization
+
+## Using Latest Features
+
+For the most recent features, you can use the development branch:
+
+```bash
+# Switch to the development branch with latest features
+git checkout igal/new-changes_2
+
+# Set up your environment variables
+cp .env.example .env
+vi .env
+```
+
+> **Note:** The `igal/new-changes_2` branch includes additional features like the `SKIP_BRIDGE_CONFIG` variable, which allows you to skip the bridge network configuration if you already have one configured.
+
+## Step 1: Full Automated Deployment
+
+For a complete automated deployment, run:
+
+```bash
+make all
+```
+
+This single command will:
+1. Create the OpenShift cluster
+2. Deploy the DPF operator
+3. Provision DPUs
+4. Deploy DOCA services
+
+## Step 2: Monitor Deployment Progress
+
+// ... existing code ...

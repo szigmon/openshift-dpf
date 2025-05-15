@@ -86,27 +86,20 @@ virsh list --all
 
 ### 4. Verify Deployment
 
-After the installer completes, verify your cluster:
+After the installation process completes, verify that your cluster was created:
 
-1. Access the cluster:
-   ```bash
-   export KUBECONFIG=$PWD/kubeconfig.${CLUSTER_NAME}
-   oc whoami
-   ```
+```bash
+# View assisted installer clusters
+aicli list clusters
 
-2. Check that all components are running:
-   ```bash
-   # Verify nodes are ready
-   oc get nodes
-   
-   # Verify cluster operators
-   oc get co
-   ```
+# View detailed cluster status
+aicli info cluster $CLUSTER_NAME
 
-3. Verify the OpenShift console is accessible:
-   ```bash
-   oc get route console -n openshift-console
-   ```
+# Check VM status
+virsh list --all
+```
+
+The cluster status should show as "installed" once complete.
 
 ## Network Configuration
 

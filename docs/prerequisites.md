@@ -209,7 +209,7 @@ The deployment uses a `.env` file to configure all aspects of the installation. 
 | `DPU_INTERFACE` | Primary DPU network interface | ✓ | Both | - | `ens7f0np0` |
 | `POD_CIDR` | CIDR block for pod networking | | Both | `10.128.0.0/14` | `10.128.0.0/14` |
 | `SERVICE_CIDR` | CIDR block for service networking | | Both | `172.30.0.0/16` | `172.30.0.0/16` |
-| `SKIP_BRIDGE_CONFIG` | Skip bridge creation if you already have a bridge configured | | Complete Installation | `false` | `true` |
+| `SKIP_BRIDGE_CONFIG` | Skip bridge creation if you already have a bridge configured on your host | | Complete Installation | `false` | `true` |
 | **Authentication & Credentials** |
 | `OPENSHIFT_PULL_SECRET` | Path to OpenShift pull secret file | ✓ | Complete Installation | - | `/path/to/openshift_pull.json` |
 | `DPF_PULL_SECRET` | Path to NVIDIA DPF pull secret file | ✓ | Both | - | `/path/to/pull-secret.txt` |
