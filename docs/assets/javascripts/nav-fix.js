@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
   mdLinks.forEach(link => {
     // Remove the .md extension
-    link.href = link.href.replace('.md', '');
+    link.href = link.href.replace('.md', '/');
     console.log(`Fixed MD link: ${link.href}`);
   });
   
@@ -22,23 +22,13 @@ document.addEventListener('DOMContentLoaded', function() {
       const navTabs = document.querySelectorAll('.md-tabs__item');
       console.log("Found nav tabs:", navTabs.length);
       
-      // Detect if we're on Netlify
-      const isNetlify = window.location.hostname.includes('netlify.app');
-      console.log("Is Netlify:", isNetlify);
-      
       // Map of parent tab text to first child page (filename only)
       const tabRedirects = {
-        'Getting Started': 'introduction',
-        'Installation': 'full-installation',
-        'Operations': 'troubleshooting',
-        'Reference': 'automation-reference'
+        'Getting Started': 'introduction/',
+        'Installation': 'full-installation/',
+        'Operations': 'troubleshooting/',
+        'Reference': 'automation-reference/'
       };
-      
-      // Function to get the correct URL for a page
-      function getPageUrl(pageName) {
-        // For Netlify without .md extension
-        return `/${pageName}`;
-      }
       
       // Fix each tab's link
       navTabs.forEach(function(tab) {
@@ -47,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log("Tab text:", tabText);
         
         if (tabLink && tabRedirects[tabText]) {
-          const pageUrl = getPageUrl(tabRedirects[tabText]);
+          const pageUrl = tabRedirects[tabText];
           console.log(`Setting ${tabText} link to ${pageUrl}`);
           tabLink.href = pageUrl;
           
@@ -71,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log("Sidebar parent:", parentText);
         
         if (tabRedirects[parentText]) {
-          const pageUrl = getPageUrl(tabRedirects[parentText]);
+          const pageUrl = tabRedirects[parentText];
           console.log(`Adding click handler for ${parentText} to ${pageUrl}`);
           
           // Create a click handler to navigate to the first child
@@ -114,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function() {
       document.querySelectorAll('.md-tabs__link').forEach(function(link) {
         const linkText = link.textContent.trim();
         if (tabRedirects[linkText]) {
-          const pageUrl = getPageUrl(tabRedirects[linkText]);
+          const pageUrl = tabRedirects[linkText];
           console.log(`Direct fix for ${linkText} tab link to ${pageUrl}`);
           link.href = pageUrl;
           
