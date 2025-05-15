@@ -6,19 +6,37 @@ document.addEventListener('DOMContentLoaded', function() {
   function fixNavigation() {
     console.log("Running navigation fix");
     
+    // Get the base URL of the site
+    const baseUrl = window.location.origin;
+    console.log("Base URL:", baseUrl);
+    
     // Wait for navigation elements to be loaded
     setTimeout(function() {
       // Get all main navigation tabs
       const navTabs = document.querySelectorAll('.md-tabs__item');
       console.log("Found nav tabs:", navTabs.length);
       
-      // Map of parent tab text to first child URL
+      // Map of parent tab text to first child URL (using absolute paths)
       const tabRedirects = {
-        'Getting Started': 'introduction.html',
-        'Installation': 'full-installation.html',
-        'Operations': 'troubleshooting.html',
-        'Reference': 'automation-reference.html'
+        'Getting Started': `${baseUrl}/introduction.html`,
+        'Installation': `${baseUrl}/full-installation.html`,
+        'Operations': `${baseUrl}/troubleshooting.html`,
+        'Reference': `${baseUrl}/automation-reference.html`
       };
+      
+      // Alternative URLs for Netlify
+      if (window.location.hostname.includes('netlify.app')) {
+        console.log("Detected Netlify environment, using alternative URLs");
+        
+        // Get current site path (for subpaths if any)
+        const sitePath = window.location.pathname.split('/').slice(0, -1).join('/');
+        
+        // Use direct paths for Netlify
+        tabRedirects['Getting Started'] = `${sitePath}/introduction.html`;
+        tabRedirects['Installation'] = `${sitePath}/full-installation.html`;
+        tabRedirects['Operations'] = `${sitePath}/troubleshooting.html`;
+        tabRedirects['Reference'] = `${sitePath}/automation-reference.html`;
+      }
       
       // Fix each tab's link
       navTabs.forEach(function(tab) {
@@ -32,8 +50,10 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // Add click handler as backup
           tabLink.addEventListener('click', function(e) {
+            console.log(`Redirecting to ${tabRedirects[tabText]}`);
             window.location.href = tabRedirects[tabText];
             e.preventDefault();
+            return false;
           });
         }
       });
@@ -52,8 +72,10 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // Create a click handler to navigate to the first child
           parent.addEventListener('click', function(e) {
+            console.log(`Sidebar redirecting to ${tabRedirects[parentText]}`);
             window.location.href = tabRedirects[parentText];
             e.preventDefault();
+            return false;
           });
           
           // Also add data attribute for debugging
@@ -71,11 +93,16 @@ document.addEventListener('DOMContentLoaded', function() {
           wrapperLink.style.width = '100%';
           wrapperLink.style.height = '100%';
           wrapperLink.style.zIndex = '1';
-          wrapperLink.style.opacity = '0.5';
           
           // Insert before the parent to ensure clicks work
           parent.parentNode.style.position = 'relative';
           parent.parentNode.insertBefore(wrapperLink, parent);
+          
+          // Add click handler to the wrapper link
+          wrapperLink.addEventListener('click', function(e) {
+            console.log(`Wrapper redirecting to ${tabRedirects[parentText]}`);
+            window.location.href = tabRedirects[parentText];
+          });
         }
       });
       
@@ -85,6 +112,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tabRedirects[linkText]) {
           console.log(`Direct fix for ${linkText} tab link`);
           link.href = tabRedirects[linkText];
+          
+          // Add click event listener with higher priority
+          link.addEventListener('click', function(e) {
+            console.log(`Direct click on ${linkText} redirecting to ${tabRedirects[linkText]}`);
+            window.location.href = tabRedirects[linkText];
+            e.preventDefault();
+            return false;
+          }, true);
         }
       });
     }, 300); // Increase delay to ensure DOM is ready
