@@ -249,7 +249,7 @@ function apply_dpf() {
     apply_scc
     deploy_hosted_cluster
 
-    wait_for_pods "dpf-provisioning-controller-manager" "dpu.nvidia.com/component=dpf-provisioning-controller-manager" "status.phase=Running" "1/1" 30 5
+    wait_for_pods "dpf-operator-system" "dpu.nvidia.com/component=dpf-provisioning-controller-manager" "status.phase=Running" "1/1" 30 5
 
     log [INFO] "DPF deployment complete"
 }
