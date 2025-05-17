@@ -143,6 +143,7 @@ function deploy_hypershift() {
         wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
         log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
+        # --network-type=Other \
         hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
           --base-domain="${BASE_DOMAIN}" \
           --release-image="${OCP_RELEASE_IMAGE}" \
@@ -196,13 +197,18 @@ function configure_hypershift() {
           ' _ "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}"
 
     fi
-    
 
-    # Create the admin kubeconfig secret
-    oc create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig -n dpf-operator-system \
-      --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque || \
-      oc -n dpf-operator-system create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig \
-      --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque --dry-run=client -o yaml | oc apply -f -
+    copy_hypershift_kubeconfig
+}
+
+function copy_hypershift_kubeconfig() {
+   oc get secret -n "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" -o jsonpath='{.data.kubeconfig}' | base64 -d > ${HOSTED_CLUSTER_NAME}.kubeconfig
+   oc create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig -n dpf-operator-system \
+         --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque || \
+         oc -n dpf-operator-system create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig \
+         --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque --dry-run=client -o yaml | oc apply -f -
+
+
 }
 
 function apply_remaining() {
@@ -233,16 +239,6 @@ function apply_dpf() {
     log "INFO" "Provided kubeconfig ${KUBECONFIG}"
     log "INFO" "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
     
-    # Check if prepare-dpf-manifests.sh exists
-    local prepare_script="$(dirname "${BASH_SOURCE[0]}")/prepare-dpf-manifests.sh"
-    if [ ! -f "$prepare_script" ]; then
-        log [INFO] "Error: $prepare_script not found"
-        exit 1
-    fi
-    
-    # Call the prepare-dpf-manifests.sh script directly
-    "$prepare_script"
-    
     get_kubeconfig
     deploy_nfd
     
@@ -252,6 +248,9 @@ function apply_dpf() {
     apply_remaining
     apply_scc
     deploy_hosted_cluster
+
+    wait_for_pods "dpf-operator-system" "dpu.nvidia.com/component=dpf-provisioning-controller-manager" "status.phase=Running" "1/1" 30 5
+
     log [INFO] "DPF deployment complete"
 }
 
@@ -275,6 +274,9 @@ function main() {
                 ;;
             create-ignition-template)
                 create_ignition_template
+                ;;
+            copy_hypershift_kubeconfig)
+                copy_hypershift_kubeconfig
                 ;;
             *)
                 log [INFO] "Unknown command: $command"
