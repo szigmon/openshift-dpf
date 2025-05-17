@@ -36,6 +36,18 @@ function prepare_manifests() {
     esac
 }
 
+
+function prepare_nfs() {
+     if [[ "${VM_COUNT}" = "1" ]]; then
+        log "INFO" "Copying NFS manifest: nfs-sno.yaml (VM count is 1)"
+        node_ip=$(oc get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}')
+        sed -e "s|<STORAGECLASS_NAME>|${ETCD_STORAGE_CLASS}|g" \
+            -e "s|<NFS_SERVER_NODE_IP>|${node_ip}|g" \
+        "${MANIFESTS_DIR}/nfs/nfs-sno.yaml" > "${GENERATED_DIR}/nfs-sno.yaml"
+    fi
+}
+
+
 function prepare_cluster_manifests() {
     log [INFO] "Preparing cluster installation manifests..."
     
@@ -113,6 +125,8 @@ function prepare_dpf_manifests() {
     sed -i "s|.dockerconfigjson: = xxx|.dockerconfigjson: $PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
 
     log [INFO] "DPF manifests prepared successfully."
+
+    prepare_nfs
 }
 
 function generate_ovn_manifests() {
