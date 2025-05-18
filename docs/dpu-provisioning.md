@@ -53,9 +53,9 @@ Before attempting to provision DPUs, ensure:
 
 Begin by ensuring your environment is properly configured:
 
-  ```bash
+```bash
 # Source your environment variables
-  source scripts/env.sh
+source scripts/env.sh
 
 # Verify DPF operator is running
 oc get pods -n dpf-operator-system
@@ -83,45 +83,52 @@ Review and adjust the following parameters in your `.env` file:
 To determine the correct interface name for your BlueField-3 DPUs (for the `DPU_INTERFACE` parameter), follow these steps:
 
 1. SSH to the worker node containing the DPU:
-   ```bash
-   ssh core@<worker-node-ip>
-   ```
+
+```bash
+ssh core@<worker-node-ip>
+```
 
 2. Identify the BlueField-3 device using `lspci`:
-   ```bash
-   sudo lspci -nn | grep -i mellanox
-   ```
-   
-   You should see output like this for BlueField-3 (PCI address may vary):
-   ```
-   b7:00.0 Ethernet controller: Mellanox Technologies MT43244 BlueField-3 integrated ConnectX-7 network controller (rev 01)
-   b7:00.1 Ethernet controller: Mellanox Technologies MT43244 BlueField-3 integrated ConnectX-7 network controller (rev 01)
-   ```
+
+```bash
+sudo lspci -nn | grep -i mellanox
+```
+
+You should see output like this for BlueField-3 (PCI address may vary):
+
+```
+b7:00.0 Ethernet controller: Mellanox Technologies MT43244 BlueField-3 integrated ConnectX-7 network controller (rev 01)
+b7:00.1 Ethernet controller: Mellanox Technologies MT43244 BlueField-3 integrated ConnectX-7 network controller (rev 01)
+```
 
 3. Find the network interfaces associated with these PCI devices:
-   ```bash
-   ip -br link | grep -i mell
-   ```
-   
-   Typically, the interface name will include the PCI address. For example, a device at b7:00.0 might have an interface name like:
-   ```
-   ens7f0np0      UP             xx:xx:xx:xx:xx:xx <BROADCAST,MULTICAST,UP,LOWER_UP>
-   ens7f1np1      UP             xx:xx:xx:xx:xx:xx <BROADCAST,MULTICAST,UP,LOWER_UP>
-   ```
 
-   BlueField-3 DPUs typically have two ports (PF0 and PF1). For the `DPU_INTERFACE` parameter, you should usually use the first port (PF0).
+```bash
+ip -br link | grep -i mell
+```
 
-   For the `DPU_OVN_VF` parameter, you'll need to use the virtual function created from this interface, typically named `ens7f0v1` for the first VF.
+Typically, the interface name will include the PCI address. For example, a device at b7:00.0 might have an interface name like:
+
+```
+ens7f0np0      UP             xx:xx:xx:xx:xx:xx <BROADCAST,MULTICAST,UP,LOWER_UP>
+ens7f1np1      UP             xx:xx:xx:xx:xx:xx <BROADCAST,MULTICAST,UP,LOWER_UP>
+```
+
+BlueField-3 DPUs typically have two ports (PF0 and PF1). For the `DPU_INTERFACE` parameter, you should usually use the first port (PF0).
+
+For the `DPU_OVN_VF` parameter, you'll need to use the virtual function created from this interface, typically named `ens7f0v1` for the first VF.
 
 4. Verify these are the DPU interfaces by checking their driver:
-  ```bash
-   ethtool -i ens7f0np0 | grep driver
-   ```
-   
-   You should see it's using the Mellanox driver:
-   ```
-   driver: mlx5_core
-   ```
+
+```bash
+ethtool -i ens7f0np0 | grep driver
+```
+
+You should see it's using the Mellanox driver:
+
+```
+driver: mlx5_core
+```
 
 Use the identified interface name (e.g., `ens7f0np0`) as the value for `DPU_INTERFACE` in your `.env` file, and the corresponding virtual function (e.g., `ens7f0v1`) for the `DPU_OVN_VF` parameter.
 
@@ -153,50 +160,50 @@ Add the worker nodes (hosts with BlueField DPUs) to your Management OpenShift cl
 
 1. **Generate ISO image from Assisted Installer**:
 
-   ```bash
-   # Create a discovery ISO for worker nodes
-   make create-cluster-iso
-   ```
+```bash
+# Create a discovery ISO for worker nodes
+make create-cluster-iso
+```
 
-   This generates a bootable ISO with the necessary configurations for your worker nodes.
+This generates a bootable ISO with the necessary configurations for your worker nodes.
 
 2. **Boot worker nodes with the ISO**:
-   - Download the ISO to your local machine
-   - Boot each worker node using this ISO (via BMC, virtual media, or USB drive)
-   - The worker nodes will automatically register with the Assisted Installer service
+- Download the ISO to your local machine
+- Boot each worker node using this ISO (via BMC, virtual media, or USB drive)
+- The worker nodes will automatically register with the Assisted Installer service
 
 3. **Monitor node registration in Assisted Installer**:
 
-   ```bash
-   # Check the status of nodes in Assisted Installer
-   aicli list hosts --cluster $CLUSTER_NAME
-   ```
+```bash
+# Check the status of nodes in Assisted Installer
+aicli list hosts --cluster $CLUSTER_NAME
+```
 
-   Worker nodes should appear with a `discovering` status initially, then transition to `known` status.
+Worker nodes should appear with a `discovering` status initially, then transition to `known` status.
 
 4. **Approve certificate signing requests (CSRs)**:
 
-  ```bash
-   # After nodes are added to the cluster, list pending CSRs
-   oc get csr | grep Pending
+```bash
+# After nodes are added to the cluster, list pending CSRs
+oc get csr | grep Pending
 
-   # Approve all pending CSRs
-   oc get csr -o name | xargs oc adm certificate approve
-   ```
+# Approve all pending CSRs
+oc get csr -o name | xargs oc adm certificate approve
+```
 
-   You may need to repeat the CSR approval process several times as nodes join the cluster.
+You may need to repeat the CSR approval process several times as nodes join the cluster.
 
 5. **Verify worker nodes are added**:
 
-  ```bash
-   # Check if worker nodes are added to the cluster
-  oc get nodes
+```bash
+# Check if worker nodes are added to the cluster
+oc get nodes
 
-   # Verify worker node roles
-   oc get nodes -l node-role.kubernetes.io/worker
-   ```
+# Verify worker node roles
+oc get nodes -l node-role.kubernetes.io/worker
+```
 
-   Worker nodes should show `Ready` or `NotReady` status and have the `worker` role assigned. Remember that worker nodes with DPUs will remain in `NotReady` state until DPU provisioning is complete.
+Worker nodes should show `Ready` or `NotReady` status and have the `worker` role assigned. Remember that worker nodes with DPUs will remain in `NotReady` state until DPU provisioning is complete.
 
 ### 5. Verify DPU Mode
 
@@ -206,34 +213,34 @@ Before provisioning, it's critical to ensure your BlueField DPUs are configured 
 
 1. **SSH to the worker node with the DPU**:
 
-   ```bash
-   # Connect to the worker node
-   ssh core@<worker-node-ip>
-   ```
+```bash
+# Connect to the worker node
+ssh core@<worker-node-ip>
+```
 
 2. **Run the Mellanox tools container**:
 
-   ```bash
-   # Run the Mellanox tools container with podman
-   podman run -it --privileged --network host \
-     -v /dev:/dev \
-     -v /sys:/sys \
-     -v /home/core:/home/core \
-     quay.io/szigmon/mellanox-tools:latest
-   ```
+```bash
+# Run the Mellanox tools container with podman
+podman run -it --privileged --network host \
+  -v /dev:/dev \
+  -v /sys:/sys \
+  -v /home/core:/home/core \
+  quay.io/szigmon/mellanox-tools:latest
+```
 
 3. **Inside the container, verify DPU mode**:
 
-   ```bash
-   # Start Mellanox Software Tools
-   mst start
-   
-   # List available devices 
-   mst status
-   
-   # Check DPU configuration (replace device name based on mst status output)
-   mlxconfig -d /dev/mst/mt41686_pciconf0 q INTERNAL_CPU_MODEL LINK_TYPE_P1 INTERNAL_CPU_OFFLOAD_ENGINE
-   ```
+```bash
+# Start Mellanox Software Tools
+mst start
+
+# List available devices 
+mst status
+
+# Check DPU configuration (replace device name based on mst status output)
+mlxconfig -d /dev/mst/mt41686_pciconf0 q INTERNAL_CPU_MODEL LINK_TYPE_P1 INTERNAL_CPU_OFFLOAD_ENGINE
+```
 
 You should confirm these values for proper DPU mode:
 - `INTERNAL_CPU_MODEL`: `EMBEDDED_CPU(1)` (DPU mode)
@@ -268,6 +275,7 @@ After reboot, verify the settings again using the same approach to ensure they'v
 The BFB contains the RHCOS bootable image for DPUs. The automation will automatically download this image from the URL specified in your `BFB_URL` environment variable.
 
 The `scripts/utils.sh` contains a function to dynamically update the BFB manifest:
+
 ```bash
 # The script extracts the filename from BFB_URL
 # Copies the template and updates with dynamic values
@@ -420,6 +428,7 @@ oc get dpu -n dpf-operator-system -w
 ```
 
 Example output showing DPUs in various provisioning phases:
+
 ```
 NAME                                      READY   PHASE                        AGE
 nvd-srv-24-0000-b7-00                             OS Installing                8m33s
@@ -485,6 +494,7 @@ oc describe dpu <dpu-name> -n dpf-operator-system
 ```
 
 Example output for a fully provisioned DPU:
+
 ```
 NAME                      READY   PHASE    AGE     PCI             DPU-VERSION   OS-VERSION   HOSTNAME
 nvd-srv-24-0000-b7-00     True    Ready    45m     0000:b7:00.0    4.19.0        4.19.0       nvd-srv-24
@@ -506,6 +516,7 @@ oc get node <worker-node-name> -o yaml | grep -A 5 allocatable
 ```
 
 You should see VF allocation in the output similar to:
+
 ```yaml
 allocatable:
   cpu: "32"
@@ -531,6 +542,7 @@ oc get nodes --show-labels | grep feature.node.kubernetes.io/dpu
 ```
 
 You should see labels similar to:
+
 ```
 feature.node.kubernetes.io/dpu-0-pci-address: 0000-b7-00
 feature.node.kubernetes.io/dpu-0-pf0-name: ens7f0np0
@@ -563,6 +575,7 @@ oc get ds -n ovn-kubernetes
 ```
 
 You should see the `ovnkube-node-dpu-host` daemonset running on worker nodes with DPUs:
+
 ```
 NAME                    DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR                                  AGE
 ovnkube-node            3         3         3       3            3           kubernetes.io/os=linux                         20d
@@ -579,6 +592,7 @@ oc get dpuservices -n dpf-operator-system
 ```
 
 Example output showing various DPU services:
+
 ```
 NAME                         READY   PHASE     AGE
 doca-blueman-service         True    Success   5h54m
