@@ -91,7 +91,7 @@ Follow these steps to install the DPF Operator:
 
    Install the DPF Operator and its dependencies:
    ```bash
-   make apply-dpf
+   make deploy-dpf
    ```
 
 ## Deployment Flow
