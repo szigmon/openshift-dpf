@@ -104,6 +104,28 @@ apt-get install -y virtinst libvirt-daemon-system qemu-kvm
 
 > **Note:** Missing the `virt-install` package will cause VM creation to fail with "nohup: failed to run command 'virt-install': No such file or directory".
 
+## Prerequisite: DNS or /etc/hosts Configuration
+
+Before starting cluster installation, you must ensure that your workstation or jump host can resolve the OpenShift API and ingress endpoints:
+
+- `api.<CLUSTER_NAME>.<BASE_DOMAIN>` → `API_VIP`
+- `*.apps.<CLUSTER_NAME>.<BASE_DOMAIN>` → `INGRESS_VIP`
+
+**You have two options:**
+
+1. **DNS:**
+   - Configure DNS records for both endpoints as described in the prerequisites.
+   - This is the recommended and production-ready approach.
+2. **/etc/hosts:**
+   - If you do not have DNS, you can add entries to `/etc/hosts` on your machine.
+   - You can automate this with:
+     ```bash
+     make update-etc-hosts
+     ```
+   - This will add the API endpoint automatically. For application routes, you must add each required FQDN manually (wildcards are not supported in /etc/hosts).
+
+> **Note:** These records must be in place before running any cluster installation commands, or the installation and access to the cluster will fail.
+
 ## Deployment Process
 
 ### 1. Prepare Environment (5 minutes)
