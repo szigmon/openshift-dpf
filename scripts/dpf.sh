@@ -170,7 +170,7 @@ function deploy_hypershift() {
 
 function create_ignition_template() {
     log [INFO] "Creating ignition template..."
-    retry 5 30 "$(dirname "${BASH_SOURCE[0]}")/gen_template.py" -f "${GENERATED_DIR}/hcp_template.yaml" -c "${HOSTED_CLUSTER_NAME}" -hc "${CLUSTERS_NAMESPACE}"
+    retry 10 40 "$(dirname "${BASH_SOURCE[0]}")/gen_template.py" -f "${GENERATED_DIR}/hcp_template.yaml" -c "${HOSTED_CLUSTER_NAME}" -hc "${CLUSTERS_NAMESPACE}"
     log [INFO] "Ignition template created"
     oc apply -f "$GENERATED_DIR/hcp_template.yaml"
 }
