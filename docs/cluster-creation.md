@@ -147,29 +147,21 @@ apt-get install -y virtinst libvirt-daemon-system qemu-kvm
 For **complete** cluster installation, follow these commands in sequence:
 
 ```bash
-# 1. First, register with the Assisted Installer
-make create-cluster
-
-# 2. Then create the VMs (downloads ISO and creates VMs)
-# Make sure ISO_FOLDER is set in your .env file
-make create-vms
-
-# 3. Complete the OpenShift installation process
-make cluster-install
-
-# 4. Wait for the installation to complete (monitors status)
-make wait-for-cluster
+make create-cluster   # Register with the Assisted Installer
+make create-vms       # Create the VMs for the cluster
+make cluster-install  # Complete the OpenShift installation process
 ```
 
 The full automation sequence performs these steps:
+
 1. Registers with Red Hat's Assisted Installer
 2. Creates VMs using libvirt with your configured VM_NAME_PREFIX
 3. Deploys OpenShift platform
 4. Configures networking and storage
 
-> **Important:** If you see an error like `ISO_FOLDER is not set. Please provide a valid ISO_FOLDER path`, you need to add `ISO_FOLDER=/path/to/folder` to your .env file.
-
 > **Shortcut:** To perform all these steps in one command, you can use `make all` which combines the steps above.
+
+> **Tip:** If you exit the installation process (e.g., with Ctrl+C), you can safely re-run `make cluster-install` at any time. The automation will detect the current cluster status and, if the cluster is already installed, will fetch the kubeconfig for you.
 
 ### 3. Monitor Installation
 
