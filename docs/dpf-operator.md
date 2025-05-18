@@ -47,51 +47,50 @@ Before proceeding with the installation, ensure:
 
 ## Installation Process
 
-### 1. Environment Preparation
+Follow these steps to install the DPF Operator:
 
-Source your environment variables to prepare for deployment:
+1. **Environment Preparation**
+   
+   Source your environment variables to prepare for deployment:
+   
+   ```bash
+   source scripts/env.sh
+   ```
 
-  ```bash
-# Source your environment variables
-  source scripts/env.sh
-  ```
+2. **Configuration Parameters**
+   
+   Review and adjust the following essential parameters in your `.env` file:
 
-### 2. Configuration Parameters
+   | Parameter | Description | Required/Optional | Default |
+   |-----------|-------------|-------------------|---------|
+   | `BASE_DOMAIN` | Base DNS domain for the cluster | **Required** | `lab.nvidia.com` |
+   | `HELM_CHART_VERSION` | Version of the DPF operator Helm chart | **Required** | `v25.1.1` |
+   | `HOSTED_CLUSTER_NAME` | Name for the hosted cluster | **Required** | `doca` |
+   | `CLUSTERS_NAMESPACE` | Namespace for Hypershift clusters | **Required** | `clusters` |
+   | `OCP_RELEASE_IMAGE` | OpenShift release image for hosted cluster | **Required** | `quay.io/openshift-release-dev/ocp-release:4.19.0-ec.5-multi` |
+   | `OPENSHIFT_PULL_SECRET` | Path to OpenShift pull secret file | **Required** | - |
+   | `DPF_PULL_SECRET` | Path to DPF pull secret file | **Required** | - |
+   | `KUBECONFIG` | Path to the cluster's kubeconfig file | Optional | `$HOME/.kube/config` |
 
-Review and adjust the following essential parameters in your `.env` file:
+   > **Note**: Parameters marked as **Required** must be explicitly set in your `.env` file. Network-related parameters are configured during the DPU provisioning phase and described in the [DPU Provisioning](dpu-provisioning.md) documentation.
 
-| Parameter | Description | Required/Optional | Default |
-|-----------|-------------|-------------------|---------|
-| `BASE_DOMAIN` | Base DNS domain for the cluster | **Required** | `lab.nvidia.com` |
-| `HELM_CHART_VERSION` | Version of the DPF operator Helm chart | **Required** | `v25.1.1` |
-| `HOSTED_CLUSTER_NAME` | Name for the hosted cluster | **Required** | `doca` |
-| `CLUSTERS_NAMESPACE` | Namespace for Hypershift clusters | **Required** | `clusters` |
-| `OCP_RELEASE_IMAGE` | OpenShift release image for hosted cluster | **Required** | `quay.io/openshift-release-dev/ocp-release:4.19.0-ec.5-multi` |
-| `OPENSHIFT_PULL_SECRET` | Path to OpenShift pull secret file | **Required** | - |
-| `DPF_PULL_SECRET` | Path to DPF pull secret file | **Required** | - |
-| `KUBECONFIG` | Path to the cluster's kubeconfig file | Optional | `$HOME/.kube/config` |
+3. **Generate Deployment Manifests**
+   
+   Generate the required Kubernetes manifests for your deployment:
+   
+   ```bash
+   make prepare-dpf-manifests
+   ```
+   
+   This creates customized manifests in the `manifests/generated` directory based on your configuration parameters.
 
-> **Note**: Parameters marked as **Required** must be explicitly set in your `.env` file. Network-related parameters are configured during the DPU provisioning phase and described in the [DPU Provisioning](dpu-provisioning.md) documentation.
-
-### 3. Generate Deployment Manifests
-
-Generate the required Kubernetes manifests for your deployment:
-
-  ```bash
-# Generate manifests
-  make prepare-dpf-manifests
-```
-
-This creates customized manifests in the `manifests/generated` directory based on your configuration parameters.
-
-### 4. Deploy the DPF Operator
-
-Install the DPF Operator and its dependencies:
-
-  ```bash
-# Deploy DPF Operator and all components
-  make apply-dpf
-```
+4. **Deploy the DPF Operator**
+   
+   Install the DPF Operator and its dependencies:
+   
+   ```bash
+   make apply-dpf
+   ```
 
 ## Deployment Flow
 
