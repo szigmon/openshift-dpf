@@ -10,7 +10,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/tools.sh"
 
-HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
 ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"ocs-storagecluster-ceph-rbd"}
 
 # -----------------------------------------------------------------------------
@@ -144,12 +143,14 @@ function deploy_hypershift() {
         wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
         log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
+        # --network-type=Other \
         hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
           --base-domain="${BASE_DOMAIN}" \
           --release-image="${OCP_RELEASE_IMAGE}" \
           --ssh-key="${SSH_KEY}" \
           --network-type=Other \
           --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
+          --node-selector='node-role.kubernetes.io/master=""' \
           --node-upgrade-type=Replace \
           --disable-cluster-capabilities=ImageRegistry \
           --pull-secret="${OPENSHIFT_PULL_SECRET}"
@@ -169,7 +170,7 @@ function deploy_hypershift() {
 
 function create_ignition_template() {
     log [INFO] "Creating ignition template..."
-    retry 5 30 "$(dirname "${BASH_SOURCE[0]}")/gen_template.py" -f "${GENERATED_DIR}/hcp_template.yaml" -c "${HOSTED_CLUSTER_NAME}" -hc "${CLUSTERS_NAMESPACE}"
+    retry 10 40 "$(dirname "${BASH_SOURCE[0]}")/gen_template.py" -f "${GENERATED_DIR}/hcp_template.yaml" -c "${HOSTED_CLUSTER_NAME}" -hc "${CLUSTERS_NAMESPACE}"
     log [INFO] "Ignition template created"
     oc apply -f "$GENERATED_DIR/hcp_template.yaml"
 }
@@ -179,29 +180,35 @@ function configure_hypershift() {
 
     if oc get secret -n dpf-operator-system "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" &>/dev/null; then
         log [INFO] "Secret ${HOSTED_CLUSTER_NAME}-admin-kubeconfig already exists. Skipping creation."
-        return
+    else
+      # Wait for the HostedCluster resource to create the admin-kubeconfig secret with valid data
+          wait_for_secret_with_data "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" "kubeconfig" 60 10
+
+          # Then create the kubeconfig with retries
+          log [INFO] "Generating kubeconfig file for ${HOSTED_CLUSTER_NAME}..."
+          local max_attempts=5
+          local delay=10
+          # Use retry to generate a valid kubeconfig file
+          retry "$max_attempts" "$delay" bash -c '
+              ns="$1"; name="$2"
+              hypershift create kubeconfig --namespace "$ns" --name "$name" > "$name.kubeconfig" && \
+              grep -q "apiVersion: v1" "$name.kubeconfig" && \
+              grep -q "kind: Config" "$name.kubeconfig"
+          ' _ "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}"
+
     fi
-    
-    # Wait for the HostedCluster resource to create the admin-kubeconfig secret with valid data
-    wait_for_secret_with_data "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" "kubeconfig" 60 10
 
-    # Then create the kubeconfig with retries
-    log [INFO] "Generating kubeconfig file for ${HOSTED_CLUSTER_NAME}..."
-    local max_attempts=5
-    local delay=10
-    # Use retry to generate a valid kubeconfig file
-    retry "$max_attempts" "$delay" bash -c '
-        ns="$1"; name="$2"
-        hypershift create kubeconfig --namespace "$ns" --name "$name" > "$name.kubeconfig" && \
-        grep -q "apiVersion: v1" "$name.kubeconfig" && \
-        grep -q "kind: Config" "$name.kubeconfig"
-    ' _ "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}"
+    copy_hypershift_kubeconfig
+}
 
-    # Create the admin kubeconfig secret
-    oc create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig -n dpf-operator-system \
-      --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque || \
-      oc -n dpf-operator-system create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig \
-      --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque --dry-run=client -o yaml | oc apply -f -
+function copy_hypershift_kubeconfig() {
+   oc get secret -n "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" -o jsonpath='{.data.kubeconfig}' | base64 -d > ${HOSTED_CLUSTER_NAME}.kubeconfig
+   oc create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig -n dpf-operator-system \
+         --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque || \
+         oc -n dpf-operator-system create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig \
+         --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque --dry-run=client -o yaml | oc apply -f -
+
+
 }
 
 function apply_remaining() {
@@ -218,7 +225,7 @@ function apply_remaining() {
               "$file" != "$GENERATED_DIR/cert-manager-manifests.yaml" && \
               "$file" != "$GENERATED_DIR/kamaji-manifests.yaml" && \
               "$file" != "$GENERATED_DIR/scc.yaml" ]]; then
-            apply_manifest "$file"
+            retry 5 30 apply_manifest "$file" true
             if [[ "$file" =~ .*operator.*\.yaml$ ]]; then
                 log [INFO] "Waiting for operator resources..."
                 sleep 10
@@ -232,16 +239,6 @@ function apply_dpf() {
     log "INFO" "Provided kubeconfig ${KUBECONFIG}"
     log "INFO" "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
     
-    # Check if prepare-dpf-manifests.sh exists
-    local prepare_script="$(dirname "${BASH_SOURCE[0]}")/prepare-dpf-manifests.sh"
-    if [ ! -f "$prepare_script" ]; then
-        log [INFO] "Error: $prepare_script not found"
-        exit 1
-    fi
-    
-    # Call the prepare-dpf-manifests.sh script directly
-    "$prepare_script"
-    
     get_kubeconfig
     deploy_nfd
     
@@ -251,6 +248,9 @@ function apply_dpf() {
     apply_remaining
     apply_scc
     deploy_hosted_cluster
+
+    wait_for_pods "dpf-operator-system" "dpu.nvidia.com/component=dpf-provisioning-controller-manager" "status.phase=Running" "1/1" 30 5
+
     log [INFO] "DPF deployment complete"
 }
 
@@ -274,6 +274,9 @@ function main() {
                 ;;
             create-ignition-template)
                 create_ignition_template
+                ;;
+            copy_hypershift_kubeconfig)
+                copy_hypershift_kubeconfig
                 ;;
             *)
                 log [INFO] "Unknown command: $command"

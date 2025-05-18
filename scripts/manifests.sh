@@ -36,6 +36,17 @@ function prepare_manifests() {
     esac
 }
 
+
+function prepare_nfs() {
+     if [[ "${VM_COUNT}" = "1" ]]; then
+        log "INFO" "Copying NFS manifest: nfs-sno.yaml (VM count is 1)"
+        sed -e "s|<STORAGECLASS_NAME>|${ETCD_STORAGE_CLASS}|g" \
+            -e "s|<NFS_SERVER_NODE_IP>|${HOST_CLUSTER_API}|g" \
+        "${MANIFESTS_DIR}/nfs/nfs-sno.yaml" > "${GENERATED_DIR}/nfs-sno.yaml"
+    fi
+}
+
+
 function prepare_cluster_manifests() {
     log [INFO] "Preparing cluster installation manifests..."
     
@@ -67,54 +78,77 @@ function prepare_cluster_manifests() {
     log [INFO] "Cluster manifests preparation complete."
 }
 
-function prepare_dpf_manifests() {
-    log [INFO] "Preparing DPF manifests..."
-    
+# Function to prepare DPF manifests
+prepare_dpf_manifests() {
+    log [INFO] "Starting DPF manifest preparation..."
+    echo "Using manifests directory: ${MANIFESTS_DIR}"
+
+    # Check required variables
+    if [ -z "$MANIFESTS_DIR" ]; then
+      echo "Error: MANIFESTS_DIR must be set"
+      exit 1
+    fi
+
+    if [ -z "$GENERATED_DIR" ]; then
+      echo "Error: GENERATED_DIR must be set"
+      exit 1
+    fi
+
+    # Check cluster type specific requirements
+    if [ "$DPF_CLUSTER_TYPE" = "kamaji" ]; then
+      if [ -z "$KAMAJI_VIP" ]; then
+        echo "Error: KAMAJI_VIP must be set when using Kamaji cluster type"
+        exit 1
+      fi
+    fi
+
     # Validate required variables
     if [ -z "$HOST_CLUSTER_API" ]; then
-        log [INFO] "Error: HOST_CLUSTER_API must be set"
-        exit 1
+      echo "Error: HOST_CLUSTER_API must be set"
+      exit 1
     fi
 
     if [ -z "$DPU_INTERFACE" ]; then
-        log [INFO] "Error: DPU_INTERFACE must be set"
-        exit 1
+      echo "Error: DPU_INTERFACE must be set"
+      exit 1
     fi
 
-    # Only validate KAMAJI_VIP if using kamaji cluster type
-    if [ "${DPF_CLUSTER_TYPE}" = "kamaji" ] && [ -z "$KAMAJI_VIP" ]; then
-        log [INFO] "Error: KAMAJI_VIP must be set when using kamaji cluster type"
-        exit 1
+    # Create generated directory if it doesn't exist
+    if [ ! -d "${GENERATED_DIR}" ]; then
+        log "INFO" "Creating generated directory: ${GENERATED_DIR}"
+        mkdir -p "${GENERATED_DIR}"
     fi
 
-    # Copy all manifests except NFD
+    # Copy and process manifests
+    log "INFO" "Processing manifests from ${MANIFESTS_DIR} to ${GENERATED_DIR}"
+
+    # Process each manifest file
+        # Copy all manifests except NFD
     find "$MANIFESTS_DIR/dpf-installation" -maxdepth 1 -type f -name "*.yaml" \
-        | grep -v "dpf-nfd.yaml" \
         | xargs -I {} cp {} "$GENERATED_DIR/"
 
+    helm template -n dpf-operator-system dpf-operator oci://ghcr.io/nvidia/dpf-operator \
+    --version v25.1.1 -f "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"  > "${GENERATED_DIR}/00-dpf-operator-manifests.yaml"
+    log "INFO" "DPF manifest preparation completed successfully"
+
+
     # Update manifests with configuration
-    sed -i "s|value: api.CLUSTER_FQDN|value: $HOST_CLUSTER_API|g" "$GENERATED_DIR/dpf-operator-manifests.yaml"
-    sed -i "s|storageClassName: lvms-vg1|storageClassName: $ETCD_STORAGE_CLASS|g" "$GENERATED_DIR/dpf-operator-manifests.yaml"
-    sed -i "s|storageClassName: lvms-vg1|storageClassName: $ETCD_STORAGE_CLASS|g" "$GENERATED_DIR/kamaji-manifests.yaml"
     sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
 
-    # Extract NGC API key and update secrets
-    local NGC_API_KEY=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET")
-    sed -i "s|password: xxx|password: $NGC_API_KEY|g" "$GENERATED_DIR/ngc-secrets.yaml"
 
-    # Update interface configurations
-    sed -i "s|interface: br-ex|interface: $DPU_INTERFACE|g" "$GENERATED_DIR/kamaji-manifests.yaml"
-    
-    # Only update KAMAJI_VIP if using kamaji cluster type
-    if [ "${DPF_CLUSTER_TYPE}" = "kamaji" ]; then
-        sed -i "s|vip: KAMAJI_VIP|vip: $KAMAJI_VIP|g" "$GENERATED_DIR/kamaji-manifests.yaml"
-    fi
+    # Update static DPU cluster template
+    sed -i "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
+    sed -i "s|HOSTED_CLUSTER_NAME|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
+
+    # Extract NGC API key and update secrets
+    NGC_API_KEY=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET")
+    sed -i "s|<PASSWORD>|$NGC_API_KEY|g" "$GENERATED_DIR/ngc-secrets.yaml"
 
     # Update pull secret
-    local PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64 -w 0)
-    sed -i "s|.dockerconfigjson: = xxx|.dockerconfigjson: $PULL_SECRET|g" "$GENERATED_DIR/dpf-operator-manifests.yaml"
+    PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64 -w 0)
+    sed -i "s|PULL_SECRET_BASE64|$PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
 
-    log [INFO] "DPF manifests prepared successfully."
+    prepare_nfs
 }
 
 function generate_ovn_manifests() {
