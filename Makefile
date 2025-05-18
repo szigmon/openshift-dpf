@@ -90,7 +90,8 @@ redeploy-dpu:
 	@$(POST_INSTALL_SCRIPT) redeploy
 
 update-etc-hosts:
-	@scripts/update-etc-hosts.sh
+	@scripts/update-etc-hosts.sh $(API_VIP) api.$(CLUSTER_NAME).$(BASE_DOMAIN)
+	@scripts/update-etc-hosts.sh $(INGRESS_VIP) console-openshift-console.apps.$(CLUSTER_NAME).$(BASE_DOMAIN)
 
 clean-all:
 	@$(CLUSTER_SCRIPT) clean-all
