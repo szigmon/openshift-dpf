@@ -280,6 +280,32 @@ dig api.${CLUSTER_NAME}.${BASE_DOMAIN}
 dig random-app.apps.${CLUSTER_NAME}.${BASE_DOMAIN}
 ```
 
+## Alternate to DNS: Using /etc/hosts
+
+If you do not have a DNS server available, you can use `/etc/hosts` on your workstation or jump host to resolve OpenShift API and console endpoints.
+
+You can automate this by running:
+
+```bash
+make update-etc-hosts
+```
+
+This will add both the API and console endpoints to your `/etc/hosts` file using the values from your `.env` file:
+
+- `api.<CLUSTER_NAME>.<BASE_DOMAIN>` → `API_VIP`
+- `console-openshift-console.apps.<CLUSTER_NAME>.<BASE_DOMAIN>` → `INGRESS_VIP`
+
+> **Note:**
+> `/etc/hosts` does **not** support wildcards (`*`).
+> If you need to access additional app routes (e.g., `myapp.apps.<CLUSTER_NAME>.<BASE_DOMAIN>`), you must add a line for each app route and point it to the Ingress VIP.
+
+For example:
+```
+10.8.231.55 api.doca-docs.nvidia.eng.rdu2.dc.redhat.com
+10.8.231.56 console-openshift-console.apps.doca-docs.nvidia.eng.rdu2.dc.redhat.com
+10.8.231.56 myapp.apps.doca-docs.nvidia.eng.rdu2.dc.redhat.com
+```
+
 ## Troubleshooting
 
 ### Common Issues
