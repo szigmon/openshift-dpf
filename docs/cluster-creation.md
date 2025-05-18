@@ -163,6 +163,22 @@ The full automation sequence performs these steps:
 
 > **Tip:** If you exit the installation process (e.g., with Ctrl+C), you can safely re-run `make cluster-install` at any time. The automation will detect the current cluster status and, if the cluster is already installed, will fetch the kubeconfig for you.
 
+### Verify Cluster Access
+
+After installation, check access to your new OpenShift cluster using the downloaded kubeconfig:
+
+```bash
+export KUBECONFIG=$PWD/kubeconfig.<CLUSTER_NAME>
+oc whoami
+```
+If everything is set up correctly, this should return your OpenShift username (e.g., `kubeadmin`).
+
+You can also check cluster status:
+```bash
+oc get nodes
+oc get co
+```
+
 ### 3. Monitor Installation
 
 Track the progress with these commands:
