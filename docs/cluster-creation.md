@@ -88,7 +88,6 @@ The automation will only create or modify VMs that match your configured prefix.
 | `VM_VCPUS` | vCPUs per control plane VM | `16` | `16` |
 | `VM_MEMORY_GB` | Memory (GB) per control plane VM | `42` | `48` |
 | `VM_DISK_GB` | Disk size (GB) per control plane VM | `120` | `150` |
-| `ISO_FOLDER` | Directory to store downloaded ISO file | None (required) | `/root/` |
 | `SKIP_BRIDGE_CONFIG` | Skip bridge creation if set to true | `false` | `true` |
 
 ### Required Packages
@@ -195,7 +194,7 @@ If your cluster shows as "pending-for-input" status like this:
 +-----------+--------------------------------------+-------------------+-------------------------------+
 |  Cluster  |                  Id                  |       Status      |           Dns Domain          |
 +-----------+--------------------------------------+-------------------+-------------------------------+
-| doca-docs | b816f8df-b3e3-4534-8067-65b2968239b4 | pending-for-input | nvidia.eng.rdu2.dc.redhat.com |
+| doca-docs | b816f8df-b3e3-4534-8067-65b2968239b4 | pending-for-input | lab.nvidia.com |
 ```
 
 This means the Assisted Installer is waiting for input before proceeding. The most common reasons include:

@@ -212,7 +212,6 @@ The deployment uses a `.env` file to configure all aspects of the installation. 
 | `SERVICE_CIDR` | CIDR block for service networking | | Both | `172.30.0.0/16` | `172.30.0.0/16` |
 | `SKIP_BRIDGE_CONFIG` | Skip bridge creation if you already have a bridge configured on your host | | Complete Installation | `false` | `true` |
 | **VM Configuration** |
-| `ISO_FOLDER` | Directory to store downloaded ISO file | ✓ | Complete Installation | - | `/root/` |
 | `VM_NAME_PREFIX` | Prefix for VM names (to avoid conflicts with existing VMs) | | Complete Installation | Host name | `dpf` |
 | **Authentication & Credentials** |
 | `OPENSHIFT_PULL_SECRET` | Path to OpenShift pull secret file | ✓ | Complete Installation | - | `/path/to/openshift_pull.json` |
