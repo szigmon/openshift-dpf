@@ -51,10 +51,10 @@ Before proceeding with the installation, ensure:
 
 Source your environment variables to prepare for deployment:
 
-```bash
+  ```bash
 # Source your environment variables
-source scripts/env.sh
-```
+  source scripts/env.sh
+  ```
 
 ### 2. Configuration Parameters
 
@@ -77,9 +77,9 @@ Review and adjust the following essential parameters in your `.env` file:
 
 Generate the required Kubernetes manifests for your deployment:
 
-```bash
+  ```bash
 # Generate manifests
-make prepare-dpf-manifests
+  make prepare-dpf-manifests
 ```
 
 This creates customized manifests in the `manifests/generated` directory based on your configuration parameters.
@@ -88,9 +88,9 @@ This creates customized manifests in the `manifests/generated` directory based o
 
 Install the DPF Operator and its dependencies:
 
-```bash
+  ```bash
 # Deploy DPF Operator and all components
-make apply-dpf
+  make apply-dpf
 ```
 
 ## Deployment Flow
@@ -207,7 +207,7 @@ dpf-operator-argocd-server-xxxxxx-xxxxx        1/1     Running   0          2m
 
 Check the status of Hypershift and the hosted cluster:
 
-```bash
+  ```bash
 # Check Hypershift operator
 oc get pods -n hypershift
 
@@ -224,7 +224,7 @@ The hosted cluster should show `Available` status.
 
 Check if the operator is ready to manage DPUs:
 
-```bash
+  ```bash
 # Check if DPF operator is ready to accept DPU configurations
 oc get dpucluster -A
 ```

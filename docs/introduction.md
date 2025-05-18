@@ -9,11 +9,11 @@ Welcome to the NVIDIA DPF on OpenShift documentation—your technical resource f
 - **DPF:** DOCA Platform Framework
 - **Purpose:** Integrates NVIDIA BlueField DPUs with OpenShift to deliver advanced networking, security, and acceleration for enterprise Kubernetes workloads.
 - **Scope:** Automates the full lifecycle:
-    - Cluster creation
-    - DPU provisioning
-    - DPF Operator deployment
-    - DOCA service deployment
-    - Advanced operations and troubleshooting
+  - Cluster creation
+  - DPU provisioning
+  - DPF Operator deployment
+  - DOCA service deployment
+  - Advanced operations and troubleshooting
 
 ---
 
@@ -28,18 +28,18 @@ Welcome to the NVIDIA DPF on OpenShift documentation—your technical resource f
 ## Why Integrate DPF with OpenShift?
 
 - **Accelerated Networking & Security**
-    - Offload and isolate critical functions to DPUs
-    - Improve performance and security for sensitive workloads
+  - Offload and isolate critical functions to DPUs
+  - Improve performance and security for sensitive workloads
 
 - **Automated Lifecycle Management**
-    - End-to-end automation for deployment, upgrades, and scaling
-    - Reduce manual effort and operational risk
+  - End-to-end automation for deployment, upgrades, and scaling
+  - Reduce manual effort and operational risk
 
 - **Flexible Integration Paths**
-    - Greenfield (new cluster), brownfield (existing cluster), and service-focused scenarios
+  - Greenfield (new cluster), brownfield (existing cluster), and service-focused scenarios
 
 - **Enterprise-Grade Reliability**
-    - Built on Red Hat and NVIDIA best practices
+  - Built on Red Hat and NVIDIA best practices
 
 ---
 
@@ -65,13 +65,13 @@ Welcome to the NVIDIA DPF on OpenShift documentation—your technical resource f
 ## Documentation Approach
 
 - **Modular & Scenario-Based**
-    - Start from any point: new deployment, existing cluster, or service-focused path
+  - Start from any point: new deployment, existing cluster, or service-focused path
 
 - **Progressive Disclosure**
-    - High-level overviews with links to detailed, step-by-step guides
+  - High-level overviews with links to detailed, step-by-step guides
 
 - **Visual Navigation**
-    - Architecture diagrams, workflow charts, and decision trees guide users through complex scenarios
+  - Architecture diagrams, workflow charts, and decision trees guide users through complex scenarios
 
 ---
 

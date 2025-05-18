@@ -23,9 +23,9 @@ Before working with DPU services:
 
 First, verify that your DPUs are properly provisioned:
 
-```bash
+  ```bash
 # Source your environment variables
-source scripts/env.sh
+  source scripts/env.sh
 
 # Verify DPUs are in Ready state
 oc get dpu -n dpf-operator-system
@@ -37,7 +37,7 @@ All DPUs should show `READY: True` and `PHASE: Ready` before proceeding.
 
 The only services requiring manual deployment are OVN and HBN:
 
-```bash
+  ```bash
 # Prepare and deploy OVN and HBN service configurations
 make prepare-dpu-files
 make deploy-dpu-services
@@ -114,9 +114,9 @@ spec:
 
 If you need to deploy a custom DPU service, you can create a similar YAML file and apply it using:
 
-```bash
+  ```bash
 oc apply -f custom-dpuservice.yaml
-```
+  ```
 
 ## Verification
 

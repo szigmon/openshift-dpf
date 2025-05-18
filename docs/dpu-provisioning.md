@@ -53,9 +53,9 @@ Before attempting to provision DPUs, ensure:
 
 Begin by ensuring your environment is properly configured:
 
-```bash
+  ```bash
 # Source your environment variables
-source scripts/env.sh
+  source scripts/env.sh
 
 # Verify DPF operator is running
 oc get pods -n dpf-operator-system
@@ -114,7 +114,7 @@ To determine the correct interface name for your BlueField-3 DPUs (for the `DPU_
    For the `DPU_OVN_VF` parameter, you'll need to use the virtual function created from this interface, typically named `ens7f0v1` for the first VF.
 
 4. Verify these are the DPU interfaces by checking their driver:
-   ```bash
+  ```bash
    ethtool -i ens7f0np0 | grep driver
    ```
    
@@ -176,7 +176,7 @@ Add the worker nodes (hosts with BlueField DPUs) to your Management OpenShift cl
 
 4. **Approve certificate signing requests (CSRs)**:
 
-   ```bash
+  ```bash
    # After nodes are added to the cluster, list pending CSRs
    oc get csr | grep Pending
 
@@ -188,9 +188,9 @@ Add the worker nodes (hosts with BlueField DPUs) to your Management OpenShift cl
 
 5. **Verify worker nodes are added**:
 
-   ```bash
+  ```bash
    # Check if worker nodes are added to the cluster
-   oc get nodes
+  oc get nodes
 
    # Verify worker node roles
    oc get nodes -l node-role.kubernetes.io/worker
