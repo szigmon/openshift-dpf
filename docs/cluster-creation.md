@@ -142,7 +142,8 @@ apt-get install -y virtinst libvirt-daemon-system qemu-kvm
 
 ### 2. Deploy Cluster (60-90 minutes)
 
-> **Note:** The full cluster installation requires multiple steps in the correct order. Follow the steps below carefully.
+> **Warning:**  
+> Do **not** exit (`Ctrl+C`) the `make cluster-install` process until it completes. If you exit early, the automation will not automatically fetch the `KUBECONFIG` or mark the cluster as installed, even if the Assisted Installer UI shows the cluster as installed.
 
 For **complete** cluster installation, follow these commands in sequence:
 
@@ -151,25 +152,23 @@ For **complete** cluster installation, follow these commands in sequence:
 make create-cluster
 
 # 2. Then create the VMs (downloads ISO and creates VMs)
-# Make sure ISO_FOLDER is set in your .env file
 make create-vms
 
 # 3. Complete the OpenShift installation process
 make cluster-install
-
-# 4. Wait for the installation to complete (monitors status)
-make wait-for-cluster
 ```
 
-The full automation sequence performs these steps:
-1. Registers with Red Hat's Assisted Installer
-2. Creates VMs using libvirt with your configured VM_NAME_PREFIX
-3. Deploys OpenShift platform
-4. Configures networking and storage
+> **Note:** The `make cluster-install` command will monitor the installation and fetch the `KUBECONFIG` when complete. Do not exit this process early.
 
-> **Important:** If you see an error like `ISO_FOLDER is not set. Please provide a valid ISO_FOLDER path`, you need to add `ISO_FOLDER=/path/to/folder` to your .env file.
+#### **If You Exited Early or Lost Connection**
 
-> **Shortcut:** To perform all these steps in one command, you can use `make all` which combines the steps above.
+If you accidentally exited the install process or lost your terminal session:
+- Check the cluster status in the Assisted Installer UI.
+- If the cluster is already installed, simply re-run:
+  ```bash
+  make cluster-install
+  ```
+  The automation will detect the installed state and fetch the `KUBECONFIG` if needed.
 
 ### 3. Monitor Installation
 
