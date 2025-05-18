@@ -226,6 +226,22 @@ The deployment uses a `.env` file to configure all aspects of the installation. 
 
 > **Note**: For network configuration, ensure that `API_VIP` and `INGRESS_VIP` are allocated in your network and that proper DNS records are configured as described in the Network Requirements section.
 
+## Required Packages
+
+Before creating VMs or deploying operators, ensure you have the necessary packages installed:
+
+```bash
+# RHEL/CentOS
+sudo dnf install -y virt-install libvirt qemu-kvm podman
+
+# Ubuntu/Debian
+sudo apt-get install -y virtinst libvirt-daemon-system qemu-kvm podman
+```
+
+> **Note:**
+> - `podman` is required for Hypershift operator installation and container image management.
+> - Missing the `virt-install` package will cause VM creation to fail with "nohup: failed to run command 'virt-install': No such file or directory".
+
 ## Next Steps
 
 After ensuring all prerequisites have been met, proceed to the installation guides:
