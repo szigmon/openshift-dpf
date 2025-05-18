@@ -234,11 +234,42 @@ function apply_remaining() {
     done
 }
 
+function install_cert_manager_operatorhub() {
+    # Check if cert-manager-operator is already installed
+    if oc get deployment -n openshift-operators openshift-cert-manager-operator &>/dev/null; then
+        log [INFO] "cert-manager operator already installed. Skipping installation."
+        return 0
+    fi
+    log [INFO] "Installing cert-manager operator from OperatorHub..."
+    oc apply -f manifests/cluster-installation/openshift-cert-manager.yaml
+    # Wait for the operator deployment to be available
+    for i in {1..30}; do
+        if oc get deployment -n openshift-operators openshift-cert-manager-operator &>/dev/null; then
+            log [INFO] "cert-manager operator is now installed."
+            return 0
+        fi
+        log [INFO] "Waiting for cert-manager operator to be available... ($i/30)"
+        sleep 10
+    done
+    log [ERROR] "Timed out waiting for cert-manager operator to be installed."
+    return 1
+}
+
 function apply_dpf() {
     log "INFO" "Starting DPF deployment sequence..."
     log "INFO" "Provided kubeconfig ${KUBECONFIG}"
     log "INFO" "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
-    
+
+    # Install cert-manager operator if needed
+    install_cert_manager_operatorhub
+
+    # Check if prepare-dpf-manifests.sh exists
+    local prepare_script="$(dirname "${BASH_SOURCE[0]}")/prepare-dpf-manifests.sh"
+    if [ ! -f "$prepare_script" ]; then
+        log [INFO] "Error: $prepare_script not found"
+        exit 1
+    fi
+
     get_kubeconfig
     deploy_nfd
     
