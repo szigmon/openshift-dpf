@@ -65,6 +65,7 @@ Throughout this document, you'll see these requirement labels:
 | **jq** | Latest | JSON processing | Both | [Install jq](https://stedolan.github.io/jq/download/) |
 | **libvirt** | Latest | VM management | Complete Installation | [Install libvirt](https://libvirt.org/compiling.html) |
 | **virt-install** | Latest | Create VMs | Complete Installation | `dnf install -y virt-install` or `apt install -y virtinst` |
+| **podman** | Latest | Container management, Hypershift install | Both | [Install Podman](https://podman.io/getting-started/installation) |
 
 ### Required Containers and Pull Secrets
 
