@@ -235,17 +235,25 @@ function apply_remaining() {
 }
 
 function install_cert_manager_operatorhub() {
-    # Check if cert-manager-operator is already installed
-    if oc get deployment -n openshift-operators openshift-cert-manager-operator &>/dev/null; then
-        log [INFO] "cert-manager operator already installed. Skipping installation."
+    # Consider cert-manager installed if deployment exists in cert-manager ns or CSV is succeeded in openshift-operators
+    if oc get deployment -n cert-manager cert-manager &>/dev/null; then
+        log [INFO] "cert-manager deployment found in cert-manager namespace. Skipping installation."
         return 0
     fi
-    log [INFO] "Installing cert-manager operator from OperatorHub..."
+    if oc get csv -n openshift-operators | grep -q 'cert-manager.*Succeeded'; then
+        log [INFO] "cert-manager CSV found and succeeded in openshift-operators. Skipping installation."
+        return 0
+    fi
+    log [INFO] "Installing cert-manager operator from OperatorHub (Subscription only)..."
     oc apply -f manifests/cluster-installation/openshift-cert-manager.yaml
-    # Wait for the operator deployment to be available
+    # Wait for the operator deployment or CSV to be available
     for i in {1..30}; do
-        if oc get deployment -n openshift-operators openshift-cert-manager-operator &>/dev/null; then
-            log [INFO] "cert-manager operator is now installed."
+        if oc get deployment -n cert-manager cert-manager &>/dev/null; then
+            log [INFO] "cert-manager deployment is now installed."
+            return 0
+        fi
+        if oc get csv -n openshift-operators | grep -q 'cert-manager.*Succeeded'; then
+            log [INFO] "cert-manager CSV is now succeeded."
             return 0
         fi
         log [INFO] "Waiting for cert-manager operator to be available... ($i/30)"
