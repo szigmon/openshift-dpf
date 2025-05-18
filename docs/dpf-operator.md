@@ -35,31 +35,36 @@ The installation process deploys these components:
 
 > **Note:** Consider adding a diagram that specifically shows the DPF architecture with Hypershift control plane. This will help users understand the deployment topology.
 
-## Prerequisites
+## Before You Begin
 
-Before proceeding with the installation, ensure:
-
-- Your environment meets all requirements in the [Prerequisites](prerequisites.md) document
-- You have a running OpenShift cluster (4.19+) with admin access
-- You have configured the `scripts/env.sh` file with your environment details
-
-> **Note:** This automation can run on either a newly created OpenShift cluster or an existing one, provided it meets the version requirements and has the necessary storage classes available. The automation will install Hypershift and create a hosted control plane on your existing cluster.
+Before installing the DPF Operator, ensure you have:
+- A running OpenShift 4.19+ cluster (see [Cluster Creation](cluster-creation.md))
+- Admin access and a valid kubeconfig
+- All prerequisites from the [Prerequisites](prerequisites.md) page completed
 
 ## Installation Process
 
 Follow these steps to install the DPF Operator:
 
-1. **Environment Preparation**
-   
-   Source your environment variables to prepare for deployment:
-   
+1. **Source Your Environment**
+
+   Load your environment variables:
    ```bash
    source scripts/env.sh
    ```
 
-2. **Configuration Parameters**
-   
-   Review and adjust the following essential parameters in your `.env` file:
+2. **Verify Cluster Access**
+
+   Make sure you can access your OpenShift cluster:
+   ```bash
+   oc whoami
+   oc get nodes
+   ```
+   You should see your OpenShift username and a list of cluster nodes.
+
+3. **Review and Set Configuration Parameters**
+
+   Edit your `.env` file to set these required parameters:
 
    | Parameter | Description | Required/Optional | Default |
    |-----------|-------------|-------------------|---------|
@@ -74,20 +79,17 @@ Follow these steps to install the DPF Operator:
 
    > **Note**: Parameters marked as **Required** must be explicitly set in your `.env` file. Network-related parameters are configured during the DPU provisioning phase and described in the [DPU Provisioning](dpu-provisioning.md) documentation.
 
-3. **Generate Deployment Manifests**
-   
-   Generate the required Kubernetes manifests for your deployment:
-   
+4. **Generate Deployment Manifests**
+
+   Create the required Kubernetes manifests for your deployment:
    ```bash
    make prepare-dpf-manifests
    ```
-   
-   This creates customized manifests in the `manifests/generated` directory based on your configuration parameters.
+   This creates customized manifests in the `manifests/generated` directory based on your configuration.
 
-4. **Deploy the DPF Operator**
-   
+5. **Deploy the DPF Operator**
+
    Install the DPF Operator and its dependencies:
-   
    ```bash
    make apply-dpf
    ```
@@ -179,19 +181,16 @@ After completion, you'll see these components in the `dpf-operator-system` names
 
 ## Verification
 
-After deployment, follow these steps to verify your installation:
+After deployment, verify your installation with these steps:
 
 ### 1. Verify Operator Deployment
 
 Check the status of DPF operator pods:
-
 ```bash
-# Check DPF operator pods
 oc get pods -n dpf-operator-system
 ```
-
 Expected output should include these core components (plus additional pods depending on your configuration):
-```
+```none
 NAME                                           READY   STATUS    RESTARTS   AGE
 dpf-operator-controller-manager-xxxxxx-xxxxx   1/1     Running   0          2m
 dpf-provisioning-controller-manager-xxxxx      1/1     Running   0          2m
@@ -205,29 +204,19 @@ dpf-operator-argocd-server-xxxxxx-xxxxx        1/1     Running   0          2m
 ### 2. Verify Hypershift Deployment
 
 Check the status of Hypershift and the hosted cluster:
-
-  ```bash
-# Check Hypershift operator
+```bash
 oc get pods -n hypershift
-
-# Check hosted cluster status
 oc get hostedcluster -n clusters
-
-# Check hosted control plane pods
 oc get pods -n clusters-doca
 ```
-
 The hosted cluster should show `Available` status.
 
 ### 3. Verify Operator Readiness
 
 Check if the operator is ready to manage DPUs:
-
-  ```bash
-# Check if DPF operator is ready to accept DPU configurations
+```bash
 oc get dpucluster -A
 ```
-
 At this stage, no DPUCluster resources will exist yet as they are created in the next step during DPU provisioning.
 
 ## Troubleshooting
