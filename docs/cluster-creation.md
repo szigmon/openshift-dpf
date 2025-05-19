@@ -106,25 +106,26 @@ apt-get install -y virtinst libvirt-daemon-system qemu-kvm
 
 ## Prerequisite: DNS or /etc/hosts Configuration
 
-Before starting cluster installation, you must ensure that your workstation or jump host can resolve the OpenShift API and ingress endpoints:
+Before starting cluster installation, you must ensure that your workstation or jump host can resolve the OpenShift API endpoint:
 
 - `api.<CLUSTER_NAME>.<BASE_DOMAIN>` → `API_VIP`
-- `*.apps.<CLUSTER_NAME>.<BASE_DOMAIN>` → `INGRESS_VIP`
 
 **You have two options:**
 
 1. **DNS**
-    - Configure DNS records for both endpoints as described in the prerequisites.
+    - Configure the DNS record for the API endpoint as described in the prerequisites.
     - This is the recommended and production-ready approach.
 2. **/etc/hosts**
-    - If you do not have DNS, you can add entries to `/etc/hosts` on your machine.
+    - If you do not have DNS, you can add an entry to `/etc/hosts` on your machine.
     - You can automate this with:
       ```bash
       make update-etc-hosts
       ```
-    - This will add the API endpoint automatically. For application routes, you must add each required FQDN manually (wildcards are not supported in /etc/hosts).
+    - This will add the API endpoint automatically.
 
-> **Before installing, ensure all DNS records are configured as described in [Prerequisites](prerequisites.md).**
+> **Note:** Only the API endpoint is required for installation and automation. If you want to access the OpenShift web console or application routes from this machine, you may add additional records for those endpoints, but they are not required for the installation process.
+
+> **Before installing, ensure the API DNS record is configured as described in [Prerequisites](prerequisites.md).**
 
 ## Deployment Process
 
@@ -306,7 +307,7 @@ dig random-app.apps.${CLUSTER_NAME}.${BASE_DOMAIN}
 
 ## Alternate to DNS: Using /etc/hosts
 
-If you do not have a DNS server available, you can use `/etc/hosts` on your workstation or jump host to resolve OpenShift API and console endpoints.
+If you do not have a DNS server available, you can use `/etc/hosts` on your workstation or jump host to resolve the OpenShift API endpoint.
 
 You can automate this by running:
 
@@ -314,14 +315,12 @@ You can automate this by running:
 make update-etc-hosts
 ```
 
-This will add both the API and console endpoints to your `/etc/hosts` file using the values from your `.env` file:
+This will add the API endpoint to your `/etc/hosts` file using the values from your `.env` file:
 
 - `api.<CLUSTER_NAME>.<BASE_DOMAIN>` → `API_VIP`
-- `console-openshift-console.apps.<CLUSTER_NAME>.<BASE_DOMAIN>` → `INGRESS_VIP`
 
-> **Note:**
-> `/etc/hosts` does **not** support wildcards (`*`).
-> If you need to access additional app routes (e.g., `myapp.apps.<CLUSTER_NAME>.<BASE_DOMAIN>`), you must add a line for each app route and point it to the Ingress VIP.
+> **Note:** `/etc/hosts` does **not** support wildcards (`*`).
+> If you want to access additional app routes or the web console from this machine, you must add a line for each required FQDN and point it to the Ingress VIP. This is not required for installation or automation.
 
 For example:
 ```
