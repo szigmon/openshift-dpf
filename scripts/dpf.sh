@@ -17,7 +17,7 @@ ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"ocs-storagecluster-ceph-rbd"}
 # -----------------------------------------------------------------------------
 function deploy_nfd() {
     log [INFO] "Managing NFD deployment..."
-    
+
     # Check if NFD should be disabled
     if [ "$DISABLE_NFD" = "true" ]; then
         log [INFO] "NFD deployment is disabled (DISABLE_NFD=true). Skipping..."
@@ -103,7 +103,7 @@ function deploy_cert_manager() {
             log [INFO] "Cert-manager already installed. Skipping deployment."
             return 0
         fi
-        
+
         log [INFO] "Deploying cert-manager..."
         apply_manifest "$cert_manager_file"
         wait_for_pods "cert-manager-operator" "app=webhook" "status.phase=Running" "1/1" 30 5
@@ -148,7 +148,6 @@ function deploy_hypershift() {
           --base-domain="${BASE_DOMAIN}" \
           --release-image="${OCP_RELEASE_IMAGE}" \
           --ssh-key="${SSH_KEY}" \
-          --network-type=Other \
           --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
           --node-selector='node-role.kubernetes.io/master=""' \
           --node-upgrade-type=Replace \
@@ -238,10 +237,10 @@ function apply_dpf() {
     log "INFO" "Starting DPF deployment sequence..."
     log "INFO" "Provided kubeconfig ${KUBECONFIG}"
     log "INFO" "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
-    
+
     get_kubeconfig
     deploy_nfd
-    
+
     apply_namespaces
     apply_crds
     deploy_cert_manager
@@ -292,6 +291,6 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         log [INFO] "Usage: $0 <command> [arguments...]"
         exit 1
     fi
-    
+
     main "$@"
-fi 
+fi

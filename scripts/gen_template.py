@@ -70,51 +70,51 @@ FILES_PLAIN: list[FileEntry] = [
 ]
 
 FILES: list[FileEntry] = [
-    FileEntry(
-        path="/etc/NetworkManager/system-connections/pf0vf0.nmconnection",
-        overwrite=True,
-        mode=600,
-        contents=FileContents(
-            inline="""[connection]
-id=pf0vf0
-type=ethernet
-interface-name=pf0vf0
-master=br-comm-ch
-slave-type=bridge
-
-[ethernet]
-mtu=9000
-
-[bridge-port]"""
-        )
-    ),
-    FileEntry(
-        path="/etc/NetworkManager/system-connections/br-comm-ch.nmconnection",
-        overwrite=True,
-        mode=600,
-        contents=FileContents(
-            inline="""[connection]
-id=br-comm-ch
-type=bridge
-interface-name=br-comm-ch
-autoconnect-ports=1
-autoconnect-slaves=1
-
-[bridge]
-stp=false
-
-[ipv4]
-dhcp-client-id=mac
-dhcp-timeout=2147483647
-method=auto
-
-[ipv6]
-addr-gen-mode=eui64
-dhcp-timeout=2147483647
-method=disabled
-
-[proxy]""")
-    ),
+#     FileEntry(
+#         path="/etc/NetworkManager/system-connections/pf0vf0.nmconnection",
+#         overwrite=True,
+#         mode=600,
+#         contents=FileContents(
+#             inline="""[connection]
+# id=pf0vf0
+# type=ethernet
+# interface-name=pf0vf0
+# master=br-comm-ch
+# slave-type=bridge
+#
+# [ethernet]
+# mtu=9000
+#
+# [bridge-port]"""
+#         )
+#     ),
+#     FileEntry(
+#         path="/etc/NetworkManager/system-connections/br-comm-ch.nmconnection",
+#         overwrite=True,
+#         mode=600,
+#         contents=FileContents(
+#             inline="""[connection]
+# id=br-comm-ch
+# type=bridge
+# interface-name=br-comm-ch
+# autoconnect-ports=1
+# autoconnect-slaves=1
+#
+# [bridge]
+# stp=false
+#
+# [ipv4]
+# dhcp-client-id=mac
+# dhcp-timeout=2147483647
+# method=auto
+#
+# [ipv6]
+# addr-gen-mode=eui64
+# dhcp-timeout=2147483647
+# method=disabled
+#
+# [proxy]""")
+#     ),
     FileEntry(
         path="/etc/NetworkManager/system-connections/tmfifo_net0.nmconnection",
         overwrite=True,
@@ -196,6 +196,48 @@ echo "Finished setting nvconfig parameters"
         mode=600,
         contents=FileContents(
             inline="""OVS_USER_ID=\"root:root\"""")
+    ),
+    FileEntry(
+        path="/etc/nmstate/nmstate.yml",
+        overwrite=True,
+        mode=600,
+        contents=FileContents(
+            inline="""interfaces:
+- name: pf0vf0
+  type: ethernet
+  state: up
+  ipv4:
+    enabled: false
+  ipv6:
+    enabled: false
+  mtu: 9000
+- name: br-ex
+  type: ovs-bridge
+  state: up
+  mtu: 9000
+  ipv4:
+    enabled: false
+    dhcp: false
+  ipv6:
+    enabled: false
+    dhcp: false
+  bridge:
+    options:
+      mcast-snooping-enable: true
+    port:
+    - name: pf0vf0
+    - name: br-ex
+- name: br-ex
+  type: ovs-interface
+  state: up
+  copy-mac-from: pf0vf0
+  ipv4:
+    enabled: true
+    dhcp: true
+  ipv6:
+    enabled: false
+    dhcp: false
+""")
     ),
 ]
 
@@ -364,6 +406,8 @@ def preprocess_ignition_file(ign: dict) -> dict:
             s['enabled'] = False
         if s['name'] == 'openvswitch.service':
             s['enabled'] = True
+        if s['name'] == 'ovs-configuration.service':
+            s['enabled'] = False
 
     return ign
 

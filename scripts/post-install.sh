@@ -9,15 +9,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
 
-# Configuration
-MANIFESTS_DIR=${MANIFESTS_DIR:-"manifests"}
-POST_INSTALL_DIR="${MANIFESTS_DIR}/post-installation"
-GENERATED_DIR=${GENERATED_DIR:-"$MANIFESTS_DIR/generated"}
-GENERATED_POST_INSTALL_DIR="${GENERATED_DIR}/post-install"
-
-# BFB Configuration with defaults
-BFB_URL=${BFB_URL:-"http://10.8.2.236/bfb/rhcos_4.19.0-ec.4_installer_2025-04-23_07-48-42.bfb"}
-
 # HBN OVN Configuration with defaults
 HBN_OVN_NETWORK=${HBN_OVN_NETWORK:-"10.0.120.0/22"}
 
@@ -165,10 +156,20 @@ function apply_post_installation() {
         if [ -f "$file" ]; then
             local filename=$(basename "$file")
             # Skip dpuset.yaml as it will be applied last
-            if [[ "${filename}" != "dpuset.yaml" ]]; then
-                log [INFO] "Applying post-installation manifest: ${filename}"
-                apply_manifest "$file" "true"
+
+            # Skip dpuset.yaml as it will be applied last
+            if [[ "${filename}" == "dpuset.yaml" ]]; then
+                continue
             fi
+            # Skip flannel-dpu-service.yaml and ovn-dpuservice.yaml if SKIP_FLANNEL_OVN is set
+            export SKIP_FLANNEL_OVN=true
+            if [[ "${SKIP_FLANNEL_OVN}" == "true" && ( "${filename}" == "flannel-dpu-service.yaml" || "${filename}" == "ovn-dpuservice.yaml" ) ]]; then
+                log [INFO] "Skipping manifest: ${filename}"
+                continue
+            fi
+
+            log [INFO] "Applying post-installation manifest: ${filename}"
+            apply_manifest "$file" "true"
         fi
     done
     
