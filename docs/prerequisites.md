@@ -67,17 +67,21 @@ SNO is a minimal OpenShift deployment suitable for edge, lab, or resource-constr
 ## Software Requirements
 
 ### Required Tools
-| Tool | Version | Purpose | Required For | RHEL/CentOS Install Command | Ubuntu/Debian Install Command | Installation Link |
-|------|---------|---------|-------------|-----------------------------|-------------------------------|-------------------|
-| **OpenShift CLI** (`oc`) | 4.19+ | Cluster management | Both | - | - | [Download OpenShift CLI](https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/) |
-| **Assisted Installer CLI** (`aicli`) | Latest | Cluster deployment | Complete Installation | - | - | [Install aicli from GitHub](https://github.com/karmab/aicli#installation) |
-| **Helm** | 3.8+ | Managing deployments | Both | - | - | [Install Helm](https://helm.sh/docs/intro/install/) |
-| **Go** | 1.20+ | Build components | Both | - | - | [Install Go](https://golang.org/doc/install) |
-| **jq** | Latest | JSON processing | Both | - | - | [Install jq](https://stedolan.github.io/jq/download/) |
-| **libvirt** | Latest | VM management | Complete Installation | `dnf install -y libvirt` | `apt-get install -y libvirt-daemon-system` | [Install libvirt](https://libvirt.org/compiling.html) |
-| **virt-install** | Latest | Create VMs | Complete Installation | `dnf install -y virt-install` | `apt-get install -y virtinst` | - |
-| **qemu-kvm** | Latest | VM backend | Complete Installation | `dnf install -y qemu-kvm` | `apt-get install -y qemu-kvm` | - |
-| **podman** | Latest | Container management, Hypershift install | Both | `dnf install -y podman` | `apt-get install -y podman` | [Install Podman](https://podman.io/getting-started/installation) |
+| Tool | Version | Purpose | RHEL/CentOS Install Command | Installation Link |
+|------|---------|---------|-----------------------------|-------------------|
+| **OpenShift CLI** (`oc`) | 4.19+ | Cluster management | - | [Download OpenShift CLI](https://mirror.openshift.com/pub/openshift-v4/clients/oc/latest/) |
+| **Assisted Installer CLI** (`aicli`) | Latest | Cluster deployment | - | [Install aicli from GitHub](https://github.com/karmab/aicli#installation) |
+| **Helm** | 3.8+ | Managing deployments | - | [Install Helm](https://helm.sh/docs/intro/install/) |
+| **Go** | 1.20+ | Build components | - | [Install Go](https://golang.org/doc/install) |
+| **jq** | Latest | JSON processing | - | [Install jq](https://stedolan.github.io/jq/download/) |
+| **libvirt** | Latest | VM management | `dnf install -y libvirt` | [Install libvirt](https://libvirt.org/compiling.html) |
+| **virt-install** | Latest | Create VMs | `dnf install -y virt-install` | - |
+| **qemu-kvm** | Latest | VM backend | `dnf install -y qemu-kvm` | - |
+| **podman** | Latest | Container management, Hypershift install | `dnf install -y podman` | [Install Podman](https://podman.io/getting-started/installation) |
+
+> **Note:**
+> - `podman` is required for Hypershift operator installation and container image management.
+> - Missing the `virt-install` package will cause VM creation to fail with "nohup: failed to run command 'virt-install': No such file or directory".
 
 ### Required Containers and Pull Secrets
 
