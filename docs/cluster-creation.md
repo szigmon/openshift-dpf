@@ -90,20 +90,6 @@ The automation will only create or modify VMs that match your configured prefix.
 | `VM_DISK_GB` | Disk size (GB) per control plane VM | `120` | `150` |
 | `SKIP_BRIDGE_CONFIG` | Skip bridge creation if set to true | `false` | `true` |
 
-### Required Packages
-
-Before creating VMs, ensure you have the necessary packages installed:
-
-```bash
-# RHEL/CentOS
-dnf install -y virt-install libvirt qemu-kvm
-
-# Ubuntu/Debian
-apt-get install -y virtinst libvirt-daemon-system qemu-kvm
-```
-
-> **Note:** Missing the `virt-install` package will cause VM creation to fail with "nohup: failed to run command 'virt-install': No such file or directory".
-
 ## Prerequisite: DNS or /etc/hosts Configuration
 
 Before starting cluster installation, you must ensure that your workstation or jump host can resolve the OpenShift API endpoint:
