@@ -141,20 +141,19 @@ The following IP addresses **MUST** be allocated and DNS records configured:
 | Record Type | Name | Value | Purpose |
 |-------------|------|-------|---------|
 | A | api.${CLUSTER_NAME}.${BASE_DOMAIN} | ${API_VIP} | API server access |
-| A | api-int.${CLUSTER_NAME}.${BASE_DOMAIN} | ${API_INT_VIP} | API internal access (multi-node clusters only) |
+| A | api-int.${CLUSTER_NAME}.${BASE_DOMAIN} | ${API_INT_VIP} | API internal access (required for all clusters) |
 | A | *.apps.${CLUSTER_NAME}.${BASE_DOMAIN} | ${INGRESS_VIP} | Application ingress access |
 
 For example, with `CLUSTER_NAME=doca` and `BASE_DOMAIN=lab.nvidia.com`:
 
 ```
 A   api.doca.lab.nvidia.com     →   10.8.2.100   # API_VIP
-A   api-int.doca.lab.nvidia.com →   10.8.2.101   # API_INT_VIP (multi-node only)
+A   api-int.doca.lab.nvidia.com →   10.8.2.101   # API_INT_VIP
 A   *.apps.doca.lab.nvidia.com  →   10.8.2.102   # INGRESS_VIP
 ```
 
 > **Note:**
-> - For **multi-node OpenShift clusters** (3+ masters), both `api` and `api-int` records are required.
-> - For **Single Node OpenShift (SNO)**, only the `api` record is required; `api-int` can be omitted.
+> - The `api-int` DNS record is required for **all OpenShift clusters**, including Single Node OpenShift (SNO) and multi-node deployments.
 
 ## Authentication Requirements
 
