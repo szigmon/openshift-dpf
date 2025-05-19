@@ -284,51 +284,6 @@ The cluster network is configured with:
 * **Pod Network**: 10.128.0.0/14
 * **Features**: Network policies, Egress IP, Multicast support
 
-### DNS Requirements
-
-You must configure these DNS records in your DNS server:
-
-```
-A   api.${CLUSTER_NAME}.${BASE_DOMAIN}     →   ${API_VIP}
-A   *.apps.${CLUSTER_NAME}.${BASE_DOMAIN}  →   ${INGRESS_VIP}
-```
-
-For example:
-```
-A   api.doca.lab.nvidia.com     →   10.8.2.100
-A   *.apps.doca.lab.nvidia.com  →   10.8.2.101
-```
-
-Verify DNS resolution:
-```bash
-dig api.${CLUSTER_NAME}.${BASE_DOMAIN}
-dig random-app.apps.${CLUSTER_NAME}.${BASE_DOMAIN}
-```
-
-## Alternate to DNS: Using /etc/hosts
-
-If you do not have a DNS server available, you can use `/etc/hosts` on your workstation or jump host to resolve the OpenShift API endpoint.
-
-You can automate this by running:
-
-```bash
-make update-etc-hosts
-```
-
-This will add the API endpoint to your `/etc/hosts` file using the values from your `.env` file:
-
-- `api.<CLUSTER_NAME>.<BASE_DOMAIN>` → `API_VIP`
-
-> **Note:** `/etc/hosts` does **not** support wildcards (`*`).
-> If you want to access additional app routes or the web console from this machine, you must add a line for each required FQDN and point it to the Ingress VIP. This is not required for installation or automation.
-
-For example:
-```
-10.8.231.55 api.doca-docs.nvidia.eng.rdu2.dc.redhat.com
-10.8.231.56 console-openshift-console.apps.doca-docs.nvidia.eng.rdu2.dc.redhat.com
-10.8.231.56 myapp.apps.doca-docs.nvidia.eng.rdu2.dc.redhat.com
-```
-
 ## Troubleshooting
 
 ### Common Issues
