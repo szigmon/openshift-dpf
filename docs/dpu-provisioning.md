@@ -47,29 +47,7 @@ Before attempting to provision DPUs, ensure:
 
 > **Note:** Worker nodes with BlueField DPUs will show a "NotReady" status until the DPU provisioning is complete. This is expected because the OVN CNI on these workers depends on the DPU's OVN and OVS components that will be deployed during the provisioning process.
 
-## Prerequisite: DNS and Endpoint Configuration
-
-Before starting cluster installation, ensure your workstation or jump host can resolve the following OpenShift endpoints:
-
-- `api.<CLUSTER_NAME>.<BASE_DOMAIN>` → API VIP
-- `api-int.<CLUSTER_NAME>.<BASE_DOMAIN>` → API internal VIP (required for standard multi-node clusters)
-- `*.apps.<CLUSTER_NAME>.<BASE_DOMAIN>` → Ingress VIP
-
-> **Note:**
-> - For standard (multi-node) OpenShift clusters, both `api` and `api-int` endpoints are required.
-> - For Single Node OpenShift (SNO), only the `api` endpoint is required; `api-int` can be omitted.
-
-<details>
-<summary><strong>Alternate: Single Node OpenShift (SNO) Minimal Deployment</strong></summary>
-
-SNO is a minimal OpenShift deployment suitable for edge, lab, or resource-constrained environments. To enable SNO mode, set <code>VM_COUNT=1</code> in your <code>.env</code> file before running the automation.
-
-<sub>**Recommended minimum for SNO:** 8 vCPUs, 32 GiB RAM, 120 GiB+ disk (for the VM).<br>
-<strong>Note:</strong> SNO still requires a physical host machine, on top of which the single VM will be provisioned.</sub>
-
-</details>
-
----
+> **See [Prerequisites & Planning](prerequisites.md) for required packages, DNS records, and SNO/minimal deployment options.**
 
 ## DPU Provisioning Process
 

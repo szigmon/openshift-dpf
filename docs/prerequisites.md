@@ -135,16 +135,30 @@ The following IP addresses **MUST** be allocated and DNS records configured:
 | Record Type | Name | Value | Purpose |
 |-------------|------|-------|---------|
 | A | api.${CLUSTER_NAME}.${BASE_DOMAIN} | ${API_VIP} | API server access |
+| A | api-int.${CLUSTER_NAME}.${BASE_DOMAIN} | ${API_INT_VIP} | API internal access (multi-node only) |
 | A | *.apps.${CLUSTER_NAME}.${BASE_DOMAIN} | ${INGRESS_VIP} | Application ingress access |
 
 For example, with `CLUSTER_NAME=doca` and `BASE_DOMAIN=lab.nvidia.com`:
 
 ```
 A   api.doca.lab.nvidia.com     →   10.8.2.100   # API_VIP
-A   *.apps.doca.lab.nvidia.com   →   10.8.2.101   # INGRESS_VIP
+A   api-int.doca.lab.nvidia.com →   10.8.2.102   # API_INT_VIP (multi-node only)
+A   *.apps.doca.lab.nvidia.com  →   10.8.2.101   # INGRESS_VIP
 ```
 
-> **WARNING**: Proper DNS configuration is critical for OpenShift functionality. Ensure both forward and reverse DNS lookups work correctly for these records.
+> **Note:**
+> - For standard (multi-node) OpenShift clusters, both `api` and `api-int` endpoints are required.
+> - For Single Node OpenShift (SNO), only the `api` endpoint is required; `api-int` can be omitted.
+
+<details>
+<summary><strong>Alternate: Single Node OpenShift (SNO) Minimal Deployment</strong></summary>
+
+SNO is a minimal OpenShift deployment suitable for edge, lab, or resource-constrained environments. To enable SNO mode, set <code>VM_COUNT=1</code> in your <code>.env</code> file before running the automation.
+
+<sub>**Recommended minimum for SNO:** 8 vCPUs, 32 GiB RAM, 120 GiB+ disk (for the VM).<br>
+<strong>Note:</strong> SNO still requires a physical host machine, on top of which the single VM will be provisioned.</sub>
+
+</details>
 
 ## Authentication Requirements
 
