@@ -15,7 +15,7 @@ POST_INSTALL_SCRIPT := scripts/post-install.sh
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files
 
-all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
+all: verify-files check-cluster create-vms cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
 
 verify-files:
 	@$(UTILS_SCRIPT) verify-files
@@ -29,7 +29,7 @@ delete-cluster:
 check-cluster:
 	@$(CLUSTER_SCRIPT) check-create-cluster
 
-create-cluster:
+create-cluster: prepare-manifests
 	@$(CLUSTER_SCRIPT) check-create-cluster
 
 prepare-manifests:

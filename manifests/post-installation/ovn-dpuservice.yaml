@@ -13,12 +13,12 @@ spec:
       global:
         gatewayOpts: --gateway-interface=br-ovn --gateway-uplink-port=puplinkbrovn
         imagePullSecretName: dpf-pull-secret
-      k8sAPIServer: https://api.doca5.nvidia.eng.rdu2.dc.redhat.com:6443
+      k8sAPIServer: https://HOST_CLUSTER_API:6443
       mtu: 1400
       ovnkube-node-dpu:
         cniBinDir: /var/lib/cni/bin/
         cniConfDir: /run/multus/cni/net.d
-        hostCIDR: 10.6.135.0/24
+        hostCIDR: HOST_CIDR
         ipamPFIPIndex: 1
         ipamPool: pool1
         ipamPoolType: cidrpool
