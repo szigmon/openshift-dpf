@@ -81,6 +81,7 @@ cd openshift-dpf
 ```bash
 make all
 ```
+> **Note:** Running only `make cluster-install` will install the OpenShift cluster, but will NOT deploy the DPF Operator or its dependencies (including cert-manager). You must run `make deploy-dpf` (or `make all`) to complete the setup and deploy all required components.
 
 ## Configuration Options
 

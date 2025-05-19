@@ -87,12 +87,13 @@ Follow these steps to install the DPF Operator:
    ```
    This creates customized manifests in the `manifests/generated` directory based on your configuration.
 
-5. **Deploy the DPF Operator**
+5. **Deploy the DPF Operator and Dependencies**
 
-   Install the DPF Operator and its dependencies:
+   Install the DPF Operator and all required dependencies (including cert-manager):
    ```bash
    make deploy-dpf
    ```
+   > **Note:** Running only `make cluster-install` will install the OpenShift cluster, but will NOT deploy the DPF Operator or its dependencies. You must run `make deploy-dpf` (or `make all`) to complete the setup.
 
 ## Deployment Flow
 
