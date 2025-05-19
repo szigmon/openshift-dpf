@@ -37,11 +37,16 @@ Throughout this document, you'll see these requirement labels:
 - **Storage**: 600+ GB (2 × 100 GB disks per VM × 3 VMs)
 - **Management Network**: 1 GbE minimum
 
-SNO is a minimal OpenShift deployment suitable for edge, lab, or resource-constrained environments. To enable SNO mode, set `VM_COUNT=1` in your `.env` file before running the automation.
+<details>
+<summary><strong>Alternate Option: Single Node OpenShift (SNO)</strong></summary>
 
-**Recommended minimum for SNO:** 8 vCPUs, 32 GiB RAM, 120 GiB+ disk (for the VM).
+SNO is a minimal OpenShift deployment suitable for edge, lab, or resource-constrained environments.
 
-> **Note:** SNO still requires a physical host machine, on top of which the single VM will be provisioned.
+- To enable SNO mode, set <code>VM_COUNT=1</code> in your <code>.env</code> file before running the automation.
+- <strong>Recommended minimum for SNO:</strong> 8 vCPUs, 32 GiB RAM, 120 GiB+ disk (for the VM).
+- <strong>Note:</strong> SNO still requires a physical host machine, on top of which the single VM will be provisioned.
+
+</details>
 
 ### Worker Nodes with BlueField DPUs
 **Required for**: Both deployment paths
