@@ -124,7 +124,7 @@ Before starting cluster installation, you must ensure that your workstation or j
       ```
     - This will add the API endpoint automatically. For application routes, you must add each required FQDN manually (wildcards are not supported in /etc/hosts).
 
-> **Note:** These records must be in place before running any cluster installation commands, or the installation and access to the cluster will fail.
+> **Before installing, ensure all DNS records are configured as described in [Prerequisites](prerequisites.md).**
 
 ## Deployment Process
 
@@ -134,6 +134,8 @@ Before starting cluster installation, you must ensure that your workstation or j
    ```bash
    git clone https://github.com/szigmon/openshift-dpf.git
    cd openshift-dpf
+   git fetch origin cert-manager-operatorhub-auto-install
+   git checkout cert-manager-operatorhub-auto-install
    ```
 
 2. Create and configure your environment file:
