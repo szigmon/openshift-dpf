@@ -55,31 +55,16 @@ Before starting cluster installation, ensure your workstation or jump host can r
 - `api-int.<CLUSTER_NAME>.<BASE_DOMAIN>` → API internal VIP (required for standard multi-node clusters)
 - `*.apps.<CLUSTER_NAME>.<BASE_DOMAIN>` → Ingress VIP
 
-> **Note:** According to Red Hat OpenShift documentation, the `api-int` endpoint is required for standard (multi-node) OpenShift clusters. For Single Node OpenShift (SNO), only the `api` endpoint is required. If you are deploying SNO, you may omit the `api-int` record.
-
-You can configure these endpoints using DNS or by updating your `/etc/hosts` file. See the automation and documentation for the `make update-etc-hosts` helper.
-
----
+> **Note:**
+> - For standard (multi-node) OpenShift clusters, both `api` and `api-int` endpoints are required.
+> - For Single Node OpenShift (SNO), only the `api` endpoint is required; `api-int` can be omitted.
 
 <details>
-<summary><strong>Single Node OpenShift (SNO) Support & Prerequisites</strong></summary>
+<summary><strong>Alternate: Single Node OpenShift (SNO) Minimal Deployment</strong></summary>
 
-This automation and documentation also supports Single Node OpenShift (SNO) deployments. SNO is a minimal OpenShift deployment suitable for edge, lab, or resource-constrained environments.
+SNO is a minimal OpenShift deployment suitable for edge, lab, or resource-constrained environments. To enable SNO mode, set <code>VM_COUNT=1</code> in your <code>.env</code> file before running the automation.
 
-**To enable SNO mode:**
-- Set `VM_COUNT=1` in your `.env` file before running the automation.
-
-**SNO Resource Requirements (Recommended Minimum):**
-
-| Resource | Value         |
-|----------|--------------|
-| vCPUs    | 8            |
-| RAM      | 32 GiB       |
-| Disk     | 120 GiB+     |
-
-> **Note:** SNO is suitable for development, testing, and edge use cases. For production or DPU-accelerated workloads, ensure your hardware meets or exceeds these requirements.
-
-The automation will detect `VM_COUNT=1` and configure the cluster for SNO, including storage and operator selection. All other steps in this guide apply to both SNO and multi-node clusters unless otherwise noted.
+<sub>**Recommended minimum for SNO:** 8 vCPUs, 32 GiB RAM, 120 GiB+ disk.</sub>
 
 </details>
 
