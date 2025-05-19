@@ -35,19 +35,24 @@ is_special_file() {
     return 1
 }
 
-# Function to update a file with a single replacement
-update_file_single_replace() {
+# Function to update a file with multiple replacements
+update_file_multi_replace() {
     local source_file=$1
     local target_file=$2
-    local placeholder=$3
-    local value=$4
+    shift 2
+    local pairs=("$@")
 
-    log [INFO] "Updating ${source_file} with ${placeholder}=${value}..."
-    # Copy the file
+    log [INFO] "Updating ${source_file} with multiple replacements..."
     cp "${source_file}" "${target_file}"
-    # Replace the placeholder
-    sed -i "s|${placeholder}|${value}|g" "${target_file}"
-    log [INFO] "Updated ${source_file} successfully"
+    local i=0
+    while [ $i -lt ${#pairs[@]} ]; do
+        local placeholder="${pairs[$i]}"
+        local value="${pairs[$((i+1))]}"
+        sed -i "s|${placeholder}|${value}|g" "${target_file}"
+        log [INFO] "Replaced ${placeholder} with ${value} in ${target_file}"
+        i=$((i+2))
+    done
+    log [INFO] "Updated ${source_file} with all replacements successfully"
 }
 
 # Function to update BFB manifest
@@ -67,19 +72,22 @@ function update_bfb_manifest() {
 function update_hbn_ovn_manifests() {
     log [INFO] "Updating HBN OVN manifests..."
     
+    machineCidr=$(oc get configmap cluster-config-v1 -n kube-system -o jsonpath='{.data.install-config}' | \
+    grep -A2 "machineNetwork:" | grep "cidr:" | awk '{print $3}')
     # Update hbn-ovn-ipam.yaml
-    update_file_single_replace \
+    update_file_multi_replace \
         "${POST_INSTALL_DIR}/hbn-ovn-ipam.yaml" \
         "${GENERATED_POST_INSTALL_DIR}/hbn-ovn-ipam.yaml" \
         "HBN_OVN_NETWORK" \
         "${HBN_OVN_NETWORK}"
     
-    # Update ovn-dpuservice.yaml
-    update_file_single_replace \
+    # Update ovn-dpuservice.yaml with multiple replacements
+    update_file_multi_replace \
         "${POST_INSTALL_DIR}/ovn-dpuservice.yaml" \
         "${GENERATED_POST_INSTALL_DIR}/ovn-dpuservice.yaml" \
-        "HBN_OVN_NETWORK" \
-        "${HBN_OVN_NETWORK}"
+        "HBN_OVN_NETWORK" "${HBN_OVN_NETWORK}" \
+        "HOST_CLUSTER_API" "${HOST_CLUSTER_API}" \
+        "HOST_CIDR" "${machineCidr}"
     
     log [INFO] "HBN OVN manifests updated successfully"
 }
@@ -92,17 +100,20 @@ function update_vf_configuration() {
     local vf_range_upper=$((NUM_VFS - 1))
     
     # Update dpuflavor-1500.yaml
-    update_file_single_replace \
+    update_file_multi_replace \
         "${POST_INSTALL_DIR}/dpuflavor-1500.yaml" \
         "${GENERATED_POST_INSTALL_DIR}/dpuflavor-1500.yaml" \
         "<NUM_VFS>" \
         "${NUM_VFS}"
     
     # Update sriov-policy.yaml
-    cp "${POST_INSTALL_DIR}/sriov-policy.yaml" "${GENERATED_POST_INSTALL_DIR}/sriov-policy.yaml"
-    sed -i "s|<DPU_INTERFACE>|$DPU_INTERFACE|g" "${GENERATED_POST_INSTALL_DIR}/sriov-policy.yaml"
-    sed -i "s|<NUM_VFS>|${NUM_VFS}|g" "${GENERATED_POST_INSTALL_DIR}/sriov-policy.yaml"
-    sed -i "s|<NUM_VFS-1>|${vf_range_upper}|g" "${GENERATED_POST_INSTALL_DIR}/sriov-policy.yaml"
+
+    update_file_multi_replace \
+        "${POST_INSTALL_DIR}/sriov-policy.yaml" \
+        "${GENERATED_POST_INSTALL_DIR}/sriov-policy.yaml" \
+        "<DPU_INTERFACE>" "$DPU_INTERFACE" \
+        "<NUM_VFS>" "${NUM_VFS}" \
+        "<NUM_VFS-1>" "${vf_range_upper}"
     
     log [INFO] "VF configuration updated successfully"
 }
@@ -116,7 +127,7 @@ function prepare_post_installation() {
         log [ERROR] "Post-installation directory not found: ${POST_INSTALL_DIR}"
         exit 1
     fi
-    
+    get_kubeconfig
     # Update manifests with custom values
     update_bfb_manifest
     update_hbn_ovn_manifests
