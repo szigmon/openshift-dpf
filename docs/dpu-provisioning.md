@@ -61,7 +61,8 @@ You can configure these endpoints using DNS or by updating your `/etc/hosts` fil
 
 ---
 
-## Single Node OpenShift (SNO) Support
+<details>
+<summary><strong>Single Node OpenShift (SNO) Support & Prerequisites</strong></summary>
 
 This automation and documentation also supports Single Node OpenShift (SNO) deployments. SNO is a minimal OpenShift deployment suitable for edge, lab, or resource-constrained environments.
 
@@ -79,6 +80,8 @@ This automation and documentation also supports Single Node OpenShift (SNO) depl
 > **Note:** SNO is suitable for development, testing, and edge use cases. For production or DPU-accelerated workloads, ensure your hardware meets or exceeds these requirements.
 
 The automation will detect `VM_COUNT=1` and configure the cluster for SNO, including storage and operator selection. All other steps in this guide apply to both SNO and multi-node clusters unless otherwise noted.
+
+</details>
 
 ---
 
