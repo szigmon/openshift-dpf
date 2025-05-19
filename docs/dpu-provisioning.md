@@ -64,7 +64,8 @@ Before starting cluster installation, ensure your workstation or jump host can r
 
 SNO is a minimal OpenShift deployment suitable for edge, lab, or resource-constrained environments. To enable SNO mode, set <code>VM_COUNT=1</code> in your <code>.env</code> file before running the automation.
 
-<sub>**Recommended minimum for SNO:** 8 vCPUs, 32 GiB RAM, 120 GiB+ disk.</sub>
+<sub>**Recommended minimum for SNO:** 8 vCPUs, 32 GiB RAM, 120 GiB+ disk (for the VM).<br>
+<strong>Note:</strong> SNO still requires a physical host machine, on top of which the single VM will be provisioned.</sub>
 
 </details>
 
