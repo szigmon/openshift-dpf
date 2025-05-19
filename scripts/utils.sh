@@ -268,6 +268,7 @@ function clean_resources() {
     rm -rf "$GENERATED_DIR" || true
     rm -f "kubeconfig.$CLUSTER_NAME" || true
     rm -f "$HOSTED_CLUSTER_NAME.kubeconfig" || true
+    rm -f "$KUBECONFIG" || true
     
     log "INFO" "Cleanup complete"
 }

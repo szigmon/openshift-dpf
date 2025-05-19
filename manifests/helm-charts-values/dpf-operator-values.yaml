@@ -1,0 +1,9 @@
+imagePullSecrets:
+  - name: dpf-pull-secret
+kamaji:
+  enabled: false
+kamaji-etcd:
+  enabled: false
+node-feature-discovery:
+  enabled: false
+isOpenshift: true

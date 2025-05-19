@@ -1,0 +1,29 @@
+apiVersion: operator.dpu.nvidia.com/v1alpha1
+kind: DPFOperatorConfig
+metadata:
+  name: dpfoperatorconfig
+  namespace: dpf-operator-system
+spec:
+  flannel:
+    disable: true
+  imagePullSecrets:
+    - dpf-pull-secret
+  kamajiClusterManager:
+    disable: true
+  multus:
+    disable: false
+    helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.2
+  networking:
+    controlPlaneMTU: 1500
+    highSpeedMTU: 1500
+  overrides:
+    dpuCNIBinPath: /var/lib/cni/bin/
+    dpuCNIPath: /run/multus/cni/net.d/
+  provisioningController:
+    bfCFGTemplateConfigMap: custom-bfb.cfg
+    bfbPVCName: bfb-pvc
+    dmsTimeout: 1800
+  sfcController:
+    helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.2
+  staticClusterManager:
+    disable: false

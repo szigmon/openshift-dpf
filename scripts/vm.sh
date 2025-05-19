@@ -8,6 +8,8 @@ set -e
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 
+
+
 # Configuration with defaults
 VM_PREFIX=${VM_PREFIX:-"vm-dpf"}
 VM_COUNT=${VM_COUNT:-3}
@@ -15,6 +17,7 @@ VM_COUNT=${VM_COUNT:-3}
 # Get the default physical NIC
 PHYSICAL_NIC=${PHYSICAL_NIC:-$(ip route | awk '/default/ {print $5; exit}')}
 API_VIP=${API_VIP}
+BRIDGE_NAME=${BRIDGE_NAME:-br0}
 RAM=${RAM:-16384}  # Memory in MB
 VCPUS=${VCPUS:-8}   # Number of virtual CPUs
 DISK_SIZE1=${DISK_SIZE1:-120}  # Size of first disk
@@ -38,6 +41,14 @@ ISO_PATH="${ISO_FOLDER}/${CLUSTER_NAME}.iso"
 function create_vms() {
     log "Creating VMs with prefix $VM_PREFIX..."
 
+    if [ "$SKIP_BRIDGE_CONFIG" != "true" ]; then
+        # Ensure the bridge is created before creating VMs
+        echo "Creating bridge with force mode..."
+        "$(dirname "${BASH_SOURCE[0]}")/vm-bridge-ops.sh" --force
+    else
+        echo "Skipping bridge creation as SKIP_BRIDGE_CONFIG is set to true."
+    fi
+
     # Create VMs
     for i in $(seq 1 "$VM_COUNT"); do
         VM_NAME="${VM_PREFIX}${i}"
@@ -47,8 +58,7 @@ function create_vms() {
                 --os-variant=rhel9.4 \
                 --disk pool=default,size="${DISK_SIZE1}" \
                 --disk pool=default,size="${DISK_SIZE2}" \
-                --network type=direct,source="${PHYSICAL_NIC}",mac="52:54:00:12:34:5${i}",source_mode=bridge,model=virtio \
-                --network network=default \
+                --network bridge=${BRIDGE_NAME},model=e1000e \
                 --graphics=vnc \
                 --events on_reboot=restart \
                 --cdrom "$ISO_PATH" \
@@ -86,7 +96,7 @@ function delete_vms() {
         if ! virsh destroy ${vm} 2>/dev/null; then
             log "WARNING" "Failed to destroy VM ${vm}, continuing anyway"
         fi
-        if ! virsh undefine ${vm} 2>/dev/null; then
+        if ! virsh undefine ${vm} --remove-all-storage 2>/dev/null; then
             log "WARNING" "Failed to undefine VM ${vm}, continuing anyway"
         fi
     done

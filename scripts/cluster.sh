@@ -55,7 +55,7 @@ function check_create_cluster() {
     if ! aicli info cluster ${CLUSTER_NAME} >/dev/null 2>&1; then
         log "INFO" "Cluster ${CLUSTER_NAME} not found, creating..."
 
-        if [ "${SINGLE_NODE}" = "true" ]; then
+        if [ "$VM_COUNT" -eq 1 ]; then
             log "INFO" "Creating single-node cluster..."
             aicli create cluster \
                 -P openshift_version="${OPENSHIFT_VERSION}" \
@@ -103,6 +103,11 @@ function wait_for_cluster_status() {
     log "INFO" "Waiting for cluster ${CLUSTER_NAME} to reach status: ${status}"
     while [ $retries -lt $max_retries ]; do
         current_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v)
+        # If waiting for 'ready' but status is already 'installed', treat as success
+        if [ "$status" == "ready" ] && [ "$current_status" == "installed" ]; then
+            log "INFO" "Cluster ${CLUSTER_NAME} is already installed. Skipping wait for 'ready'."
+            return 0
+        fi
         if [ "$current_status" == "$status" ]; then
             log "INFO" "Cluster ${CLUSTER_NAME} reached status: ${status}"
             return 0
@@ -120,12 +125,21 @@ function wait_for_cluster_status() {
 function start_cluster_installation() {
     log "INFO" "Starting installation for cluster ${CLUSTER_NAME}..."
 
+    # Check current status
+    current_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v)
+    if [ "$current_status" == "installed" ]; then
+        log "INFO" "Cluster ${CLUSTER_NAME} is already installed. Fetching kubeconfig..."
+        get_kubeconfig
+        return 0
+    fi
+
     log "INFO" "Waiting for cluster to be ready..."
     wait_for_cluster_status "ready"
     aicli start cluster ${CLUSTER_NAME}
     log "INFO" "Waiting for installation to complete..."
     wait_for_cluster_status "installed"
     log "INFO" "Cluster installation completed successfully"
+    get_kubeconfig
 }
 
 function get_kubeconfig() {

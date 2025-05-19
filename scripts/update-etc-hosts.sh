@@ -5,6 +5,8 @@ HOSTS_FILE="/etc/hosts"
 PING_TIMEOUT=2
 PING_COUNT=1
 
+source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+
 # Print usage information
 print_usage() {
     echo "Usage: $0 <ip_address> <fqdn> [vm_prefix]"
@@ -12,10 +14,10 @@ print_usage() {
     echo "Example with VM prefix: $0 192.168.1.100 myserver.example.com myvm"
 }
 
-# Validate command line arguments
-validate_args() {
-    if [ $# -lt 2 ] || [ $# -gt 3 ]; then
-        print_usage
+# Check if script is run with sudo/root privileges
+check_root() {
+    if [ "$EUID" -ne 0 ]; then
+        echo "Please run with sudo privileges"
         exit 1
     fi
 }
@@ -34,9 +36,41 @@ get_matching_vms() {
 }
 
 # Get IP address for a specific VM
+# Get IP address for a specific VM
 get_vm_ip() {
     local vm_name=$1
-    virsh domifaddr "$vm_name" 2>/dev/null | grep -v "^$" | tail -n +3 | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -1
+    local vm_mac
+    local vm_ip
+
+    # Try to get the IP using virsh domifaddr
+    vm_ip=$(virsh domifaddr "$vm_name" 2>/dev/null | grep -v "^$" | tail -n +3 | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b" | head -1)
+
+    if [ -n "$vm_ip" ]; then
+        echo "$vm_ip"
+        return 0
+    fi
+
+    # Fallback: Get the MAC address of the VM
+    vm_mac=$(virsh domiflist "$vm_name" 2>/dev/null | tail -n +3 | awk '{print $5}' | head -n 1)
+
+    if [ -z "$vm_mac" ]; then
+        echo "Error: Could not retrieve MAC address for VM: $vm_name" >&2
+        return 1
+    fi
+
+    # Use arp or ip neigh to find the IP address based on the MAC address
+    vm_ip=$(arp -an | grep "$vm_mac" | awk '{print $2}' | tr -d '()')
+    if [ -z "$vm_ip" ]; then
+        vm_ip=$(ip neigh | grep "$vm_mac" | awk '{print $1}')
+    fi
+
+    if [ -n "$vm_ip" ]; then
+        echo "$vm_ip"
+        return 0
+    else
+        echo "Error: Could not find IP address for VM: $vm_name" >&2
+        return 1
+    fi
 }
 
 # Find IP address for any VM matching prefix
@@ -106,8 +140,8 @@ update_hosts_file() {
 # Main function
 main() {
     local ip=$1
-    local fqdn=$2
-    local vm_prefix=${3:-""}
+    local fqdn=${HOST_CLUSTER_API}
+    local vm_prefix="${VM_PREFIX}"
     local final_ip=$ip
 
     if ! check_ip_reachable "$ip"; then
@@ -131,5 +165,5 @@ main() {
 }
 
 # Script execution starts here
-validate_args "$@"
+check_root
 main "$@"

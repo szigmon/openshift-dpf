@@ -47,6 +47,41 @@ Before attempting to provision DPUs, ensure:
 
 > **Note:** Worker nodes with BlueField DPUs will show a "NotReady" status until the DPU provisioning is complete. This is expected because the OVN CNI on these workers depends on the DPU's OVN and OVS components that will be deployed during the provisioning process.
 
+## Prerequisite: DNS and Endpoint Configuration
+
+Before starting cluster installation, ensure your workstation or jump host can resolve the following OpenShift endpoints:
+
+- `api.<CLUSTER_NAME>.<BASE_DOMAIN>` → API VIP
+- `api-int.<CLUSTER_NAME>.<BASE_DOMAIN>` → API internal VIP (required for standard multi-node clusters)
+- `*.apps.<CLUSTER_NAME>.<BASE_DOMAIN>` → Ingress VIP
+
+> **Note:** According to Red Hat OpenShift documentation, the `api-int` endpoint is required for standard (multi-node) OpenShift clusters. For Single Node OpenShift (SNO), only the `api` endpoint is required. If you are deploying SNO, you may omit the `api-int` record.
+
+You can configure these endpoints using DNS or by updating your `/etc/hosts` file. See the automation and documentation for the `make update-etc-hosts` helper.
+
+---
+
+## Single Node OpenShift (SNO) Support
+
+This automation and documentation also supports Single Node OpenShift (SNO) deployments. SNO is a minimal OpenShift deployment suitable for edge, lab, or resource-constrained environments.
+
+**To enable SNO mode:**
+- Set `VM_COUNT=1` in your `.env` file before running the automation.
+
+**SNO Resource Requirements (Recommended Minimum):**
+
+| Resource | Value         |
+|----------|--------------|
+| vCPUs    | 8            |
+| RAM      | 32 GiB       |
+| Disk     | 120 GiB+     |
+
+> **Note:** SNO is suitable for development, testing, and edge use cases. For production or DPU-accelerated workloads, ensure your hardware meets or exceeds these requirements.
+
+The automation will detect `VM_COUNT=1` and configure the cluster for SNO, including storage and operator selection. All other steps in this guide apply to both SNO and multi-node clusters unless otherwise noted.
+
+---
+
 ## DPU Provisioning Process
 
 ### 1. Environment Preparation
