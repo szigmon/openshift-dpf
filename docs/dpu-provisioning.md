@@ -192,6 +192,8 @@ The ISO URL will be displayed in the output if found. Download this ISO to your 
 >   SKIP_ISO_CHECK=true make create-cluster-iso
 >   ```
 
+> **Advanced:** For troubleshooting purposes, the automation attempts to correctly obtain the ISO URL through multiple methods. It first tries to find the infraenv ID associated with the day2 cluster and uses that to retrieve the ISO URL, as the ISO is properly a resource of the infraenv, not the cluster directly.
+
 2. **Boot worker nodes with the ISO**:
 
 To boot a worker node using iDRAC Virtual Media:
