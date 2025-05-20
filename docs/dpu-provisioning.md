@@ -160,19 +160,48 @@ The automation will handle the creation of necessary storage resources using the
 
 Add the worker nodes (hosts with BlueField DPUs) to your Management OpenShift cluster using the Assisted Installer:
 
-1. **Generate ISO image from Assisted Installer**:
+1. **Generate and download ISO image for worker nodes**:
 
 ```bash
 # Create a discovery ISO for worker nodes
 make create-cluster-iso
 ```
 
-This generates a bootable ISO with the necessary configurations for your worker nodes.
+This command will:
+- Create a day2 cluster specifically for worker nodes
+- Configure it with your SSH key from your environment
+- Configure network settings including the `br-dpu` bridge that will be created automatically
+- Provide you with a URL to download the ISO (if available)
+
+The ISO URL will be displayed in the output if found. Download this ISO to your local machine using the provided URL.
+
+> **Note:** If the command cannot automatically retrieve the ISO URL, you have several options:
+> - Go to console.redhat.com and navigate to your cluster
+> - Click "Add Hosts" for your cluster (the name should be `$CLUSTER_NAME-day2`)
+> - Copy the ISO URL and download it manually
+> - You can use these environment variables for alternative approaches:
+>   ```bash
+>   # Specify ISO URL directly:
+>   ISO_URL=<your-iso-url> make create-cluster-iso
+>   
+>   # Or skip ISO URL check completely and get it manually:
+>   SKIP_ISO_CHECK=true make create-cluster-iso
+>   ```
 
 2. **Boot worker nodes with the ISO**:
-- Download the ISO to your local machine
-- Boot each worker node using this ISO (via BMC, virtual media, or USB drive)
-- The worker nodes will automatically register with the Assisted Installer service
+
+To boot a worker node using iDRAC Virtual Media:
+
+a. Access the iDRAC web interface for your worker node
+b. Navigate to Virtual Media > Connect Virtual Media
+c. Select the downloaded ISO file
+d. Click "Map Device"
+e. Go to Power/Thermal > Power and select:
+   - "Power Cycle System (cold boot)" if the system is on
+   - "Power On System" if the system is off
+f. The system will boot from the ISO and begin the discovery process
+
+> **Note:** The worker nodes will be automatically configured with a bridge named `br-dpu` that includes the physical 1GB interface. The bridge will receive an IP from the available DHCP server using the nmstate configuration included in the ISO. This bridge configuration is critical for DPU operations as it will be used to communicate with the DPU.
 
 3. **Monitor node registration in Assisted Installer**:
 
