@@ -171,9 +171,28 @@ This command will:
 - Create a day2 cluster specifically for worker nodes
 - Ensure the OpenShift version matches your original cluster
 - Configure it with your SSH key from your environment
-- Provide you with a URL to download the ISO (if available)
+- Provide you with a URL to download the ISO (displayed in color for easy identification)
 
-The ISO URL will be displayed in the output if found. Download this ISO to your local machine using the provided URL.
+The ISO URL will be highlighted in the output. Download this ISO to your local machine using the provided URL.
+
+> **ISO Type Selection:** You can specify whether to use a minimal or full ISO:
+> ```bash
+> # Use full ISO instead of minimal (default)
+> ISO_TYPE=full make create-cluster-iso
+> ```
+> Minimal ISOs are smaller and faster to download but may require additional packages. Full ISOs include more packages but are larger.
+
+> **Direct ISO Functions:** For more advanced usage, you can use these commands:
+> ```bash
+> # Just create the day2 cluster
+> make create-day2-cluster
+> 
+> # Just get the worker ISO URL
+> make get-worker-iso
+> 
+> # Use the unified ISO function with specific parameters
+> make get-iso NODE_TYPE=worker ACTION=url ISO_TYPE=full
+> ```
 
 > **Note:** The automation will automatically ensure version consistency between your original cluster and the day2 cluster. If a version mismatch is detected, it will recreate the day2 cluster with the correct version.
 
