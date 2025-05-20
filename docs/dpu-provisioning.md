@@ -171,12 +171,13 @@ This command will:
 - Create a day2 cluster specifically for worker nodes
 - Ensure the OpenShift version matches your original cluster
 - Configure it with your SSH key from your environment
-- Configure network settings including the `br-dpu` bridge that will be created automatically
 - Provide you with a URL to download the ISO (if available)
 
 The ISO URL will be displayed in the output if found. Download this ISO to your local machine using the provided URL.
 
 > **Note:** The automation will automatically ensure version consistency between your original cluster and the day2 cluster. If a version mismatch is detected, it will recreate the day2 cluster with the correct version.
+
+> **Note:** After the worker nodes join the cluster, they will be automatically configured with a bridge named `br-dpu` via MachineConfig. This bridge will include the physical 1GB interface and receive an IP from the available DHCP server. This bridge configuration is critical for DPU operations as it will be used to communicate with the DPU.
 
 > **Note:** If the command cannot automatically retrieve the ISO URL, you have several options:
 > - Go to console.redhat.com and navigate to your cluster
@@ -204,7 +205,7 @@ e. Go to Power/Thermal > Power and select:
    - "Power On System" if the system is off
 f. The system will boot from the ISO and begin the discovery process
 
-> **Note:** The worker nodes will be automatically configured with a bridge named `br-dpu` that includes the physical 1GB interface. The bridge will receive an IP from the available DHCP server using the nmstate configuration included in the ISO. This bridge configuration is critical for DPU operations as it will be used to communicate with the DPU.
+> **Note:** After the worker nodes join the cluster, they will be automatically configured with a bridge named `br-dpu` via MachineConfig. This bridge will include the physical 1GB interface and receive an IP from the available DHCP server. This bridge configuration is critical for DPU operations as it will be used to communicate with the DPU.
 
 3. **Monitor node registration in Assisted Installer**:
 
