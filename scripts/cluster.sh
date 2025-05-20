@@ -285,36 +285,64 @@ function download_worker_iso() {
     # Declare iso_url at the function level
     local iso_url=""
     
-    # Use cluster ID directly since name-based lookup might be failing
+    # Get the cluster ID 
     local cluster_id=$(aicli list clusters | grep "${day2_cluster_name}" | awk '{print $2}' 2>/dev/null || echo "")
     if [ -n "${cluster_id}" ]; then
         log "INFO" "Found cluster ID: ${cluster_id}"
     else
         log "WARNING" "Could not find cluster ID for ${day2_cluster_name}"
+        log "INFO" "Please use the Assisted Installer UI to manually get the ISO URL"
+        return 0
+    fi
+    
+    # Get the infraenv ID associated with this cluster
+    # Note: We need to list all infraenvs and find the one that's linked to our cluster ID
+    local infraenv_id=""
+    
+    # First try to list infraenvs and find one linked to our cluster 
+    log "INFO" "Searching for infraenv associated with cluster ${day2_cluster_name}..."
+    infraenv_id=$(aicli list infraenvs 2>/dev/null | grep "${cluster_id}" | awk '{print $1}' 2>/dev/null || echo "")
+    
+    # If that doesn't work, try another approach - look for infraenvs with the cluster name
+    if [ -z "${infraenv_id}" ]; then
+        log "INFO" "Trying to find infraenv by cluster name..."
+        infraenv_id=$(aicli list infraenvs 2>/dev/null | grep "${day2_cluster_name}" | awk '{print $1}' 2>/dev/null || echo "")
+    fi
+    
+    # If we found an infraenv ID, try to get the ISO URL from it
+    if [ -n "${infraenv_id}" ]; then
+        log "INFO" "Found infraenv ID: ${infraenv_id} for cluster ${day2_cluster_name}"
+        
+        # Try to get the ISO URL from the infraenv
+        iso_url=$(aicli info infraenv ${infraenv_id} 2>/dev/null | grep -oP 'download_url: \K.*' 2>/dev/null || echo "")
+        
+        if [ -n "${iso_url}" ]; then
+            log "INFO" "Successfully retrieved ISO URL from infraenv ${infraenv_id}"
+        else
+            log "WARNING" "Could not get ISO URL from infraenv ${infraenv_id}"
+        fi
+    else
+        log "WARNING" "Could not find infraenv ID for cluster ${day2_cluster_name} (${cluster_id})"
     fi
     
     # Check if ISO_URL is already set in environment (manual override)
-    if [ -n "${ISO_URL}" ]; then
+    if [ -z "${iso_url}" ] && [ -n "${ISO_URL}" ]; then
         log "INFO" "Using ISO_URL from environment: ${ISO_URL}"
         iso_url="${ISO_URL}"
-    else
-        # Try first format (standard output parsing)
-        iso_url=$(aicli info iso ${day2_cluster_name} | grep -oP 'url: \K.*' 2>/dev/null || echo "")
+    fi
+    
+    # If we still don't have an ISO URL, try the cluster-level method as a last resort
+    if [ -z "${iso_url}" ]; then
+        log "INFO" "Trying to get ISO URL using alternative methods..."
         
-        # If first format failed, try another format (verbose format)
-        if [ -z "${iso_url}" ] && [ -n "${cluster_id}" ]; then
-            iso_url=$(aicli info iso ${cluster_id} | grep -oP 'url: \K.*' 2>/dev/null || echo "")
-        fi
+        # Try to find the URL from the UI perspective
+        # This approach works with some versions of aicli despite not being technically correct
+        local ui_url="https://console.redhat.com/openshift/assisted-installer/clusters/${cluster_id}/add-hosts"
+        log "INFO" "You may be able to find the ISO at the UI URL: ${ui_url}"
         
-        # Try different methods if still failing
-        if [ -z "${iso_url}" ]; then
-            log "INFO" "Standard methods failed, trying alternatives..."
-            
-            # Try direct infraenv approach
-            if [ -n "${cluster_id}" ]; then
-                iso_url=$(aicli info infraenv ${cluster_id} 2>/dev/null | grep -oP 'download_url: \K.*' 2>/dev/null || echo "")
-            fi
-        fi
+        # Alternative: try cluster discovery ISO if available
+        log "INFO" "As a last resort, you can try using the cluster discovery ISO:"
+        log "INFO" "aicli download iso ${CLUSTER_NAME} -p /tmp/"
     fi
     
     # If all attempts failed
