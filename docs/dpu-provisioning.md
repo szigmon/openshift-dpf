@@ -169,11 +169,14 @@ make create-cluster-iso
 
 This command will:
 - Create a day2 cluster specifically for worker nodes
+- Ensure the OpenShift version matches your original cluster
 - Configure it with your SSH key from your environment
 - Configure network settings including the `br-dpu` bridge that will be created automatically
 - Provide you with a URL to download the ISO (if available)
 
 The ISO URL will be displayed in the output if found. Download this ISO to your local machine using the provided URL.
+
+> **Note:** The automation will automatically ensure version consistency between your original cluster and the day2 cluster. If a version mismatch is detected, it will recreate the day2 cluster with the correct version.
 
 > **Note:** If the command cannot automatically retrieve the ISO URL, you have several options:
 > - Go to console.redhat.com and navigate to your cluster
