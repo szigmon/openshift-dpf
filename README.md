@@ -112,6 +112,18 @@ Default values:
 - BASE_DOMAIN: okoyl.xyz
 - OPENSHIFT_VERSION: 4.19.0-ec.3
 
+### ISO Type Configuration
+
+By default, the system uses the "minimal" ISO type which is smaller and faster to download. If you need the full ISO with additional packages, you can set the ISO_TYPE parameter:
+
+```bash
+# Use full ISO for a specific command
+make get-iso NODE_TYPE=worker ACTION=url ISO_TYPE=full
+
+# Or set in .env file for all operations
+ISO_TYPE=full
+```
+
 ### Switching Between Kamaji and Hypershift
 
 By default, the automation uses Kamaji as the cluster manager. To use Hypershift instead:
