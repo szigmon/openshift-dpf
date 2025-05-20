@@ -192,7 +192,15 @@ The ISO URL will be displayed in the output if found. Download this ISO to your 
 >   SKIP_ISO_CHECK=true make create-cluster-iso
 >   ```
 
-> **Advanced:** For troubleshooting purposes, the automation attempts to correctly obtain the ISO URL through multiple methods. It first tries to find the infraenv ID associated with the day2 cluster and uses that to retrieve the ISO URL, as the ISO is properly a resource of the infraenv, not the cluster directly.
+> **Advanced:** For troubleshooting purposes, the automation attempts to correctly obtain the ISO URL through multiple methods. It first tries to find the infraenv ID associated with the day2 cluster and uses that to retrieve the ISO URL, as the ISO is properly a resource of the infraenv, not the cluster directly. If you encounter issues with ISO URL retrieval, you can run:
+>
+> ```bash
+> # List all infraenvs to find the one for your day2 cluster
+> aicli list infraenvs
+> 
+> # Get ISO URL from the infraenv (replace with your actual infraenv ID)
+> aicli info infraenv <infraenv-id>
+> ```
 
 2. **Boot worker nodes with the ISO**:
 
