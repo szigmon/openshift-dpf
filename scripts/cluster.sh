@@ -215,6 +215,143 @@ function download_iso() {
     log "INFO" "ISO downloaded successfully to ${ISO_FOLDER}"
 }
 
+function create_day2_cluster() {
+    local day2_cluster_name="${CLUSTER_NAME}-day2"
+    log "INFO" "Creating day2 cluster ${day2_cluster_name} for worker nodes..."
+    
+    # Get the original cluster version to ensure consistency
+    local original_cluster_version=$(aicli info cluster ${CLUSTER_NAME} -f openshift_version -v 2>/dev/null || echo "${OPENSHIFT_VERSION}")
+    log "INFO" "Using OpenShift version: ${original_cluster_version} (from original cluster: ${CLUSTER_NAME})"
+    
+    if ! aicli info cluster ${day2_cluster_name} >/dev/null 2>&1; then
+        log "INFO" "Day2 cluster ${day2_cluster_name} not found, creating..."
+        
+        # Create day2 cluster with minimal required parameters
+        aicli create cluster \
+            -P openshift_version="${original_cluster_version}" \
+            -P base_dns_domain="${BASE_DOMAIN}" \
+            -P pull_secret="${OPENSHIFT_PULL_SECRET}" \
+            -P public_key="${SSH_KEY}" \
+            -P day2=true \
+            "${day2_cluster_name}"
+        
+        log "INFO" "Day2 cluster ${day2_cluster_name} created successfully"
+        log "INFO" "Note: The br-dpu bridge will be configured by MachineConfig after the node joins the cluster"
+    else
+        # Verify the version of existing day2 cluster matches the original cluster
+        local day2_version=$(aicli info cluster ${day2_cluster_name} -f openshift_version -v 2>/dev/null || echo "unknown")
+        if [ "${day2_version}" != "${original_cluster_version}" ]; then
+            log "WARNING" "Day2 cluster version (${day2_version}) does not match original cluster version (${original_cluster_version})"
+            log "INFO" "Deleting and recreating day2 cluster with correct version..."
+            
+            # Delete the day2 cluster with incorrect version
+            aicli delete cluster ${day2_cluster_name} -y
+            
+            # Recursively call this function to create a new day2 cluster
+            create_day2_cluster
+            return
+        fi
+        
+        log "INFO" "Day2 cluster ${day2_cluster_name} already exists with correct version: ${day2_version}"
+    fi
+}
+
+function download_worker_iso() {
+    # This function differs from download_iso because it's designed for user-interactive workflows:
+    # 1. It provides a URL for manual download rather than downloading directly
+    # 2. This allows users to download the ISO to their workstation for upload to iDRAC
+    # 3. It includes multiple retrieval methods with fallbacks for resilience
+    # 4. It performs version verification to ensure consistency with the main cluster
+    
+    local day2_cluster_name="${CLUSTER_NAME}-day2"
+    log "INFO" "Getting ISO URL for cluster ${day2_cluster_name}..."
+    
+    # Get the original cluster version to ensure consistency
+    local original_cluster_version=$(aicli info cluster ${CLUSTER_NAME} -f openshift_version -v 2>/dev/null || echo "${OPENSHIFT_VERSION}")
+    local version_pattern=$(echo "${original_cluster_version}" | cut -d'.' -f1,2)
+    
+    # Skip ISO URL check if SKIP_ISO_CHECK is set
+    if [ "${SKIP_ISO_CHECK}" = "true" ]; then
+        log "INFO" "Skipping automatic ISO URL retrieval as requested"
+        log "INFO" "Please get the ISO URL manually from the Assisted Installer UI:"
+        log "INFO" "1. Go to console.redhat.com and log in"
+        log "INFO" "2. Navigate to clusters and find '${day2_cluster_name}' or click 'Add Hosts' on your main cluster"
+        log "INFO" "3. Download the ISO from the URL provided there"
+        log "INFO" "4. Use iDRAC Virtual Media to mount this ISO on your worker nodes"
+        log "INFO" "5. IMPORTANT: Verify the ISO is for OpenShift version ${version_pattern}.x"
+        return 0
+    fi
+    
+    # Declare iso_url at the function level
+    local iso_url=""
+    
+    # Use cluster ID directly since name-based lookup might be failing
+    local cluster_id=$(aicli list clusters | grep "${day2_cluster_name}" | awk '{print $2}' 2>/dev/null || echo "")
+    if [ -n "${cluster_id}" ]; then
+        log "INFO" "Found cluster ID: ${cluster_id}"
+    else
+        log "WARNING" "Could not find cluster ID for ${day2_cluster_name}"
+    fi
+    
+    # Check if ISO_URL is already set in environment (manual override)
+    if [ -n "${ISO_URL}" ]; then
+        log "INFO" "Using ISO_URL from environment: ${ISO_URL}"
+        iso_url="${ISO_URL}"
+    else
+        # Try first format (standard output parsing)
+        iso_url=$(aicli info iso ${day2_cluster_name} | grep -oP 'url: \K.*' 2>/dev/null || echo "")
+        
+        # If first format failed, try another format (verbose format)
+        if [ -z "${iso_url}" ] && [ -n "${cluster_id}" ]; then
+            iso_url=$(aicli info iso ${cluster_id} | grep -oP 'url: \K.*' 2>/dev/null || echo "")
+        fi
+        
+        # Try different methods if still failing
+        if [ -z "${iso_url}" ]; then
+            log "INFO" "Standard methods failed, trying alternatives..."
+            
+            # Try direct infraenv approach
+            if [ -n "${cluster_id}" ]; then
+                iso_url=$(aicli info infraenv ${cluster_id} 2>/dev/null | grep -oP 'download_url: \K.*' 2>/dev/null || echo "")
+            fi
+        fi
+    fi
+    
+    # If all attempts failed
+    if [ -z "${iso_url}" ]; then
+        log "WARNING" "Could not automatically retrieve ISO URL"
+        log "INFO" "Please use the Assisted Installer UI to manually get the ISO URL:"
+        log "INFO" "1. Go to console.redhat.com and log in"
+        log "INFO" "2. Navigate to clusters and find '${day2_cluster_name}' or click 'Add Hosts' on your main cluster"
+        log "INFO" "3. Download the ISO from the URL provided there"
+        
+        # Don't exit with error, just continue with warning
+        log "INFO" "You can also set ISO_URL=<url> or SKIP_ISO_CHECK=true to bypass this check"
+        log "INFO" "Continuing without ISO URL..."
+        return 0
+    fi
+    
+    # Verify the ISO URL contains the correct version
+    if ! echo "${iso_url}" | grep -q "/${version_pattern}\."; then
+        log "WARNING" "ISO URL does not contain the expected OpenShift version ${version_pattern}.x: ${iso_url}"
+        log "WARNING" "This may indicate a version mismatch between your original cluster and the day2 cluster"
+        log "INFO" "Recreating day2 cluster with correct version..."
+        
+        # Delete the day2 cluster with incorrect version
+        aicli delete cluster ${day2_cluster_name} -y
+        
+        # Recreate day2 cluster and try again
+        create_day2_cluster
+        download_worker_iso
+        return
+    fi
+    
+    log "INFO" "Worker node ISO is available at: ${iso_url}"
+    log "INFO" "Please download the ISO from the above URL and use it to boot your worker nodes"
+    log "INFO" "You can use iDRAC Virtual Media to mount this ISO on your worker nodes"
+    return 0
+}
+
 # -----------------------------------------------------------------------------
 # Command dispatcher
 # -----------------------------------------------------------------------------
@@ -244,10 +381,20 @@ function main() {
         download-iso)
             download_iso
             ;;
+        create-day2-cluster)
+            create_day2_cluster
+            ;;
+        download-worker-iso)
+            download_worker_iso
+            ;;
+        get-worker-iso)
+            download_worker_iso
+            ;;
         *)
             log "Unknown command: $command"
             log "Available commands: check-create-cluster, delete-cluster, cluster-install,"
-            log "  wait-for-status, get-kubeconfig, clean-all, download-iso"
+            log "  wait-for-status, get-kubeconfig, clean-all, download-iso, create-day2-cluster,"
+            log "  download-worker-iso, get-worker-iso"
             exit 1
             ;;
     esac
