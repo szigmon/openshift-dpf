@@ -217,7 +217,10 @@ function download_iso() {
 
 function create_day2_cluster() {
     local day2_cluster_name="${CLUSTER_NAME}-day2"
-    log "INFO" "Creating day2 cluster ${day2_cluster_name} for worker nodes..."
+    local iso_type="${ISO_TYPE:-minimal}"  # Default ISO type is 'minimal' (not 'full')
+    local aicli_iso_type="${iso_type}-iso"  # Convert to aicli format
+    
+    log "INFO" "Creating day2 cluster ${day2_cluster_name} for worker nodes (ISO type: ${iso_type})..."
     
     # Get the original cluster version to ensure consistency
     local original_cluster_version=$(aicli info cluster ${CLUSTER_NAME} -f openshift_version -v 2>/dev/null || echo "${OPENSHIFT_VERSION}")
@@ -227,12 +230,14 @@ function create_day2_cluster() {
         log "INFO" "Day2 cluster ${day2_cluster_name} not found, creating..."
         
         # Create day2 cluster with minimal required parameters
+        # Note: The br-dpu bridge will be configured by MachineConfig after the node joins the cluster
         aicli create cluster \
             -P openshift_version="${original_cluster_version}" \
             -P base_dns_domain="${BASE_DOMAIN}" \
             -P pull_secret="${OPENSHIFT_PULL_SECRET}" \
             -P public_key="${SSH_KEY}" \
             -P day2=true \
+            -P iso_type="${aicli_iso_type}" \
             "${day2_cluster_name}"
         
         log "INFO" "Day2 cluster ${day2_cluster_name} created successfully"
@@ -264,7 +269,9 @@ function download_worker_iso() {
     # 4. It performs version verification to ensure consistency with the main cluster
     
     local day2_cluster_name="${CLUSTER_NAME}-day2"
-    log "INFO" "Getting ISO URL for cluster ${day2_cluster_name}..."
+    local iso_type="${ISO_TYPE:-minimal}"  # Default ISO type is 'minimal' (not 'full')
+    
+    log "INFO" "Getting ISO URL for cluster ${day2_cluster_name} (ISO type: ${iso_type}-iso)..."
     
     # Get the original cluster version to ensure consistency
     local original_cluster_version=$(aicli info cluster ${CLUSTER_NAME} -f openshift_version -v 2>/dev/null || echo "${OPENSHIFT_VERSION}")
@@ -280,6 +287,12 @@ function download_worker_iso() {
         log "INFO" "4. Use iDRAC Virtual Media to mount this ISO on your worker nodes"
         log "INFO" "5. IMPORTANT: Verify the ISO is for OpenShift version ${version_pattern}.x"
         return 0
+    fi
+    
+    # Check if day2 cluster exists, if not, create it
+    if ! aicli info cluster ${day2_cluster_name} >/dev/null 2>&1; then
+        log "INFO" "Day2 cluster ${day2_cluster_name} not found, creating first..."
+        create_day2_cluster
     fi
     
     # Declare iso_url at the function level
@@ -301,12 +314,17 @@ function download_worker_iso() {
     
     # First try to list infraenvs and find one linked to our cluster 
     log "INFO" "Searching for infraenv associated with cluster ${day2_cluster_name}..."
-    infraenv_id=$(aicli list infraenvs 2>/dev/null | grep "${cluster_id}" | awk '{print $1}' 2>/dev/null || echo "")
+    # The aicli output contains pipe characters that need to be handled properly
+    aicli_list_output=$(aicli list infraenvs 2>/dev/null)
+    log "DEBUG" "Infraenvs list sample: $(echo "$aicli_list_output" | head -2)"
     
-    # If that doesn't work, try another approach - look for infraenvs with the cluster name
+    # Use grep to find the row and awk to extract the proper column
+    infraenv_id=$(echo "$aicli_list_output" | grep "${day2_cluster_name}" | awk -F'|' '{print $2}' | tr -d ' ' 2>/dev/null || echo "")
+    
+    # If that doesn't work, try another approach using cluster ID
     if [ -z "${infraenv_id}" ]; then
-        log "INFO" "Trying to find infraenv by cluster name..."
-        infraenv_id=$(aicli list infraenvs 2>/dev/null | grep "${day2_cluster_name}" | awk '{print $1}' 2>/dev/null || echo "")
+        log "INFO" "Trying to find infraenv by cluster ID..."
+        infraenv_id=$(echo "$aicli_list_output" | grep "${cluster_id}" | awk -F'|' '{print $2}' | tr -d ' ' 2>/dev/null || echo "")
     fi
     
     # If we found an infraenv ID, try to get the ISO URL from it
@@ -314,12 +332,19 @@ function download_worker_iso() {
         log "INFO" "Found infraenv ID: ${infraenv_id} for cluster ${day2_cluster_name}"
         
         # Try to get the ISO URL from the infraenv
-        iso_url=$(aicli info infraenv ${infraenv_id} 2>/dev/null | grep -oP 'download_url: \K.*' 2>/dev/null || echo "")
+        # First get the full infraenv info and save it for inspection
+        log "INFO" "Getting information for infraenv ${infraenv_id}..."
+        local infraenv_info=$(aicli info infraenv ${infraenv_id} 2>/dev/null)
+        
+        # Extract the download_url using a more reliable pattern match
+        iso_url=$(echo "$infraenv_info" | grep "download_url:" | sed 's/download_url: //' 2>/dev/null || echo "")
         
         if [ -n "${iso_url}" ]; then
             log "INFO" "Successfully retrieved ISO URL from infraenv ${infraenv_id}"
         else
             log "WARNING" "Could not get ISO URL from infraenv ${infraenv_id}"
+            # Log a bit of the infraenv info for debugging
+            log "DEBUG" "Infraenv info excerpt: $(echo "$infraenv_info" | head -10)"
         fi
     else
         log "WARNING" "Could not find infraenv ID for cluster ${day2_cluster_name} (${cluster_id})"
@@ -336,7 +361,6 @@ function download_worker_iso() {
         log "INFO" "Trying to get ISO URL using alternative methods..."
         
         # Try to find the URL from the UI perspective
-        # This approach works with some versions of aicli despite not being technically correct
         local ui_url="https://console.redhat.com/openshift/assisted-installer/clusters/${cluster_id}/add-hosts"
         log "INFO" "You may be able to find the ISO at the UI URL: ${ui_url}"
         
@@ -374,9 +398,30 @@ function download_worker_iso() {
         return
     fi
     
-    log "INFO" "Worker node ISO is available at: ${iso_url}"
-    log "INFO" "Please download the ISO from the above URL and use it to boot your worker nodes"
-    log "INFO" "You can use iDRAC Virtual Media to mount this ISO on your worker nodes"
+    # Display the ISO URL in a highly visible way with color
+    log "INFO" "============================================================="
+    # ANSI color codes for terminal output
+    YELLOW='\033[1;33m'
+    GREEN='\033[1;32m'
+    NC='\033[0m' # No Color
+    
+    # Print the ISO URL in bold colors for better visibility
+    echo ""
+    echo -e "${YELLOW}ISO URL for worker nodes:${NC}"
+    echo -e "${GREEN}$(echo "$iso_url" | sed 's/^/  /')${NC}"
+    echo ""
+    
+    log "INFO" "============================================================="
+    log "INFO" "For BlueField DPU worker nodes:"
+    log "INFO" "1. Download the ISO from the above URL"
+    log "INFO" "2. Use iDRAC Virtual Media to mount this ISO on your worker nodes"
+    log "INFO" "3. Boot the server from the virtual media"
+    log "INFO" "4. The server should automatically register with the cluster"
+    log "INFO" "5. Optional: Monitor progress in the Assisted Installer UI"
+    log "INFO" "Note: The br-dpu bridge will be configured by MachineConfig after the node joins"
+    
+    # Export the URL for use elsewhere
+    export ISO_URL="${iso_url}"
     return 0
 }
 
@@ -412,17 +457,13 @@ function main() {
         create-day2-cluster)
             create_day2_cluster
             ;;
-        download-worker-iso)
-            download_worker_iso
-            ;;
         get-worker-iso)
             download_worker_iso
             ;;
         *)
             log "Unknown command: $command"
             log "Available commands: check-create-cluster, delete-cluster, cluster-install,"
-            log "  wait-for-status, get-kubeconfig, clean-all, download-iso, create-day2-cluster,"
-            log "  download-worker-iso, get-worker-iso"
+            log "  wait-for-status, get-kubeconfig, clean-all, download-iso, create-day2-cluster, get-worker-iso"
             exit 1
             ;;
     esac
