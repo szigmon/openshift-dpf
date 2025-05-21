@@ -67,7 +67,7 @@ VM_PREFIX=${VM_PREFIX:-"vm-dpf"}
 # Paths
 DISK_PATH=${DISK_PATH:-"/var/lib/libvirt/images"}
 ISO_FOLDER=${ISO_FOLDER:-${DISK_PATH}}
-
+ISO_TYPE=${ISO_TYPE:-"minimal-iso"}
 
 BRIDGE_NAME=${BRIDGE_NAME:-br0}
 SKIP_BRIDGE_CONFIG=${SKIP_BRIDGE_CONFIG:-"false"}
