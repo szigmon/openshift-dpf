@@ -160,21 +160,21 @@ The automation will handle the creation of necessary storage resources using the
 
 Add the worker nodes (hosts with BlueField DPUs) to your Management OpenShift cluster:
 
-1. **Generate and download ISO for worker nodes**:
+1. **Get ISO URL for worker nodes**:
 
 ```bash
-# Generate worker node ISO URL
+# Get ISO URL for worker nodes
 make get-worker-iso
 ```
 
-This command outputs a direct download URL for the worker ISO. If you prefer a full ISO instead of the default minimal ISO:
+This command outputs a direct download URL for the worker ISO. For a full ISO instead of minimal:
 
 ```bash
-# Get URL for full ISO instead of minimal
+# Get full ISO URL instead of minimal
 ISO_TYPE=full make get-worker-iso
 ```
 
-> **Note:** If the command can't retrieve the ISO URL, you can go to console.redhat.com, navigate to your cluster (named `$CLUSTER_NAME-day2`), and click "Add Hosts" to download the ISO manually.
+> **Note:** If you can't get the ISO URL via command line, visit console.redhat.com, find your cluster's day2 configuration, and click "Add Hosts" to get the ISO URL manually. For more information, visit https://dpf-on-openshift.netlify.app/dpu-provisioning.
 
 2. **Boot worker nodes with the ISO**:
 
@@ -627,10 +627,11 @@ The DMS pods should be in `Running` status, indicating that the basic management
 
 #### Worker Node Addition Issues
 
-* **ISO Generation Problems**
-    * Check make command output for errors
-    * Verify Assisted Installer service is accessible
-    * Ensure you have proper OpenShift offline token configured
+* **ISO URL Retrieval Issues**
+    * Check InfraEnv resources: `oc get infraenvs` 
+    * Verify Assisted Installer connectivity with: `aicli list clusters`
+    * Ensure the day2 cluster exists: `oc get pods -n assisted-installer`
+    * If command-line method fails, use console.redhat.com UI directly
 
 * **Node Registration Failures**
     * Verify network connectivity from worker nodes to Assisted Installer
