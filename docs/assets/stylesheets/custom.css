@@ -1,0 +1,24 @@
+/* Custom CSS for navigation fixes */
+
+/* Make navigation items more clickable */
+.md-tabs__link {
+  cursor: pointer !important;
+  display: block !important;
+  padding: 10px !important;
+}
+
+/* Extra styles for sidebar navigation */
+.md-nav__link {
+  position: relative;
+  z-index: 2;
+}
+
+/* Enhance tab visibility */
+.md-tabs__item {
+  position: relative;
+}
+
+/* Force opacity for links to ensure they're visible */
+.md-tabs__link, .md-nav__link {
+  opacity: 1 !important;
+} 

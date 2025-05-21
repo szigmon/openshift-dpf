@@ -1,0 +1,74 @@
+site_name: OpenShift DPF Automation
+site_description: Complete automation for deploying and managing NVIDIA DPF on OpenShift clusters
+site_author: OpenShift DPF Team
+
+repo_url: https://github.com/szigmon/openshift-dpf
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+  language: en
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+      primary: indigo
+      accent: indigo
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+      primary: indigo
+      accent: indigo
+
+plugins:
+  - search
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - admonition
+  - pymdownx.arithmatex:
+      generic: true
+  - footnotes
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.mark
+  - attr_list
+  - pymdownx.emoji
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Configuration: getting-started/configuration.md
+  - Features:
+    - Worker ISO Management: worker-iso-management.md
+    - DPF Installation: features/dpf-installation.md
+    - Hypershift Integration: features/hypershift-integration.md
+  - Advanced Topics:
+    - Performance Tuning: advanced/performance-tuning.md
+    - Network Configuration: advanced/network-configuration.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/szigmon/openshift-dpf
+    - icon: fontawesome/brands/redhat
+      link: https://www.redhat.com
+    - icon: fontawesome/brands/docker
+      link: https://www.nvidia.com 

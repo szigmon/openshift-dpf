@@ -1,0 +1,78 @@
+# Introduction & Architecture
+
+Welcome to the NVIDIA DPF on OpenShift documentation—your technical resource for deploying, managing, and optimizing NVIDIA BlueField DPUs and DOCA services in Red Hat OpenShift environments.
+
+---
+
+## What is DPF?
+
+- **DPF:** DOCA Platform Framework
+- **Purpose:** Integrates NVIDIA BlueField DPUs with OpenShift to deliver advanced networking, security, and acceleration for enterprise Kubernetes workloads.
+- **Scope:** Automates the full lifecycle:
+    - Cluster creation
+    - DPU provisioning
+    - DPF Operator deployment
+    - DOCA service deployment
+    - Advanced operations and troubleshooting
+
+---
+
+## Who Should Use This Guide?
+- **Platform Engineers:** Build and operate OpenShift clusters with DPU acceleration
+- **DevOps Teams:** Automate DPU/DOCA lifecycle and cluster management
+- **Solution Architects:** Design scalable, secure, and high-performance OpenShift environments
+- **Advanced Administrators:** Customize, tune, and troubleshoot DPF/DOCA deployments
+
+---
+
+## Why Integrate DPF with OpenShift?
+
+- **Accelerated Networking & Security**
+    - Offload and isolate critical functions to DPUs
+    - Improve performance and security for sensitive workloads
+
+- **Automated Lifecycle Management**
+    - End-to-end automation for deployment, upgrades, and scaling
+    - Reduce manual effort and operational risk
+
+- **Flexible Integration Paths**
+    - Greenfield (new cluster), brownfield (existing cluster), and service-focused scenarios
+
+- **Enterprise-Grade Reliability**
+    - Built on Red Hat and NVIDIA best practices
+
+---
+
+## High-Level Architecture
+
+![DPF on OpenShift Architecture](assets/architecture.png)
+*Figure: High-level architecture of DPF and DOCA on OpenShift. (Update or expand this diagram as needed for clarity.)*
+
+### Main Components
+- **OpenShift Control Plane:** Manages cluster state, scheduling, and orchestration
+- **Worker Nodes:** Run application workloads and interface with DPUs
+- **NVIDIA BlueField DPUs:** Provide hardware acceleration for networking, security, and storage
+- **DPF Operator:** Automates DPU provisioning, configuration, and lifecycle management
+- **DOCA Services:** Deployable workloads leveraging DPU capabilities (e.g., accelerated networking, security services)
+
+### How It Works
+- The DPF Operator provisions and configures DPUs across the cluster
+- DOCA services are deployed to leverage DPU resources for enhanced performance and security
+- Automation scripts and manifests ensure repeatable, validated deployments
+
+---
+
+## Documentation Approach
+
+- **Modular & Scenario-Based**
+    - Start from any point: new deployment, existing cluster, or service-focused path
+
+- **Progressive Disclosure**
+    - High-level overviews with links to detailed, step-by-step guides
+
+- **Visual Navigation**
+    - Architecture diagrams, workflow charts, and decision trees guide users through complex scenarios
+
+---
+
+[Next: Prerequisites & Planning](prerequisites.md) 

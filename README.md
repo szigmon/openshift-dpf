@@ -112,6 +112,18 @@ Default values:
 - BASE_DOMAIN: okoyl.xyz
 - OPENSHIFT_VERSION: 4.19.0-ec.3
 
+### ISO Type Configuration
+
+By default, the system uses the "minimal" ISO type which is smaller and faster to download. If you need the full ISO with additional packages, you can set the ISO_TYPE parameter:
+
+```bash
+# Use full ISO for a specific command
+make get-iso NODE_TYPE=worker ACTION=url ISO_TYPE=full
+
+# Or set in .env file for all operations
+ISO_TYPE=full
+```
+
 ### Switching Between Kamaji and Hypershift
 
 By default, the automation uses Kamaji as the cluster manager. To use Hypershift instead:
@@ -156,6 +168,34 @@ make install-hypershift create-hypershift-cluster
 # Clean up resources
 make clean-all
 ```
+
+### Worker Node ISO Management for BlueField DPUs
+
+The automation includes features for managing worker node ISOs for BlueField DPUs:
+
+```bash
+# Create a day2 cluster for adding worker nodes
+make create-day2-cluster
+
+# Get the URL for worker ISO (for manual download)
+make get-worker-iso
+
+# Download worker ISO file directly to your system
+make create-cluster-iso
+
+# Specify ISO type (minimal or full)
+make get-worker-iso ISO_TYPE=full
+make create-cluster-iso ISO_TYPE=full
+
+# Specify custom output path for the ISO
+make create-cluster-iso ISO_OUTPUT=/path/to/custom-worker.iso
+```
+
+This functionality allows you to:
+- Create day2 clusters for adding worker nodes with BlueField DPUs
+- Get direct download URLs for worker ISOs
+- Download ISO files to your system for offline DPU installation
+- Choose between minimal and full ISO types based on your needs
 
 ## Contributing
 1. Fork the repository
