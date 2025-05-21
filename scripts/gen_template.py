@@ -303,7 +303,26 @@ RemainAfterExit=yes
 
 [Install]
 WantedBy=sysinit.target"""
-    )
+    ),
+    SystemdUnit(
+        name="wait-for-pf0vf0-and-apply-nmstate.service",
+        enabled=True,
+        contents="""[Unit]
+Description=Wait for pf0vf0 interface and apply nmstate configuration
+After=network.target
+Wants=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'while ! ip link show pf0vf0 > /dev/null 2>&1; do sleep 1; done; nmstatectl apply /etc/nmstate/nmstate.yml'
+Restart=on-failure
+RestartSec=5
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+"""
+    ),
 ]
 
 
