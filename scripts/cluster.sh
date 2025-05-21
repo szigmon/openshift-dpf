@@ -1,5 +1,15 @@
 #!/bin/bash
-# cluster.sh - Cluster management operations
+# cluster.sh - Cluster management operations for OpenShift DPF
+#
+# This file contains functions for managing OpenShift clusters and ISO images.
+# ISO handling is implemented with a minimal, single-function approach:
+#   - get_iso: Universal function for master/worker ISO operations (URL or download)
+#
+# Key features:
+# - InfraEnv approach for token-based URLs (required for authentication)
+# - Fallback to console.redhat.com UI if direct method fails
+# - Special handling for token-based URLs to preserve authentication
+# - Support for both minimal and full ISO types
 
 # Exit on error
 set -e
@@ -194,25 +204,158 @@ function clean_all() {
     log "Full cleanup complete"
 }
 
-function download_iso() {
-    log "INFO" "Downloading ISO for cluster ${CLUSTER_NAME} to ${ISO_FOLDER}"
-    
-    if [ -z "${ISO_FOLDER}" ]; then
-        log "ERROR" "ISO_FOLDER is not set. Please provide a valid ISO_FOLDER path."
-        exit 1
+# -----------------------------------------------------------------------------
+# ISO management functions
+# -----------------------------------------------------------------------------
+
+function create_day2_cluster() {
+    # Create a day2 cluster for adding worker nodes to existing cluster
+    local day2_cluster="${CLUSTER_NAME}-day2"
+
+    # Check if main cluster exists
+    if ! aicli info cluster "${CLUSTER_NAME}" >/dev/null 2>&1; then
+        log "ERROR" "Main cluster ${CLUSTER_NAME} not found. Create it first."
+        return 1
     fi
 
-    if [ ! -d "${ISO_FOLDER}" ]; then
-        log "INFO" "Creating ISO folder: ${ISO_FOLDER}"
-        mkdir -p "${ISO_FOLDER}"
+    # Check if day2 cluster already exists
+    if ! aicli info cluster ${day2_cluster} >/dev/null 2>&1; then
+        log "INFO" "Creating day2 cluster for adding nodes to ${CLUSTER_NAME}"
+
+        # Get original cluster version for consistency
+        local original_version=$(aicli info cluster ${CLUSTER_NAME} -f openshift_version -v 2>/dev/null)
+        if [ -z "${original_version}" ]; then
+            log "ERROR" "Could not determine OpenShift version of the original cluster"
+            return 1
+        fi
+
+        # Create day2 cluster
+        aicli create cluster \
+            -P openshift_version="${original_version}" \
+            -P base_dns_domain="${BASE_DOMAIN}" \
+            -P pull_secret="${OPENSHIFT_PULL_SECRET}" \
+            -P public_key="${SSH_KEY}" \
+            -P day2=true \
+            "${day2_cluster}" >/dev/null 2>&1
+
+        log "INFO" "Day2 cluster created successfully: ${day2_cluster}"
+    else
+        log "INFO" "Day2 cluster ${day2_cluster} already exists"
     fi
 
-    if ! aicli download iso "${CLUSTER_NAME}" -p "${ISO_FOLDER}"; then
-        log "ERROR" "Failed to download ISO for cluster ${CLUSTER_NAME}"
-        exit 1
+    return 0
+}
+
+function get_iso() {
+    # Unified function to get ISO URL or download ISO
+    # Parameters:
+    #   $1 - cluster_name: Name of the cluster (defaults to CLUSTER_NAME env var)
+    #   $2 - node_type: "master" or "worker" (default: master)
+    #   $3 - action: "url" or "download" (default: download)
+    #   $4 - download_path: Path to download ISO (optional)
+    #   $5 - iso_type: "minimal" or "full" (default: minimal)
+    
+    local cluster_name="${1:-${CLUSTER_NAME}}"
+    local node_type="${2:-master}"
+    local action="${3:-download}"
+    local download_path="${4:-${ISO_FOLDER}}"
+    local iso_type="${5:-minimal}"  # Default to minimal explicitly
+    local day2_cluster_name="${cluster_name}-day2"
+    local iso_url=""
+    
+    # For worker nodes, we need to handle day2 cluster
+    if [ "${node_type}" = "worker" ]; then
+        # Ensure day2 cluster exists
+        if ! aicli info cluster ${day2_cluster_name} >/dev/null 2>&1; then
+            log "INFO" "Day2 cluster ${day2_cluster_name} not found, creating first..."
+            create_day2_cluster
+        fi
+        
+        # Get cluster ID
+        local cluster_id=$(aicli list clusters | grep "${day2_cluster_name}" | awk '{print $2}' 2>/dev/null || echo "")
+        if [ -z "${cluster_id}" ]; then
+            log "ERROR" "Could not find day2 cluster ${day2_cluster_name}"
+            return 1
+        fi
+        
+        # Get ISO URL via InfraEnv (best approach for token-based URLs)
+        log "INFO" "Getting ISO URL for worker nodes..."
+        
+        # Get the infraenv ID
+        local infraenv_output=$(aicli list infraenvs 2>/dev/null)
+        local infraenv_id=$(echo "$infraenv_output" | grep "${day2_cluster_name}" | awk -F'|' '{print $2}' | tr -d ' ' 2>/dev/null)
+        
+        # If InfraEnv found, get ISO URL
+        if [ -n "${infraenv_id}" ]; then
+            local infraenv_info=$(aicli info infraenv ${infraenv_id} 2>/dev/null)
+            iso_url=$(echo "$infraenv_info" | grep "download_url:" | sed 's/download_url: //' 2>/dev/null || echo "")
+            
+            # Handle token URLs and ISO type
+            if [ -n "${iso_url}" ]; then
+                if [[ "${iso_url}" =~ /bytoken/ ]]; then
+                    # Token-based URL - preserve format but adjust ISO type if needed
+                    if [ "${iso_type}" = "minimal" ] && [[ "${iso_url}" =~ full\.iso$ ]]; then
+                        iso_url="${iso_url/full.iso/minimal.iso}"
+                    elif [ "${iso_type}" = "full" ] && [[ "${iso_url}" =~ minimal\.iso$ ]]; then
+                        iso_url="${iso_url/minimal.iso/full.iso}"
+                    fi
+                else
+                    # Non-token URL - adjust ISO type if needed
+                    if [ "${iso_type}" = "minimal" ] && [[ "${iso_url}" =~ full\.iso$ ]]; then
+                        iso_url="${iso_url/full.iso/minimal.iso}"
+                    elif [ "${iso_type}" = "full" ] && [[ "${iso_url}" =~ minimal\.iso$ ]]; then
+                        iso_url="${iso_url/minimal.iso/full.iso}"
+                    fi
+                fi
+            fi
+        fi
+        
+        # Fallback to UI URL if needed
+        if [ -z "${iso_url}" ]; then
+            log "INFO" "Using console.redhat.com URL for manual ISO download"
+            iso_url="https://console.redhat.com/openshift/assisted-installer/clusters/${cluster_id}/add-hosts"
+        fi
+        
+        # Worker nodes don't support download action
+        if [ "${action}" = "download" ]; then
+            log "ERROR" "Worker ISO download not supported, use URL to download manually"
+            echo "${iso_url}"
+            return 1
+        fi
+    else
+        # For master nodes
+        if [ "${action}" = "url" ]; then
+            # Get URL for master node
+            iso_url=$(aicli info cluster "${cluster_name}" | grep -i "^iso_download_url:" | awk '{print $2}')
+        elif [ "${action}" = "download" ]; then
+            # Download for master node using aicli
+            log "INFO" "Downloading master ISO to ${download_path}"
+            
+            if [ ! -d "${download_path}" ]; then
+                mkdir -p "${download_path}"
+            fi
+            
+            if ! aicli download iso "${cluster_name}" -p "${download_path}"; then
+                log "ERROR" "Failed to download ISO for cluster ${cluster_name}"
+                return 1
+            fi
+            
+            log "INFO" "ISO downloaded to ${download_path}"
+            return 0
+        fi
     fi
     
-    log "INFO" "ISO downloaded successfully to ${ISO_FOLDER}"
+    # For URL action, print the URL and return
+    if [ "${action}" = "url" ]; then
+        if [ -n "${iso_url}" ]; then
+            echo "${iso_url}"
+            export ISO_URL="${iso_url}"
+            return 0
+        else
+            log "ERROR" "Could not get ISO URL for ${node_type} nodes"
+            return 1
+        fi
+    fi
 }
 
 # -----------------------------------------------------------------------------
@@ -242,12 +385,24 @@ function main() {
             clean_all
             ;;
         download-iso)
-            download_iso
+            # Download ISO for master nodes
+            get_iso "${CLUSTER_NAME}" "master" "download" "${ISO_FOLDER}" "minimal"
+            ;;
+        get-worker-iso)
+            # Get worker ISO URL
+            get_iso "${CLUSTER_NAME}" "worker" "url" "" "minimal"
+            ;;
+        get-iso)
+            # Get ISO with custom parameters
+            get_iso "$@"
+            ;;
+        create-day2-cluster)
+            create_day2_cluster
             ;;
         *)
             log "Unknown command: $command"
             log "Available commands: check-create-cluster, delete-cluster, cluster-install,"
-            log "  wait-for-status, get-kubeconfig, clean-all, download-iso"
+            log "  wait-for-status, get-kubeconfig, clean-all, download-iso, create-day2-cluster, get-worker-iso, get-iso"
             exit 1
             ;;
     esac
