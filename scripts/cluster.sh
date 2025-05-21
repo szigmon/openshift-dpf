@@ -1,5 +1,17 @@
 #!/bin/bash
-# cluster.sh - Cluster management operations
+# cluster.sh - Cluster management operations for OpenShift DPF
+#
+# This file contains functions for managing OpenShift clusters and ISO images.
+# The ISO management is built around a single unified approach:
+#   - get_iso: Universal function for both master and worker node ISO operations
+#   - download_iso: Simple wrapper around get_iso for master node ISO download
+#   - download_worker_iso: Simple wrapper around get_iso for worker node ISO URL
+#
+# Key features:
+# - Uses InfraEnv approach to get token-based URLs (required for authentication)
+# - Falls back to console.redhat.com UI URL if direct method fails
+# - Special handling for token-based URLs to preserve authentication tokens
+# - Support for both minimal and full ISO types
 
 # Exit on error
 set -e
@@ -262,167 +274,179 @@ function create_day2_cluster() {
 }
 
 function download_worker_iso() {
-    # This function differs from download_iso because it's designed for user-interactive workflows:
-    # 1. It provides a URL for manual download rather than downloading directly
-    # 2. This allows users to download the ISO to their workstation for upload to iDRAC
-    # 3. It includes multiple retrieval methods with fallbacks for resilience
-    # 4. It performs version verification to ensure consistency with the main cluster
+    # Simplified function that just calls the unified get_iso function
+    # with parameters for worker node ISO URL retrieval
+    log "INFO" "Using unified get_iso function for worker ISO retrieval"
+    get_iso "${CLUSTER_NAME}" "worker" "url"
+}
+
+function get_iso() {
+    # Unified function to get ISO URL or download ISO
+    # Parameters:
+    #   $1 - cluster_name: Name of the cluster (defaults to CLUSTER_NAME from env)
+    #   $2 - node_type: "master" or "worker" (default: master)
+    #   $3 - action: "url" or "download" (default: download)
+    #   $4 - download_path: Path to download ISO (optional)
+    #   $5 - iso_type: "minimal" or "full" (default: minimal)
     
-    local day2_cluster_name="${CLUSTER_NAME}-day2"
-    local iso_type="${ISO_TYPE:-minimal}"  # Default ISO type is 'minimal' (not 'full')
-    
-    log "INFO" "Getting ISO URL for cluster ${day2_cluster_name} (ISO type: ${iso_type}-iso)..."
-    
-    # Get the original cluster version to ensure consistency
-    local original_cluster_version=$(aicli info cluster ${CLUSTER_NAME} -f openshift_version -v 2>/dev/null || echo "${OPENSHIFT_VERSION}")
-    local version_pattern=$(echo "${original_cluster_version}" | cut -d'.' -f1,2)
-    
-    # Skip ISO URL check if SKIP_ISO_CHECK is set
-    if [ "${SKIP_ISO_CHECK}" = "true" ]; then
-        log "INFO" "Skipping automatic ISO URL retrieval as requested"
-        log "INFO" "Please get the ISO URL manually from the Assisted Installer UI:"
-        log "INFO" "1. Go to console.redhat.com and log in"
-        log "INFO" "2. Navigate to clusters and find '${day2_cluster_name}' or click 'Add Hosts' on your main cluster"
-        log "INFO" "3. Download the ISO from the URL provided there"
-        log "INFO" "4. Use iDRAC Virtual Media to mount this ISO on your worker nodes"
-        log "INFO" "5. IMPORTANT: Verify the ISO is for OpenShift version ${version_pattern}.x"
-        return 0
-    fi
-    
-    # Check if day2 cluster exists, if not, create it
-    if ! aicli info cluster ${day2_cluster_name} >/dev/null 2>&1; then
-        log "INFO" "Day2 cluster ${day2_cluster_name} not found, creating first..."
-        create_day2_cluster
-    fi
-    
-    # Declare iso_url at the function level
+    local cluster_name="${1:-${CLUSTER_NAME}}"
+    local node_type="${2:-master}"
+    local action="${3:-download}"
+    local download_path="${4:-${ISO_FOLDER}}"
+    local iso_type="${5:-${ISO_TYPE:-minimal}}"  # Get from param or ENV, default to minimal
+    local day2_cluster_name="${cluster_name}-day2"
     local iso_url=""
     
-    # Get the cluster ID 
-    local cluster_id=$(aicli list clusters | grep "${day2_cluster_name}" | awk '{print $2}' 2>/dev/null || echo "")
-    if [ -n "${cluster_id}" ]; then
-        log "INFO" "Found cluster ID: ${cluster_id}"
-    else
-        log "WARNING" "Could not find cluster ID for ${day2_cluster_name}"
-        log "INFO" "Please use the Assisted Installer UI to manually get the ISO URL"
-        return 0
-    fi
-    
-    # Get the infraenv ID associated with this cluster
-    # Note: We need to list all infraenvs and find the one that's linked to our cluster ID
-    local infraenv_id=""
-    
-    # First try to list infraenvs and find one linked to our cluster 
-    log "INFO" "Searching for infraenv associated with cluster ${day2_cluster_name}..."
-    # The aicli output contains pipe characters that need to be handled properly
-    aicli_list_output=$(aicli list infraenvs 2>/dev/null)
-    log "DEBUG" "Infraenvs list sample: $(echo "$aicli_list_output" | head -2)"
-    
-    # Use grep to find the row and awk to extract the proper column
-    infraenv_id=$(echo "$aicli_list_output" | grep "${day2_cluster_name}" | awk -F'|' '{print $2}' | tr -d ' ' 2>/dev/null || echo "")
-    
-    # If that doesn't work, try another approach using cluster ID
-    if [ -z "${infraenv_id}" ]; then
-        log "INFO" "Trying to find infraenv by cluster ID..."
-        infraenv_id=$(echo "$aicli_list_output" | grep "${cluster_id}" | awk -F'|' '{print $2}' | tr -d ' ' 2>/dev/null || echo "")
-    fi
-    
-    # If we found an infraenv ID, try to get the ISO URL from it
-    if [ -n "${infraenv_id}" ]; then
-        log "INFO" "Found infraenv ID: ${infraenv_id} for cluster ${day2_cluster_name}"
+    # For worker nodes, we need to handle day2 cluster ISO
+    if [ "${node_type}" = "worker" ]; then
+        # Ensure day2 cluster exists
+        if ! aicli info cluster ${day2_cluster_name} >/dev/null 2>&1; then
+            log "INFO" "Day2 cluster ${day2_cluster_name} not found, creating first..."
+            create_day2_cluster
+        fi
         
-        # Try to get the ISO URL from the infraenv
-        # First get the full infraenv info and save it for inspection
-        log "INFO" "Getting information for infraenv ${infraenv_id}..."
-        local infraenv_info=$(aicli info infraenv ${infraenv_id} 2>/dev/null)
+        log "INFO" "Getting ISO URL for worker nodes (ISO type: ${iso_type})"
         
-        # Extract the download_url using a more reliable pattern match
-        iso_url=$(echo "$infraenv_info" | grep "download_url:" | sed 's/download_url: //' 2>/dev/null || echo "")
+        # Get the cluster ID for the day2 cluster
+        local cluster_id=$(aicli list clusters | grep "${day2_cluster_name}" | awk '{print $2}' 2>/dev/null || echo "")
         
-        if [ -n "${iso_url}" ]; then
-            log "INFO" "Successfully retrieved ISO URL from infraenv ${infraenv_id}"
+        if [ -z "${cluster_id}" ]; then
+            log "ERROR" "Could not find cluster ID for ${day2_cluster_name}"
+            return 1
+        fi
+        
+        # Try InfraEnv approach for token-based URLs (essential for authenticated downloads)
+        log "INFO" "Trying InfraEnv approach for token-based URLs..."
+        
+        # Get the infraenv ID associated with this cluster
+        local infraenv_id=""
+        local aicli_list_output=$(aicli list infraenvs 2>/dev/null)
+        
+        # Use grep to find the row and awk to extract the proper column
+        infraenv_id=$(echo "$aicli_list_output" | grep "${day2_cluster_name}" | awk -F'|' '{print $2}' | tr -d ' ' 2>/dev/null || echo "")
+        
+        # If that doesn't work, try another approach using cluster ID
+        if [ -z "${infraenv_id}" ]; then
+            log "DEBUG" "Trying to find infraenv by cluster ID..."
+            infraenv_id=$(echo "$aicli_list_output" | grep "${cluster_id}" | awk -F'|' '{print $2}' | tr -d ' ' 2>/dev/null || echo "")
+        fi
+        
+        # If we found an infraenv ID, try to get the ISO URL from it
+        if [ -n "${infraenv_id}" ]; then
+            log "INFO" "Found InfraEnv ID: ${infraenv_id}"
+            
+            # Get information for the infraenv
+            local infraenv_info=$(aicli info infraenv ${infraenv_id} 2>/dev/null)
+            
+            # Extract the download_url using a more reliable pattern match
+            iso_url=$(echo "$infraenv_info" | grep "download_url:" | sed 's/download_url: //' 2>/dev/null || echo "")
+            
+            if [ -n "${iso_url}" ]; then
+                log "INFO" "Found ISO URL via InfraEnv"
+                
+                # Special handling for token-based URLs
+                if [[ "${iso_url}" =~ /bytoken/ ]]; then
+                    log "INFO" "Token-based URL detected, preserving original URL format"
+                    
+                    # Modify minimal/full.iso at the end if needed
+                    if [ "${iso_type}" = "minimal" ] && [[ "${iso_url}" =~ full\.iso$ ]]; then
+                        iso_url="${iso_url/full.iso/minimal.iso}"
+                        log "DEBUG" "Changed URL to minimal.iso"
+                    elif [ "${iso_type}" = "full" ] && [[ "${iso_url}" =~ minimal\.iso$ ]]; then
+                        iso_url="${iso_url/minimal.iso/full.iso}"
+                        log "DEBUG" "Changed URL to full.iso"
+                    fi
+                else
+                    log "INFO" "URL does not contain a token, applying ISO type preference"
+                    # Handle non-token URLs (less common)
+                    if [ "${iso_type}" = "minimal" ] && [[ "${iso_url}" =~ full\.iso$ ]]; then
+                        iso_url="${iso_url/full.iso/minimal.iso}"
+                    elif [ "${iso_type}" = "full" ] && [[ "${iso_url}" =~ minimal\.iso$ ]]; then
+                        iso_url="${iso_url/minimal.iso/full.iso}"
+                    fi
+                fi
+            else
+                log "WARNING" "Could not extract ISO URL from infraenv info"
+            fi
         else
-            log "WARNING" "Could not get ISO URL from infraenv ${infraenv_id}"
-            # Log a bit of the infraenv info for debugging
-            log "DEBUG" "Infraenv info excerpt: $(echo "$infraenv_info" | head -10)"
+            log "WARNING" "Could not find InfraEnv ID for cluster ${day2_cluster_name}"
+        fi
+        
+        # If we still don't have a URL, use UI fallback
+        if [ -z "${iso_url}" ]; then
+            log "INFO" "Direct URL not found, using UI fallback URL"
+            log "INFO" "Using console.redhat.com URL for manual ISO download"
+            
+            # Generate a fallback URL that users can open in a browser
+            iso_url="https://console.redhat.com/openshift/assisted-installer/clusters/${cluster_id}/add-hosts"
+        fi
+        
+        # For URL action, just print the URL
+        if [ "${action}" = "url" ]; then
+            log "INFO" "ISO URL for worker nodes: ${iso_url}"
+            echo "${iso_url}"
+            return 0
+        fi
+        
+        # For download action, download the ISO to specified path
+        if [ "${action}" = "download" ]; then
+            log "INFO" "Downloading worker ISO to ${download_path}/${day2_cluster_name}.iso"
+            
+            if [ ! -d "${download_path}" ]; then
+                mkdir -p "${download_path}"
+            fi
+            
+            # Download with curl or wget
+            if command -v curl &>/dev/null; then
+                if ! curl -L -o "${download_path}/${day2_cluster_name}.iso" "${iso_url}"; then
+                    log "ERROR" "Failed to download ISO with curl"
+                    return 1
+                fi
+            elif command -v wget &>/dev/null; then
+                if ! wget -O "${download_path}/${day2_cluster_name}.iso" "${iso_url}"; then
+                    log "ERROR" "Failed to download ISO with wget"
+                    return 1
+                fi
+            else
+                log "ERROR" "Neither curl nor wget found, cannot download ISO"
+                return 1
+            fi
+            
+            log "INFO" "ISO downloaded to ${download_path}/${day2_cluster_name}.iso"
+            return 0
         fi
     else
-        log "WARNING" "Could not find infraenv ID for cluster ${day2_cluster_name} (${cluster_id})"
-    fi
-    
-    # Check if ISO_URL is already set in environment (manual override)
-    if [ -z "${iso_url}" ] && [ -n "${ISO_URL}" ]; then
-        log "INFO" "Using ISO_URL from environment: ${ISO_URL}"
-        iso_url="${ISO_URL}"
-    fi
-    
-    # If we still don't have an ISO URL, try the cluster-level method as a last resort
-    if [ -z "${iso_url}" ]; then
-        log "INFO" "Trying to get ISO URL using alternative methods..."
+        # For master nodes, use the standard assisted installer method
+        log "INFO" "Getting ISO for master nodes cluster ${cluster_name}"
         
-        # Try to find the URL from the UI perspective
-        local ui_url="https://console.redhat.com/openshift/assisted-installer/clusters/${cluster_id}/add-hosts"
-        log "INFO" "You may be able to find the ISO at the UI URL: ${ui_url}"
+        # For URL action, get the URL
+        if [ "${action}" = "url" ]; then
+            iso_url=$(aicli info cluster "${cluster_name}" | grep -i "^iso_download_url:" | awk '{print $2}')
+            if [ -z "${iso_url}" ]; then
+                log "ERROR" "Failed to get ISO URL for cluster ${cluster_name}"
+                return 1
+            fi
+            echo "${iso_url}"
+            return 0
+        fi
         
-        # Alternative: try cluster discovery ISO if available
-        log "INFO" "As a last resort, you can try using the cluster discovery ISO:"
-        log "INFO" "aicli download iso ${CLUSTER_NAME} -p /tmp/"
+        # For download action, download the ISO
+        if [ "${action}" = "download" ]; then
+            log "INFO" "Downloading master ISO to ${download_path}"
+            
+            if [ ! -d "${download_path}" ]; then
+                mkdir -p "${download_path}"
+            fi
+            
+            if ! aicli download iso "${cluster_name}" -p "${download_path}"; then
+                log "ERROR" "Failed to download ISO for cluster ${cluster_name}"
+                return 1
+            fi
+            
+            log "INFO" "ISO downloaded to ${download_path}"
+            return 0
+        fi
     fi
-    
-    # If all attempts failed
-    if [ -z "${iso_url}" ]; then
-        log "WARNING" "Could not automatically retrieve ISO URL"
-        log "INFO" "Please use the Assisted Installer UI to manually get the ISO URL:"
-        log "INFO" "1. Go to console.redhat.com and log in"
-        log "INFO" "2. Navigate to clusters and find '${day2_cluster_name}' or click 'Add Hosts' on your main cluster"
-        log "INFO" "3. Download the ISO from the URL provided there"
-        
-        # Don't exit with error, just continue with warning
-        log "INFO" "You can also set ISO_URL=<url> or SKIP_ISO_CHECK=true to bypass this check"
-        log "INFO" "Continuing without ISO URL..."
-        return 0
-    fi
-    
-    # Verify the ISO URL contains the correct version
-    if ! echo "${iso_url}" | grep -q "/${version_pattern}\."; then
-        log "WARNING" "ISO URL does not contain the expected OpenShift version ${version_pattern}.x: ${iso_url}"
-        log "WARNING" "This may indicate a version mismatch between your original cluster and the day2 cluster"
-        log "INFO" "Recreating day2 cluster with correct version..."
-        
-        # Delete the day2 cluster with incorrect version
-        aicli delete cluster ${day2_cluster_name} -y
-        
-        # Recreate day2 cluster and try again
-        create_day2_cluster
-        download_worker_iso
-        return
-    fi
-    
-    # Display the ISO URL in a highly visible way with color
-    log "INFO" "============================================================="
-    # ANSI color codes for terminal output
-    YELLOW='\033[1;33m'
-    GREEN='\033[1;32m'
-    NC='\033[0m' # No Color
-    
-    # Print the ISO URL in bold colors for better visibility
-    echo ""
-    echo -e "${YELLOW}ISO URL for worker nodes:${NC}"
-    echo -e "${GREEN}$(echo "$iso_url" | sed 's/^/  /')${NC}"
-    echo ""
-    
-    log "INFO" "============================================================="
-    log "INFO" "For BlueField DPU worker nodes:"
-    log "INFO" "1. Download the ISO from the above URL"
-    log "INFO" "2. Use iDRAC Virtual Media to mount this ISO on your worker nodes"
-    log "INFO" "3. Boot the server from the virtual media"
-    log "INFO" "4. The server should automatically register with the cluster"
-    log "INFO" "5. Optional: Monitor progress in the Assisted Installer UI"
-    log "INFO" "Note: The br-dpu bridge will be configured by MachineConfig after the node joins"
-    
-    # Export the URL for use elsewhere
-    export ISO_URL="${iso_url}"
-    return 0
 }
 
 # -----------------------------------------------------------------------------
@@ -460,10 +484,13 @@ function main() {
         get-worker-iso)
             download_worker_iso
             ;;
+        get-iso)
+            get_iso "$@"
+            ;;
         *)
             log "Unknown command: $command"
             log "Available commands: check-create-cluster, delete-cluster, cluster-install,"
-            log "  wait-for-status, get-kubeconfig, clean-all, download-iso, create-day2-cluster, get-worker-iso"
+            log "  wait-for-status, get-kubeconfig, clean-all, download-iso, create-day2-cluster, get-worker-iso, get-iso"
             exit 1
             ;;
     esac
