@@ -158,116 +158,51 @@ The automation will handle the creation of necessary storage resources using the
 
 ### 4. Add Worker Nodes to the Management OCP Cluster
 
-Add the worker nodes (hosts with BlueField DPUs) to your Management OpenShift cluster using the Assisted Installer:
+Add the worker nodes (hosts with BlueField DPUs) to your Management OpenShift cluster:
 
-1. **Generate and download ISO image for worker nodes**:
+1. **Generate and download ISO for worker nodes**:
 
 ```bash
-# Create a discovery ISO for worker nodes
-make create-cluster-iso
+# Generate worker node ISO URL
+make get-worker-iso
 ```
 
-This command will:
-- Create a day2 cluster specifically for worker nodes
-- Ensure the OpenShift version matches your original cluster
-- Configure it with your SSH key from your environment
-- Provide you with a URL to download the ISO (displayed in color for easy identification)
+This command outputs a direct download URL for the worker ISO. If you prefer a full ISO instead of the default minimal ISO:
 
-The ISO URL will be highlighted in the output. Download this ISO to your local machine using the provided URL.
+```bash
+# Get URL for full ISO instead of minimal
+ISO_TYPE=full make get-worker-iso
+```
 
-> **ISO Type Selection:** You can specify whether to use a minimal or full ISO:
-> ```bash
-> # Use full ISO instead of minimal (default)
-> ISO_TYPE=full make create-cluster-iso
-> ```
-> Minimal ISOs are smaller and faster to download but may require additional packages. Full ISOs include more packages but are larger.
-
-> **Direct ISO Functions:** For more advanced usage, you can use these commands:
-> ```bash
-> # Just create the day2 cluster
-> make create-day2-cluster
-> 
-> # Just get the worker ISO URL
-> make get-worker-iso
-> 
-> # Use the unified ISO function with specific parameters
-> make get-iso NODE_TYPE=worker ACTION=url ISO_TYPE=full
-> ```
-
-> **Note:** The automation will automatically ensure version consistency between your original cluster and the day2 cluster. If a version mismatch is detected, it will recreate the day2 cluster with the correct version.
-
-> **Note:** After the worker nodes join the cluster, they will be automatically configured with a bridge named `br-dpu` via MachineConfig. This bridge will include the physical 1GB interface and receive an IP from the available DHCP server. This bridge configuration is critical for DPU operations as it will be used to communicate with the DPU.
-
-> **Note:** If the command cannot automatically retrieve the ISO URL, you have several options:
-> - Go to console.redhat.com and navigate to your cluster
-> - Click "Add Hosts" for your cluster (the name should be `$CLUSTER_NAME-day2`)
-> - Copy the ISO URL and download it manually
-> - You can use these environment variables for alternative approaches:
->   ```bash
->   # Specify ISO URL directly:
->   ISO_URL=<your-iso-url> make create-cluster-iso
->   
->   # Or skip ISO URL check completely and get it manually:
->   SKIP_ISO_CHECK=true make create-cluster-iso
->   ```
-
-> **Advanced:** For troubleshooting purposes, the automation attempts to correctly obtain the ISO URL through multiple methods. It first tries to find the infraenv ID associated with the day2 cluster and uses that to retrieve the ISO URL, as the ISO is properly a resource of the infraenv, not the cluster directly. If you encounter issues with ISO URL retrieval, you can run:
->
-> ```bash
-> # List all infraenvs to find the one for your day2 cluster
-> aicli list infraenvs
-> 
-> # Get ISO URL from the infraenv (replace with your actual infraenv ID)
-> aicli info infraenv <infraenv-id>
-> ```
+> **Note:** If the command can't retrieve the ISO URL, you can go to console.redhat.com, navigate to your cluster (named `$CLUSTER_NAME-day2`), and click "Add Hosts" to download the ISO manually.
 
 2. **Boot worker nodes with the ISO**:
 
-To boot a worker node using iDRAC Virtual Media:
+Download the ISO using the provided URL, then boot your worker nodes from it:
+- For physical servers: Use iDRAC/iLO to mount the ISO and boot from it
+- For virtual machines: Attach the ISO to the VM and boot from it
 
-a. Access the iDRAC web interface for your worker node
-b. Navigate to Virtual Media > Connect Virtual Media
-c. Select the downloaded ISO file
-d. Click "Map Device"
-e. Go to Power/Thermal > Power and select:
-   - "Power Cycle System (cold boot)" if the system is on
-   - "Power On System" if the system is off
-f. The system will boot from the ISO and begin the discovery process
-
-> **Note:** After the worker nodes join the cluster, they will be automatically configured with a bridge named `br-dpu` via MachineConfig. This bridge will include the physical 1GB interface and receive an IP from the available DHCP server. This bridge configuration is critical for DPU operations as it will be used to communicate with the DPU.
-
-3. **Monitor node registration in Assisted Installer**:
+3. **Monitor node registration and approve CSRs**:
 
 ```bash
-# Check the status of nodes in Assisted Installer
-aicli list hosts --cluster $CLUSTER_NAME
-```
+# Check the status of nodes
+oc get nodes
 
-Worker nodes should appear with a `discovering` status initially, then transition to `known` status.
-
-4. **Approve certificate signing requests (CSRs)**:
-
-```bash
-# After nodes are added to the cluster, list pending CSRs
+# Approve all pending CSRs as nodes join
 oc get csr | grep Pending
-
-# Approve all pending CSRs
 oc get csr -o name | xargs oc adm certificate approve
 ```
 
-You may need to repeat the CSR approval process several times as nodes join the cluster.
+You may need to run the CSR approval command multiple times as worker nodes join the cluster.
 
-5. **Verify worker nodes are added**:
+4. **Verify worker nodes are properly added**:
 
 ```bash
-# Check if worker nodes are added to the cluster
-oc get nodes
-
-# Verify worker node roles
+# Verify worker nodes and their roles
 oc get nodes -l node-role.kubernetes.io/worker
 ```
 
-Worker nodes should show `Ready` or `NotReady` status and have the `worker` role assigned. Remember that worker nodes with DPUs will remain in `NotReady` state until DPU provisioning is complete.
+Worker nodes with DPUs will remain in `NotReady` state until DPU provisioning is complete.
 
 ### 5. Verify DPU Mode
 
