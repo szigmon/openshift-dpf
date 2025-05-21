@@ -13,9 +13,9 @@ POST_INSTALL_SCRIPT := scripts/post-install.sh
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
-        install-hypershift install-helm deploy-dpu-services prepare-dpu-files create-day2-cluster get-day2-iso
+        install-hypershift install-helm deploy-dpu-services prepare-dpu-files
 
-all: verify-files check-cluster create-vms cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
+all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
 
 verify-files:
 	@$(UTILS_SCRIPT) verify-files
@@ -29,7 +29,7 @@ delete-cluster:
 check-cluster:
 	@$(CLUSTER_SCRIPT) check-create-cluster
 
-create-cluster: prepare-manifests
+create-cluster:
 	@$(CLUSTER_SCRIPT) check-create-cluster
 
 prepare-manifests:
@@ -108,20 +108,13 @@ install-hypershift:
 install-helm:
 	@$(TOOLS_SCRIPT) install-helm
 
-create-day2-cluster:
-	@$(CLUSTER_SCRIPT) create-day2-cluster
-
-get-day2-iso: create-day2-cluster
-	@$(CLUSTER_SCRIPT) get-day2-iso
-
 help:
 	@echo "Available targets:"
 	@echo "Cluster Management:"
 	@echo "  all               - Complete setup: verify, create cluster, VMs, install, and wait for completion"
 	@echo "  create-cluster    - Create a new cluster"
-	@echo "  create-day2-cluster - Create a day2 cluster for worker nodes with DPUs and get ISO URL"
-	@echo "  get-iso           - Get ISO for any node type (usage: make get-iso NODE_TYPE=master|worker ACTION=url|download ISO_TYPE=minimal|full)"
-	@echo "  get-worker-iso    - Get the ISO URL for worker nodes with DPUs"
+	@echo "  create-day2-cluster - Create a day2 cluster for worker nodes with DPUs"
+	@echo "  get-day2-iso      - Get ISO URL for worker nodes with DPUs (uses day2 cluster)"
 	@echo "  download-iso      - Download the ISO for master nodes"
 	@echo "  prepare-manifests - Prepare required manifests"
 	@echo "  delete-cluster    - Delete the cluster"
@@ -194,12 +187,6 @@ help:
 	@echo "Post-installation Configuration:"
 	@echo "  BFB_URL          - URL for BFB file (default: http://10.8.2.236/bfb/rhcos_4.19.0-ec.4_installer_2025-04-23_07-48-42.bfb)"
 	@echo "  HBN_OVN_NETWORK  - Network for HBN OVN IPAM (default: 10.0.120.0/22)"
-	@echo ""
-	@echo "ISO Configuration:"
-	@echo "  ISO_FOLDER       - Folder to store downloaded ISOs (default: $(ISO_FOLDER))"
-	@echo "  ISO_TYPE         - Type of ISO to use, 'minimal' or 'full' (default: $(ISO_TYPE))"
-	@echo "                     - Minimal ISO is smaller and faster to download"
-	@echo "                     - Full ISO includes more packages and may be required for certain environments"
 	@echo ""
 	@echo "Wait Configuration:"
 	@echo "  MAX_RETRIES      - Maximum number of retries for status checks (default: $(MAX_RETRIES))"
