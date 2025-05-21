@@ -312,7 +312,7 @@ function get_iso() {
         
         # Fallback to UI URL if needed
         if [ -z "${iso_url}" ]; then
-            log "INFO" "Using console.redhat.com URL for manual ISO download"
+            log "INFO" "No direct URL found. Login to console.redhat.com/openshift, select your cluster, and click 'Add hosts' to generate an ISO."
             iso_url="https://console.redhat.com/openshift"
         fi
         
