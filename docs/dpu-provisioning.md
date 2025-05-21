@@ -158,51 +158,48 @@ The automation will handle the creation of necessary storage resources using the
 
 ### 4. Add Worker Nodes to the Management OCP Cluster
 
-Add the worker nodes (hosts with BlueField DPUs) to your Management OpenShift cluster:
+Add worker nodes with BlueField DPUs to your Management OpenShift cluster:
 
-1. **Get ISO URL for worker nodes**:
+1. **Get the ISO URL**:
 
 ```bash
-# Get ISO URL for worker nodes
+# Get minimal ISO URL for worker nodes
 make get-worker-iso
-```
 
-This command outputs a direct download URL for the worker ISO. For a full ISO instead of minimal:
-
-```bash
-# Get full ISO URL instead of minimal
+# OR for full ISO instead of minimal
 ISO_TYPE=full make get-worker-iso
 ```
 
-> **Note:** If you can't get the ISO URL via command line, visit console.redhat.com, find your cluster's day2 configuration, and click "Add Hosts" to get the ISO URL manually. For more information, visit https://dpf-on-openshift.netlify.app/dpu-provisioning.
+This command outputs a download URL for the worker node ISO. The URL will include an authentication token for secure access.
+
+> **Note:** If the command doesn't provide a URL, you can always go to console.redhat.com, find your cluster, and click "Add Hosts" to get the ISO URL manually.
 
 2. **Boot worker nodes with the ISO**:
 
-Download the ISO using the provided URL, then boot your worker nodes from it:
-- For physical servers: Use iDRAC/iLO to mount the ISO and boot from it
-- For virtual machines: Attach the ISO to the VM and boot from it
+Download the ISO from the provided URL and boot your worker nodes:
+- For physical servers: Use iDRAC/iLO virtual media to mount the ISO
+- For virtual machines: Attach the ISO as a virtual DVD
 
-3. **Monitor node registration and approve CSRs**:
+3. **Approve CSRs as nodes join**:
 
 ```bash
-# Check the status of nodes
-oc get nodes
-
-# Approve all pending CSRs as nodes join
+# Monitor for pending CSRs
 oc get csr | grep Pending
+
+# Approve all pending CSRs
 oc get csr -o name | xargs oc adm certificate approve
 ```
 
-You may need to run the CSR approval command multiple times as worker nodes join the cluster.
+You'll need to approve CSRs multiple times as nodes register with the cluster.
 
-4. **Verify worker nodes are properly added**:
+4. **Verify node addition**:
 
 ```bash
-# Verify worker nodes and their roles
+# Check worker nodes status
 oc get nodes -l node-role.kubernetes.io/worker
 ```
 
-Worker nodes with DPUs will remain in `NotReady` state until DPU provisioning is complete.
+> **Note:** Worker nodes with DPUs will show as `NotReady` until DPU provisioning is complete in later steps.
 
 ### 5. Verify DPU Mode
 
@@ -628,10 +625,10 @@ The DMS pods should be in `Running` status, indicating that the basic management
 #### Worker Node Addition Issues
 
 * **ISO URL Retrieval Issues**
-    * Check InfraEnv resources: `oc get infraenvs` 
-    * Verify Assisted Installer connectivity with: `aicli list clusters`
-    * Ensure the day2 cluster exists: `oc get pods -n assisted-installer`
-    * If command-line method fails, use console.redhat.com UI directly
+    * Check that aicli is properly configured: `aicli list clusters`
+    * Verify the day2 cluster exists: `aicli info cluster <cluster-name>-day2`
+    * Check InfraEnv resources: `aicli list infraenvs | grep day2`
+    * Use console.redhat.com UI as reliable fallback if needed
 
 * **Node Registration Failures**
     * Verify network connectivity from worker nodes to Assisted Installer
