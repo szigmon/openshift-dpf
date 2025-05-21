@@ -313,7 +313,7 @@ function get_iso() {
         # Fallback to UI URL if needed
         if [ -z "${iso_url}" ]; then
             log "INFO" "Using console.redhat.com URL for manual ISO download"
-            iso_url="https://console.redhat.com/openshift/assisted-installer/clusters/${cluster_id}/add-hosts"
+            iso_url="https://console.redhat.com/openshift"
         fi
         
         # Worker nodes don't support download action
