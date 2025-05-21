@@ -13,7 +13,7 @@ POST_INSTALL_SCRIPT := scripts/post-install.sh
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
-        install-hypershift install-helm deploy-dpu-services prepare-dpu-files create-day2-cluster get-worker-iso create-cluster-iso get-iso
+        install-hypershift install-helm deploy-dpu-services prepare-dpu-files create-day2-cluster get-day2-iso
 
 all: verify-files check-cluster create-vms cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
 
@@ -43,9 +43,6 @@ update-paths:
 
 download-iso:
 	@$(CLUSTER_SCRIPT) download-iso
-
-get-iso:
-	@$(CLUSTER_SCRIPT) get-iso $(CLUSTER_NAME) $(NODE_TYPE) $(ACTION) $(DOWNLOAD_PATH) $(ISO_TYPE)
 
 create-vms: download-iso
 	@$(VM_SCRIPT) create
@@ -114,15 +111,8 @@ install-helm:
 create-day2-cluster:
 	@$(CLUSTER_SCRIPT) create-day2-cluster
 
-get-worker-iso:
-	@$(CLUSTER_SCRIPT) get-worker-iso
-
-create-cluster-iso:
-	@if [ -z "$(ISO_TYPE)" ]; then \
-		ISO_TYPE=minimal $(CLUSTER_SCRIPT) create-day2-cluster; \
-	else \
-		$(CLUSTER_SCRIPT) create-day2-cluster ISO_TYPE=$(ISO_TYPE); \
-	fi
+get-day2-iso: create-day2-cluster
+	@$(CLUSTER_SCRIPT) get-day2-iso
 
 help:
 	@echo "Available targets:"
@@ -133,7 +123,6 @@ help:
 	@echo "  get-iso           - Get ISO for any node type (usage: make get-iso NODE_TYPE=master|worker ACTION=url|download ISO_TYPE=minimal|full)"
 	@echo "  get-worker-iso    - Get the ISO URL for worker nodes with DPUs"
 	@echo "  download-iso      - Download the ISO for master nodes"
-	@echo "  create-cluster-iso - Create day2 cluster and get worker ISO URL (uses minimal ISO by default)"
 	@echo "  prepare-manifests - Prepare required manifests"
 	@echo "  delete-cluster    - Delete the cluster"
 	@echo "  clean            - Remove generated files"
@@ -211,7 +200,6 @@ help:
 	@echo "  ISO_TYPE         - Type of ISO to use, 'minimal' or 'full' (default: $(ISO_TYPE))"
 	@echo "                     - Minimal ISO is smaller and faster to download"
 	@echo "                     - Full ISO includes more packages and may be required for certain environments"
-	@echo "                     - Example: ISO_TYPE=full make create-cluster-iso"
 	@echo ""
 	@echo "Wait Configuration:"
 	@echo "  MAX_RETRIES      - Maximum number of retries for status checks (default: $(MAX_RETRIES))"
