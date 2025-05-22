@@ -163,11 +163,12 @@ Add worker nodes with BlueField DPUs to your Management OpenShift cluster:
 1. **Get the ISO URL**:
 
 ```bash
-# Get minimal ISO URL for worker nodes
-make get-worker-iso
+# Get ISO URL for worker nodes
+make get-day2-iso
 
-# OR for full ISO instead of minimal
-ISO_TYPE=full make get-worker-iso
+# The ISO_TYPE environment variable can be set to "full" if needed
+# Default is "minimal" which is a smaller, faster download
+ISO_TYPE=full make get-day2-iso
 ```
 
 This command outputs a download URL for the worker node ISO. The URL will include an authentication token for secure access.
@@ -628,7 +629,7 @@ The DMS pods should be in `Running` status, indicating that the basic management
     * Check that aicli is properly configured: `aicli list clusters`
     * Verify the day2 cluster exists: `aicli info cluster <cluster-name>-day2`
     * Check InfraEnv resources: `aicli list infraenvs | grep day2`
-    * Use console.redhat.com UI as reliable fallback if needed
+    * If `make get-day2-iso` fails, use console.redhat.com UI as a reliable fallback
 
 * **Node Registration Failures**
     * Verify network connectivity from worker nodes to Assisted Installer
