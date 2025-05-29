@@ -14,11 +14,13 @@ print_usage() {
     echo "Example with VM prefix: $0 192.168.1.100 myserver.example.com myvm"
 }
 
-# Check if script is run with sudo/root privileges
-check_root() {
-    if [ "$EUID" -ne 0 ]; then
-        echo "Please run with sudo privileges"
-        exit 1
+check_sudo_access() {
+    local user="$1"
+
+    if sudo -l -U "$user" >/dev/null 2>&1; then
+        echo "User '$user' has sudo privileges."
+    else
+        echo "User '$user' does NOT have sudo privileges."
     fi
 }
 
@@ -165,5 +167,5 @@ main() {
 }
 
 # Script execution starts here
-check_root
+#check_sudo_access
 main "$@"
