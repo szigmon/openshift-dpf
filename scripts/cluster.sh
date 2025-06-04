@@ -311,35 +311,24 @@ function list_day2_hosts() {
         return 1
     fi
     
-    # List all hosts and show infraenv info to help identify day2 hosts
+    # Get the infraenv for the day2 cluster
     local expected_infraenv="${day2_cluster}_infra-env"
     
-    echo "All hosts in the system:"
-    aicli list hosts
+    log "INFO" "Looking for hosts with infraenv: ${expected_infraenv}"
     
+    # Show day2 hosts only - filter the main hosts table by infraenv
     echo ""
-    echo "Available infraenvs:"
-    aicli list infraenv | grep -E "(${day2_cluster}|Infraenv|---)" || aicli list infraenv
-    
-    echo ""
-    log "INFO" "Look for hosts with infraenv matching: ${expected_infraenv}"
-    
-    # Try to show hosts that might be from the day2 cluster by checking infraenv
-    local hosts_found=false
-    while IFS= read -r line; do
-        if echo "$line" | grep -q "\"infra_env_id\""; then
-            local infraenv_id=$(echo "$line" | grep -o '"infra_env_id": "[^"]*"' | cut -d'"' -f4)
-            # Check if this infraenv_id matches our expected day2 infraenv
-            if aicli list infraenv | grep -q "$infraenv_id.*${day2_cluster}"; then
-                echo "Found potential day2 host: $line"
-                hosts_found=true
-            fi
-        fi
-    done < <(aicli -o json list hosts 2>/dev/null | jq -r '.[] | @json' 2>/dev/null || echo "")
-    
-    if ! $hosts_found; then
-        log "INFO" "No hosts found for day2 cluster yet. Boot nodes with the day2 ISO to discover them."
+    echo "Day2 hosts (${day2_cluster}):"
+    if aicli list hosts | grep -q "${expected_infraenv}"; then
+        aicli list hosts | head -1  # Header
+        aicli list hosts | grep "${expected_infraenv}"
+    else
+        echo "No hosts found yet. Boot nodes with the day2 ISO to discover them."
     fi
+    
+    echo ""
+    log "INFO" "To add more hosts: Boot additional nodes with the day2 ISO"
+    log "INFO" "To start installation: make start-day2-install"
 }
 
 function wait_for_day2_hosts() {
