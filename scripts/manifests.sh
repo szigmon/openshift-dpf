@@ -78,7 +78,7 @@ function prepare_cluster_manifests() {
     log [INFO] "Cluster manifests preparation complete."
 }
 
-# Function to prepare DPF manifests
+# Function to prepare DPF manifests and install operator
 prepare_dpf_manifests() {
     log [INFO] "Starting DPF manifest preparation..."
     echo "Using manifests directory: ${MANIFESTS_DIR}"
@@ -121,20 +121,58 @@ prepare_dpf_manifests() {
 
     # Copy and process manifests
     log "INFO" "Processing manifests from ${MANIFESTS_DIR} to ${GENERATED_DIR}"
-
+    
     # Process each manifest file
-        # Copy all manifests except NFD
+    # Copy all manifests except NFD
     find "$MANIFESTS_DIR/dpf-installation" -maxdepth 1 -type f -name "*.yaml" \
         | xargs -I {} cp {} "$GENERATED_DIR/"
 
-    helm template -n dpf-operator-system dpf-operator oci://ghcr.io/nvidia/dpf-operator \
-    --version v25.1.1 -f "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"  > "${GENERATED_DIR}/00-dpf-operator-manifests.yaml"
-    log "INFO" "DPF manifest preparation completed successfully"
+    # Authenticate helm with NGC registry using pull secret
+    if [ -f "$DPF_PULL_SECRET" ]; then
+        NGC_USERNAME=$(jq -r '.auths."nvcr.io".username' "$DPF_PULL_SECRET")
+        NGC_PASSWORD=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET")
+        log "INFO" "Authenticating helm with NGC registry..."
+        helm registry login nvcr.io --username "$NGC_USERNAME" --password "$NGC_PASSWORD" >/dev/null 2>&1 || true
+    fi
 
+    # Install/upgrade DPF Operator using helm (idempotent operation)
+    log "INFO" "Installing/upgrading DPF Operator to $DPF_VERSION..."
+    
+    # Construct the full chart URL with version
+    CHART_URL="${DPF_HELM_REPO_URL}-${DPF_VERSION}.tgz"
+    
+    # Install without --wait for immediate feedback
+    if helm upgrade --install dpf-operator \
+        "${CHART_URL}" \
+        --namespace dpf-operator-system \
+        --create-namespace \
+        --values "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"; then
+        
+        log "INFO" "Helm release 'dpf-operator' deployed successfully"
+        
+        # Monitor deployment status
+        log "INFO" "Monitoring deployment progress..."
+        log "INFO" "Checking pod status in dpf-operator-system namespace..."
+        
+        # Wait for pods to start (give it a moment)
+        sleep 5
+        
+        # Show current status
+        if command -v kubectl >/dev/null 2>&1; then
+            kubectl get pods -n dpf-operator-system 2>/dev/null || true
+        elif command -v oc >/dev/null 2>&1; then
+            oc get pods -n dpf-operator-system 2>/dev/null || true
+        fi
+        
+        log "INFO" "DPF Operator deployment initiated. Use 'kubectl get pods -n dpf-operator-system' to monitor progress."
+        log "INFO" "Installation typically takes 2-5 minutes for all pods to become ready."
+    else
+        log "ERROR" "Helm deployment failed"
+        return 1
+    fi
 
     # Update manifests with configuration
     sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
-
 
     # Update static DPU cluster template
     sed -i "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
@@ -170,7 +208,7 @@ function generate_ovn_manifests() {
 
     # Pull and template OVN chart
     helm pull oci://ghcr.io/nvidia/ovn-kubernetes-chart \
-        --version "$HELM_CHART_VERSION" \
+        --version "$DPF_VERSION" \
         --untar -d "$GENERATED_DIR/temp"
     helm template -n ovn-kubernetes ovn-kubernetes \
         "$GENERATED_DIR/temp/ovn-kubernetes-chart" \

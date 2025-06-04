@@ -29,6 +29,7 @@ SPECIAL_FILES=(
     "bfb.yaml"
     "hbn-ovn-ipam.yaml"
     "ovn-dpuservice.yaml"
+    "flannel-dpu-service.yaml"
     "dpuflavor-1500.yaml"
     "sriov-policy.yaml"
 )
@@ -44,24 +45,27 @@ is_special_file() {
     return 1
 }
 
-# Function to update a file with multiple replacements
-update_file_multi_replace() {
-    local source_file=$1
-    local target_file=$2
+# Function to process template files with variable substitution
+process_template() {
+    local template_file=$1
+    local output_file=$2
     shift 2
-    local pairs=("$@")
-
-    log [INFO] "Updating ${source_file} with multiple replacements..."
-    cp "${source_file}" "${target_file}"
-    local i=0
-    while [ $i -lt ${#pairs[@]} ]; do
-        local placeholder="${pairs[$i]}"
-        local value="${pairs[$((i+1))]}"
-        sed -i "s|${placeholder}|${value}|g" "${target_file}"
-        log [INFO] "Replaced ${placeholder} with ${value} in ${target_file}"
-        i=$((i+2))
+    
+    log [INFO] "Processing template: $(basename "$template_file")"
+    cp "$template_file" "$output_file" || {
+        log [ERROR] "Failed to copy $template_file to $output_file"
+        return 1
+    }
+    
+    # Apply each substitution
+    while [ $# -gt 0 ]; do
+        local placeholder=$1
+        local value=$2
+        sed -i "s|${placeholder}|${value}|g" "$output_file"
+        shift 2
     done
-    log [INFO] "Updated ${source_file} with all replacements successfully"
+    
+    log [INFO] "Template processed successfully: $(basename "$output_file")"
 }
 
 # Function to update BFB manifest
@@ -69,11 +73,12 @@ function update_bfb_manifest() {
     log [INFO] "Updating BFB manifest..."
     # Extract filename from URL
     local bfb_filename=$(basename "${BFB_URL}")
-    # Copy the file
-    cp "${POST_INSTALL_DIR}/bfb.yaml" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
-    # Update the manifest with custom values
-    sed -i "s|BFB_FILENAME|${bfb_filename}|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
-    sed -i "s|BFB_URL|\"${BFB_URL}\"|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
+    # Process template with BFB values
+    process_template \
+        "${POST_INSTALL_DIR}/bfb.yaml" \
+        "${GENERATED_POST_INSTALL_DIR}/bfb.yaml" \
+        "BFB_FILENAME" "${bfb_filename}" \
+        "BFB_URL" "\"${BFB_URL}\""
     log [INFO] "BFB manifest updated successfully"
 }
 
@@ -83,20 +88,27 @@ function update_hbn_ovn_manifests() {
     
     machineCidr=$(oc get configmap cluster-config-v1 -n kube-system -o jsonpath='{.data.install-config}' | \
     grep -A2 "machineNetwork:" | grep "cidr:" | awk '{print $3}')
+    
     # Update hbn-ovn-ipam.yaml
-    update_file_multi_replace \
+    process_template \
         "${POST_INSTALL_DIR}/hbn-ovn-ipam.yaml" \
         "${GENERATED_POST_INSTALL_DIR}/hbn-ovn-ipam.yaml" \
-        "HBN_OVN_NETWORK" \
-        "${HBN_OVN_NETWORK}"
+        "HBN_OVN_NETWORK" "${HBN_OVN_NETWORK}"
     
-    # Update ovn-dpuservice.yaml with multiple replacements
-    update_file_multi_replace \
+    # Update ovn-dpuservice.yaml
+    process_template \
         "${POST_INSTALL_DIR}/ovn-dpuservice.yaml" \
         "${GENERATED_POST_INSTALL_DIR}/ovn-dpuservice.yaml" \
         "HBN_OVN_NETWORK" "${HBN_OVN_NETWORK}" \
         "HOST_CLUSTER_API" "${HOST_CLUSTER_API}" \
-        "HOST_CIDR" "${machineCidr}"
+        "HOST_CIDR" "${machineCidr}" \
+        "DPF_VERSION" "${DPF_VERSION}"
+    
+    # Update flannel-dpu-service.yaml
+    process_template \
+        "${POST_INSTALL_DIR}/flannel-dpu-service.yaml" \
+        "${GENERATED_POST_INSTALL_DIR}/flannel-dpu-service.yaml" \
+        "DPF_VERSION" "${DPF_VERSION}"
     
     log [INFO] "HBN OVN manifests updated successfully"
 }
@@ -109,18 +121,16 @@ function update_vf_configuration() {
     local vf_range_upper=$((NUM_VFS - 1))
     
     # Update dpuflavor-1500.yaml
-    update_file_multi_replace \
+    process_template \
         "${POST_INSTALL_DIR}/dpuflavor-1500.yaml" \
         "${GENERATED_POST_INSTALL_DIR}/dpuflavor-1500.yaml" \
-        "<NUM_VFS>" \
-        "${NUM_VFS}"
+        "<NUM_VFS>" "${NUM_VFS}"
     
     # Update sriov-policy.yaml
-
-    update_file_multi_replace \
+    process_template \
         "${POST_INSTALL_DIR}/sriov-policy.yaml" \
         "${GENERATED_POST_INSTALL_DIR}/sriov-policy.yaml" \
-        "<DPU_INTERFACE>" "$DPU_INTERFACE" \
+        "<DPU_INTERFACE>" "${DPU_INTERFACE}" \
         "<NUM_VFS>" "${NUM_VFS}" \
         "<NUM_VFS-1>" "${vf_range_upper}"
     
