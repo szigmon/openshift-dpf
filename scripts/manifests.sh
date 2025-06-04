@@ -7,6 +7,7 @@ set -e
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/tools.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
 
 HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
 
@@ -187,6 +188,27 @@ prepare_dpf_manifests() {
     sed -i "s|PULL_SECRET_BASE64|$PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
 
     prepare_nfs
+    
+    # Apply static manifests that are not included in the helm chart
+    log "INFO" "Applying static DPF manifests..."
+    
+    # Get kubeconfig if needed
+    get_kubeconfig
+    
+    # Apply each static manifest
+    for file in "$GENERATED_DIR"/*.yaml; do
+        if [ -f "$file" ]; then
+            local filename=$(basename "$file")
+            log "INFO" "Applying static manifest: ${filename}"
+            if command -v kubectl >/dev/null 2>&1; then
+                kubectl apply -f "$file" || log "WARN" "Failed to apply $filename"
+            elif command -v oc >/dev/null 2>&1; then
+                oc apply -f "$file" || log "WARN" "Failed to apply $filename"
+            fi
+        fi
+    done
+    
+    log "INFO" "Static DPF manifests applied successfully"
 }
 
 function generate_ovn_manifests() {
