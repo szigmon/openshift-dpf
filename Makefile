@@ -13,7 +13,7 @@ POST_INSTALL_SCRIPT := scripts/post-install.sh
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
-        install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf
+        install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
 
@@ -31,6 +31,12 @@ check-cluster:
 
 create-cluster:
 	@$(CLUSTER_SCRIPT) check-create-cluster
+
+create-day2-cluster:
+	@$(CLUSTER_SCRIPT) create-day2-cluster
+
+get-day2-iso: create-day2-cluster
+	@$(CLUSTER_SCRIPT) get-day2-iso
 
 prepare-manifests:
 	@$(MANIFESTS_SCRIPT) prepare-manifests
