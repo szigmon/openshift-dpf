@@ -18,6 +18,5 @@ spec:
       bfb:
         name: bf-bundle
       nodeEffect:
-        drain:
-          automaticNodeReboot: true
+        drain: true
 
