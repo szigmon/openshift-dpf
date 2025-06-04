@@ -301,17 +301,45 @@ function get_iso() {
 function list_day2_hosts() {
     local day2_cluster="${CLUSTER_NAME}-day2"
     
-    log "INFO" "Listing hosts in day2 cluster ${day2_cluster}..."
+    log "INFO" "Listing hosts for day2 cluster ${day2_cluster}..."
     
-    # Try to get the infraenv name
-    local infraenv_name
-    if ! infraenv_name=$(get_day2_infraenv_name); then
-        log "ERROR" "Failed to get infraenv name for day2 cluster"
+    # Check if the day2 cluster exists first
+    if ! aicli list clusters | grep -q "${day2_cluster}"; then
+        log "WARN" "Day2 cluster '${day2_cluster}' not found. Use 'make create-day2-cluster' first."
+        log "INFO" "Available clusters:"
+        aicli list clusters
         return 1
     fi
     
-    log "INFO" "Using infraenv: ${infraenv_name}"
-    aicli list hosts "${infraenv_name}"
+    # List all hosts and show infraenv info to help identify day2 hosts
+    local expected_infraenv="${day2_cluster}_infra-env"
+    
+    echo "All hosts in the system:"
+    aicli list hosts
+    
+    echo ""
+    echo "Available infraenvs:"
+    aicli list infraenv | grep -E "(${day2_cluster}|Infraenv|---)" || aicli list infraenv
+    
+    echo ""
+    log "INFO" "Look for hosts with infraenv matching: ${expected_infraenv}"
+    
+    # Try to show hosts that might be from the day2 cluster by checking infraenv
+    local hosts_found=false
+    while IFS= read -r line; do
+        if echo "$line" | grep -q "\"infra_env_id\""; then
+            local infraenv_id=$(echo "$line" | grep -o '"infra_env_id": "[^"]*"' | cut -d'"' -f4)
+            # Check if this infraenv_id matches our expected day2 infraenv
+            if aicli list infraenv | grep -q "$infraenv_id.*${day2_cluster}"; then
+                echo "Found potential day2 host: $line"
+                hosts_found=true
+            fi
+        fi
+    done < <(aicli -o json list hosts 2>/dev/null | jq -r '.[] | @json' 2>/dev/null || echo "")
+    
+    if ! $hosts_found; then
+        log "INFO" "No hosts found for day2 cluster yet. Boot nodes with the day2 ISO to discover them."
+    fi
 }
 
 function wait_for_day2_hosts() {
