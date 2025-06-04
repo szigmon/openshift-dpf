@@ -13,7 +13,8 @@ POST_INSTALL_SCRIPT := scripts/post-install.sh
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
-        install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso
+        install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
+        list-day2-hosts wait-day2-hosts start-day2-install wait-day2-install day2-workflow
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
 
@@ -37,6 +38,21 @@ create-day2-cluster:
 
 get-day2-iso: create-day2-cluster
 	@$(CLUSTER_SCRIPT) get-day2-iso
+
+list-day2-hosts:
+	@$(CLUSTER_SCRIPT) list-day2-hosts
+
+wait-day2-hosts:
+	@$(CLUSTER_SCRIPT) wait-day2-hosts $(NUM_HOSTS)
+
+start-day2-install:
+	@$(CLUSTER_SCRIPT) start-day2-install $(HOSTS)
+
+wait-day2-install:
+	@$(CLUSTER_SCRIPT) wait-day2-install
+
+day2-workflow:
+	@$(CLUSTER_SCRIPT) day2-workflow $(NUM_HOSTS) $(HOSTS)
 
 prepare-manifests:
 	@$(MANIFESTS_SCRIPT) prepare-manifests
@@ -145,6 +161,12 @@ help:
 	@echo "  create-cluster    - Create a new cluster"
 	@echo "  create-day2-cluster - Create a day2 cluster for worker nodes with DPUs"
 	@echo "  get-day2-iso      - Get ISO URL for worker nodes with DPUs (uses day2 cluster)"
+	@echo "  list-day2-hosts   - List hosts discovered in day2 cluster"
+	@echo "  wait-day2-hosts   - Wait for hosts to be discovered in day2 cluster (use NUM_HOSTS=number)"
+	@echo "  start-day2-install - Start installation for day2 hosts (use HOSTS='host1 host2' for specific hosts)"
+	@echo "  wait-day2-install - Wait for day2 installation to complete"
+	@echo "  day2-workflow     - Complete day2 workflow: create cluster, wait for hosts, start installation"
+	@echo "                      Usage: make day2-workflow NUM_HOSTS=1 [HOSTS='hostname1 hostname2']"
 	@echo "  download-iso      - Download the ISO for master nodes"
 	@echo "  prepare-manifests - Prepare required manifests"
 	@echo "  delete-cluster    - Delete the cluster"

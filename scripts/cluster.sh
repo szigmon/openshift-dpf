@@ -213,22 +213,27 @@ function create_day2_cluster() {
     local day2_cluster="${CLUSTER_NAME}-day2"
 
     # Check if main cluster exists
+    if ! aicli info cluster "${CLUSTER_NAME}" >/dev/null 2>&1; then
+        log "ERROR" "Main cluster ${CLUSTER_NAME} not found. Please create the main cluster first."
+        return 1
+    fi
 
     # Get OpenShift version of the main cluster
     openshift_version=$(aicli info cluster "${CLUSTER_NAME}" -f openshift_version -v)
     if [ -z "${openshift_version}" ]; then
-        log "ERROR" "Failed to retrieve OpenShift version for cluster ${CLUSTER_NAME}. Ensure the cluster is exists and properly configured."
+        log "ERROR" "Failed to retrieve OpenShift version for cluster ${CLUSTER_NAME}. Ensure the cluster exists and is properly configured."
         return 1
     fi
 
     # Check if day2 cluster already exists
     if ! aicli info cluster ${day2_cluster} >/dev/null 2>&1; then
         log "INFO" "Creating day2 cluster for adding nodes to ${CLUSTER_NAME}"
-        # Create day2 cluster
+        # Create day2 cluster - this will automatically create the infraenv
         aicli create cluster \
             -P openshift_version="${openshift_version}" \
             -P public_key="${SSH_KEY}" \
-            "${day2_cluster}" >/dev/null 2>&1
+            -P day2=true \
+            "${day2_cluster}"
 
         log "INFO" "Day2 cluster created successfully: ${day2_cluster}"
     else
@@ -236,6 +241,25 @@ function create_day2_cluster() {
     fi
 
     return 0
+}
+
+function get_day2_infraenv_name() {
+    # Get the infraenv name for the day2 cluster
+    local day2_cluster="${CLUSTER_NAME}-day2"
+    local infraenv_name="${day2_cluster}_infra-env"
+    
+    # Check if infraenv exists, try different naming patterns
+    if aicli list infraenv 2>/dev/null | grep -q "${infraenv_name}"; then
+        echo "${infraenv_name}"
+    elif aicli list infraenv 2>/dev/null | grep -q "${day2_cluster}"; then
+        # Sometimes it might just be the cluster name
+        echo "${day2_cluster}"
+    else
+        log "ERROR" "Could not find infraenv for day2 cluster ${day2_cluster}"
+        log "INFO" "Available infraenvs:"
+        aicli list infraenv 2>/dev/null || true
+        return 1
+    fi
 }
 
 function get_iso() {
@@ -268,6 +292,120 @@ function get_iso() {
         log "ERROR" "Failed to download ISO for cluster ${cluster_name}"
         return 1
     fi
+}
+
+# -----------------------------------------------------------------------------
+# Day2 cluster and host management functions
+# -----------------------------------------------------------------------------
+
+function list_day2_hosts() {
+    local day2_cluster="${CLUSTER_NAME}-day2"
+    
+    log "INFO" "Listing hosts in day2 cluster ${day2_cluster}..."
+    
+    # Try to get the infraenv name
+    local infraenv_name
+    if ! infraenv_name=$(get_day2_infraenv_name); then
+        log "ERROR" "Failed to get infraenv name for day2 cluster"
+        return 1
+    fi
+    
+    log "INFO" "Using infraenv: ${infraenv_name}"
+    aicli list hosts "${infraenv_name}"
+}
+
+function wait_for_day2_hosts() {
+    local num_hosts="${1:-1}"
+    local max_wait="${2:-600}"  # 10 minutes default
+    local day2_cluster="${CLUSTER_NAME}-day2"
+    
+    log "INFO" "Waiting for ${num_hosts} hosts to be discovered in ${day2_cluster}..."
+    
+    # Try to get the infraenv name
+    local infraenv_name
+    if ! infraenv_name=$(get_day2_infraenv_name); then
+        log "ERROR" "Failed to get infraenv name for day2 cluster"
+        return 1
+    fi
+    
+    log "INFO" "Using infraenv: ${infraenv_name}"
+    
+    # Use timeout if supported, otherwise rely on aicli's default timeout
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "${max_wait}" aicli wait hosts "${infraenv_name}" -n "${num_hosts}"
+    else
+        aicli wait hosts "${infraenv_name}" -n "${num_hosts}"
+    fi
+}
+
+function start_day2_installation() {
+    local day2_cluster="${CLUSTER_NAME}-day2"
+    local host_names="$@"
+    
+    if [ $# -eq 0 ]; then
+        # Start entire day2 cluster
+        log "INFO" "Starting installation for all hosts in day2 cluster ${day2_cluster}..."
+        aicli start cluster "${day2_cluster}"
+    else
+        # Start specific hosts by hostname
+        log "INFO" "Starting installation for specific hosts: ${host_names}"
+        aicli start hosts ${host_names}
+    fi
+    
+    log "INFO" "Day2 installation started successfully"
+}
+
+function wait_for_day2_installation() {
+    local day2_cluster="${CLUSTER_NAME}-day2"
+    
+    log "INFO" "Waiting for day2 installation to complete..."
+    aicli wait "${day2_cluster}"
+    log "INFO" "Day2 installation completed successfully"
+}
+
+function day2_full_workflow() {
+    local num_hosts="${1:-1}"
+    shift  # Remove num_hosts from arguments
+    local host_names="$@"
+    
+    log "INFO" "Starting full day2 workflow for ${num_hosts} hosts..."
+    
+    # Step 1: Create day2 cluster
+    if ! create_day2_cluster; then
+        log "ERROR" "Failed to create day2 cluster"
+        return 1
+    fi
+    
+    # Step 2: Wait for hosts to be discovered
+    log "INFO" "Waiting for ${num_hosts} hosts to be discovered..."
+    if ! wait_for_day2_hosts "${num_hosts}"; then
+        log "ERROR" "Failed to wait for hosts"
+        return 1
+    fi
+    
+    # Step 3: List discovered hosts
+    log "INFO" "Discovered hosts:"
+    list_day2_hosts
+    
+    # Step 4: Start installation
+    if [ $# -gt 0 ]; then
+        # Specific hosts provided
+        log "INFO" "Starting installation for specific hosts: ${host_names}"
+        start_day2_installation "${host_names}"
+    else
+        # Start all hosts
+        log "INFO" "Starting installation for all discovered hosts"
+        start_day2_installation
+    fi
+    
+    # Step 5: Wait for completion
+    if ! wait_for_day2_installation; then
+        log "ERROR" "Day2 installation failed or timed out"
+        return 1
+    fi
+    
+    log "INFO" "Day2 workflow completed successfully!"
+    return 0
 }
 
 # -----------------------------------------------------------------------------
@@ -307,10 +445,26 @@ function main() {
         create-day2-cluster)
             create_day2_cluster
             ;;
+        list-day2-hosts)
+            list_day2_hosts
+            ;;
+        wait-day2-hosts)
+            wait_for_day2_hosts "$@"
+            ;;
+        start-day2-install)
+            start_day2_installation "$@"
+            ;;
+        wait-day2-install)
+            wait_for_day2_installation
+            ;;
+        day2-workflow)
+            day2_full_workflow "$@"
+            ;;
         *)
             log "Unknown command: $command"
             log "Available commands: check-create-cluster, delete-cluster, cluster-install,"
             log "  wait-for-status, get-kubeconfig, clean-all, download-iso, create-day2-cluster, get-day2-iso"
+            log "  list-day2-hosts, wait-day2-hosts, start-day2-install, wait-day2-install, day2-workflow"
             exit 1
             ;;
     esac
