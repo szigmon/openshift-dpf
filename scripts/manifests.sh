@@ -7,6 +7,7 @@ set -e
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/tools.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
 
 HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
 
@@ -94,14 +95,6 @@ prepare_dpf_manifests() {
       exit 1
     fi
 
-    # Check cluster type specific requirements
-    if [ "$DPF_CLUSTER_TYPE" = "kamaji" ]; then
-      if [ -z "$KAMAJI_VIP" ]; then
-        echo "Error: KAMAJI_VIP must be set when using Kamaji cluster type"
-        exit 1
-      fi
-    fi
-
     # Validate required variables
     if [ -z "$HOST_CLUSTER_API" ]; then
       echo "Error: HOST_CLUSTER_API must be set"
@@ -121,20 +114,15 @@ prepare_dpf_manifests() {
 
     # Copy and process manifests
     log "INFO" "Processing manifests from ${MANIFESTS_DIR} to ${GENERATED_DIR}"
-
-    # Process each manifest file
-        # Copy all manifests except NFD
+    
+    # Copy all manifests except NFD
     find "$MANIFESTS_DIR/dpf-installation" -maxdepth 1 -type f -name "*.yaml" \
         | xargs -I {} cp {} "$GENERATED_DIR/"
 
-    helm template -n dpf-operator-system dpf-operator oci://ghcr.io/nvidia/dpf-operator \
-    --version v25.1.1 -f "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"  > "${GENERATED_DIR}/00-dpf-operator-manifests.yaml"
     log "INFO" "DPF manifest preparation completed successfully"
-
 
     # Update manifests with configuration
     sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
-
 
     # Update static DPU cluster template
     sed -i "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
@@ -170,7 +158,7 @@ function generate_ovn_manifests() {
 
     # Pull and template OVN chart
     helm pull oci://ghcr.io/nvidia/ovn-kubernetes-chart \
-        --version "$HELM_CHART_VERSION" \
+        --version "$DPF_VERSION" \
         --untar -d "$GENERATED_DIR/temp"
     helm template -n ovn-kubernetes ovn-kubernetes \
         "$GENERATED_DIR/temp/ovn-kubernetes-chart" \
