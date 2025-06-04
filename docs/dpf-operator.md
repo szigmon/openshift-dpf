@@ -220,6 +220,22 @@ oc get dpucluster -A
 ```
 At this stage, no DPUCluster resources will exist yet as they are created in the next step during DPU provisioning.
 
+## Upgrading DPF Operator
+
+To upgrade the DPF Operator to a newer version:
+
+```bash
+make upgrade-dpf
+```
+
+This command will:
+- Display the target version and installation details
+- Ask for confirmation before proceeding  
+- Upgrade the DPF Operator using the latest helm chart
+- Apply any updated static manifests
+
+> **Note:** The upgrade process is idempotent and safe to run multiple times.
+
 ## Troubleshooting
 
 ### Common Issues
