@@ -72,16 +72,17 @@ prepare-dpf-manifests:
 	@$(MANIFESTS_SCRIPT) prepare-dpf-manifests
 
 upgrade-dpf:
-	@echo "🔄 DPF Operator Install (Fresh Installations Only)"
-	@echo "========================================"
-	@echo "Target Version: $(DPF_VERSION)"
-	@echo "Chart Source:   $(DPF_HELM_REPO_URL)-$(DPF_VERSION).tgz"
-	@echo "Install Location: dpf-operator-system namespace"
-	@echo ""
-	@echo "⚠️  Note: This target is for fresh helm installations only."
-	@echo "   If you have existing static manifests, use: make prepare-dpf-manifests"
-	@echo ""
-	@read -p "❓ Do you want to proceed? (y/N): " confirm; \
+	@source scripts/env.sh && \
+	echo "🔄 DPF Operator Install (Fresh Installations Only)" && \
+	echo "========================================" && \
+	echo "Target Version: $$DPF_VERSION" && \
+	echo "Chart Source:   $$DPF_HELM_REPO_URL-$$DPF_VERSION.tgz" && \
+	echo "Install Location: dpf-operator-system namespace" && \
+	echo "" && \
+	echo "⚠️  Note: This target is for fresh helm installations only." && \
+	echo "   If you have existing static manifests, use: make prepare-dpf-manifests" && \
+	echo "" && \
+	read -p "❓ Do you want to proceed? (y/N): " confirm; \
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 		echo ""; \
 		echo "🚀 Running prepare-dpf-manifests..."; \
@@ -169,7 +170,6 @@ help:
 	@echo "  install-hypershift - Install Hypershift binary and operator"
 	@echo "  create-hypershift-cluster - Create a new Hypershift hosted cluster"
 	@echo "  configure-hypershift-dpucluster - Configure DPF to use Hypershift hosted cluster"
-	@echo "  configure-kamaji-dpucluster - Configure DPF to use Kamaji hosted cluster"
 	@echo ""
 	@echo "Configuration options:"
 	@echo "Cluster Configuration:"
@@ -177,7 +177,6 @@ help:
 	@echo "  BASE_DOMAIN      - Set base DNS domain (default: $(BASE_DOMAIN))"
 	@echo "  OPENSHIFT_VERSION - Set OpenShift version (default: $(OPENSHIFT_VERSION))"
 	@echo "  KUBECONFIG       - Path to kubeconfig file (default: $(KUBECONFIG))"
-	@echo "  DPF_CLUSTER_TYPE - Cluster manager type (options: kamaji, hypershift; default: $(DPF_CLUSTER_TYPE))"
 	@echo ""
 	@echo "Feature Configuration:"
 	@echo "  DISABLE_NFD       - Skip NFD deployment (default: $(DISABLE_NFD))"
@@ -205,8 +204,7 @@ help:
 	@echo ""
 	@echo "DPF Configuration:"
 	@echo "  DPF_VERSION      - DPF operator version (default: $(DPF_VERSION))"
-	@echo "  KAMAJI_VIP       - VIP for Kamaji hosted cluster (default: $(KAMAJI_VIP))"
-	@echo "  ETCD_STORAGE_CLASS - StorageClass for Kamaji etcd (default: $(ETCD_STORAGE_CLASS))"
+	@echo "  ETCD_STORAGE_CLASS - StorageClass for hosted cluster etcd (default: $(ETCD_STORAGE_CLASS))"
 	@echo "  BFB_STORAGE_CLASS - StorageClass for BFB PVC (default: $(BFB_STORAGE_CLASS))"
 	@echo ""
 	@echo "Post-installation Configuration:"

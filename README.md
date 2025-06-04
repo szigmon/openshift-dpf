@@ -60,8 +60,9 @@ This automation provides:
 - Component configuration and validation
 
 ### Cluster Management Options
-- Kamaji-based DPU cluster (default)
-- Hypershift-based DPU cluster (optional)
+- Hypershift-based DPU cluster management
+- Hosted cluster deployment and configuration
+- DPU cluster integration with hypershift control plane
 
 ## Getting Started
 
@@ -111,22 +112,6 @@ Default values:
 - CLUSTER_NAME: doca-cluster
 - BASE_DOMAIN: okoyl.xyz
 - OPENSHIFT_VERSION: 4.19.0-ec.3
-
-### Switching Between Kamaji and Hypershift
-
-By default, the automation uses Kamaji as the cluster manager. To use Hypershift instead:
-
-```bash
-# Edit .env file to set
-DPF_CLUSTER_TYPE=hypershift
-```
-
-To explicitly specify Kamaji (default behavior):
-
-```bash
-# Edit .env file to set
-DPF_CLUSTER_TYPE=kamaji
-```
 
 ### NFD Deployment
 
