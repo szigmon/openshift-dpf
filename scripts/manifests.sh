@@ -39,11 +39,15 @@ function prepare_manifests() {
 
 
 function prepare_nfs() {
-     if [[ "${VM_COUNT}" = "1" ]]; then
-        log "INFO" "Copying NFS manifest: nfs-sno.yaml (VM count is 1)"
+    # Deploy NFS for clusters that need ReadWriteMany storage but lack OCS/ODF
+    # This includes single-node clusters and small clusters without OCS storage classes
+    if [[ "${VM_COUNT}" -lt 3 ]] || [[ "${BFB_STORAGE_CLASS}" == "nfs-client" ]]; then
+        log "INFO" "Copying NFS manifest: nfs-sno.yaml (VM_COUNT=${VM_COUNT}, need RWX storage)"
         sed -e "s|<STORAGECLASS_NAME>|${ETCD_STORAGE_CLASS}|g" \
             -e "s|<NFS_SERVER_NODE_IP>|${HOST_CLUSTER_API}|g" \
         "${MANIFESTS_DIR}/nfs/nfs-sno.yaml" > "${GENERATED_DIR}/nfs-sno.yaml"
+    else
+        log "INFO" "Skipping NFS deployment (VM_COUNT=${VM_COUNT}, using OCS storage)"
     fi
 }
 
@@ -124,7 +128,8 @@ prepare_dpf_manifests() {
     # Update manifests with configuration
     # For single-node clusters (VM_COUNT < 2), we use direct NFS PV binding, so remove storageClassName
     if [ "${VM_COUNT}" -lt 2 ]; then
-        sed -i "/storageClassName: \"\"/d" "$GENERATED_DIR/bfb-pvc.yaml"
+        grep -v 'storageClassName: ""' "$GENERATED_DIR/bfb-pvc.yaml" > "$GENERATED_DIR/bfb-pvc.yaml.tmp"
+        mv "$GENERATED_DIR/bfb-pvc.yaml.tmp" "$GENERATED_DIR/bfb-pvc.yaml"
     else
         sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
     fi
