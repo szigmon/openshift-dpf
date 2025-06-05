@@ -122,7 +122,12 @@ prepare_dpf_manifests() {
     log "INFO" "DPF manifest preparation completed successfully"
 
     # Update manifests with configuration
-    sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
+    # For single-node clusters (VM_COUNT < 2), we use direct NFS PV binding, so remove storageClassName
+    if [ "${VM_COUNT}" -lt 2 ]; then
+        sed -i "/storageClassName: \"\"/d" "$GENERATED_DIR/bfb-pvc.yaml"
+    else
+        sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
+    fi
 
     # Update static DPU cluster template
     sed -i "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
