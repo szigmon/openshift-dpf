@@ -26,6 +26,6 @@ spec:
     dmsTimeout: 1800
   sfcController:
     helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.2
-  # Static cluster manager disabled - only Hypershift is supported
+  # Static cluster manager enabled for Hypershift hosted cluster integration
   staticClusterManager:
-    disable: true
+    disable: false
