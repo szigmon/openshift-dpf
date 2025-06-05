@@ -138,6 +138,37 @@ install-hypershift:
 install-helm:
 	@$(TOOLS_SCRIPT) install-helm
 
+# DPF Cleanup targets
+cleanup-dpf:
+	@echo "🧹 Starting comprehensive DPF cleanup..."
+	@echo "⚠️  This will remove ALL DPF components including:"
+	@echo "   - DPF operator and all related resources"
+	@echo "   - CRDs, webhooks, and certificates"
+	@echo "   - Storage resources (PVCs/PVs)"
+	@echo "   - Helm releases"
+	@echo "   - Cluster roles and bindings"
+	@echo ""
+	@read -p "❓ Are you sure you want to proceed? (y/N): " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		echo ""; \
+		echo "🚀 Running comprehensive DPF cleanup..."; \
+		echo ""; \
+		scripts/dpf-cleanup.sh cleanup-dpf; \
+		echo ""; \
+		echo "✅ DPF cleanup completed!"; \
+		echo ""; \
+	else \
+		echo "❌ Cancelled by user"; \
+	fi
+
+force-cleanup-dpf-namespace:
+	@echo "🔥 Force finalizing stuck DPF namespace..."
+	@scripts/dpf-cleanup.sh force-cleanup-namespace
+
+recreate-dpf-namespace:
+	@echo "🆕 Recreating clean DPF namespace..."
+	@scripts/dpf-cleanup.sh recreate-namespace
+
 help:
 	@echo "Available targets:"
 	@echo "Cluster Management:"
@@ -171,6 +202,11 @@ help:
 	@echo "  upgrade-dpf       - Interactive DPF operator upgrade (user-friendly wrapper for prepare-dpf-manifests)"
 	@echo "  prepare-dpu-files - Prepare post-installation manifests with custom values"
 	@echo "  deploy-dpu-services - Deploy DPU services to the cluster"
+	@echo ""
+	@echo "DPF Cleanup:"
+	@echo "  cleanup-dpf       - Comprehensive cleanup of all DPF components (interactive)"
+	@echo "  force-cleanup-dpf-namespace - Force finalize stuck DPF namespace"
+	@echo "  recreate-dpf-namespace - Recreate clean DPF namespace"
 	@echo ""
 	@echo "Hypershift Management:"
 	@echo "  install-hypershift - Install Hypershift binary and operator"
