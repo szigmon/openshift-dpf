@@ -1,0 +1,61 @@
+apiVersion: svc.dpu.nvidia.com/v1alpha1
+kind: DPUDeployment
+metadata:
+  name: dpudeployment
+  namespace: dpf-operator-system
+spec:
+  dpus:
+    bfb: bf-bundle
+    flavor: dpf-provisioning-hbn-ovn
+    dpuSets:
+    - nameSuffix: "dpuset1"
+      nodeSelector:
+        matchLabels:
+          feature.node.kubernetes.io/dpu-enabled: "true"
+      nodeEffect: noSchedule
+  services:
+    doca-hbn:
+      serviceTemplate: doca-hbn
+      serviceConfiguration: doca-hbn
+    ovn-dpu:
+      serviceTemplate: ovn-dpu
+      serviceConfiguration: ovn-dpu
+    doca-telemetry-service:
+      serviceTemplate: doca-telemetry-service
+      serviceConfiguration: doca-telemetry-service
+    doca-blueman-service:
+      serviceTemplate: doca-blueman-service
+      serviceConfiguration: doca-blueman-service
+  serviceChains:
+    upgradePolicy: {}
+    switches:
+    - name: ovs-br
+      type: ovs
+      ports:
+      - serviceInterface:
+          matchLabels:
+            uplink: p0
+      - serviceInterface:
+          matchLabels:
+            svc.dpu.nvidia.com/service: doca-hbn
+            svc.dpu.nvidia.com/interface: p0_sf
+    - name: ovs-br
+      type: ovs
+      ports:
+      - serviceInterface:
+          matchLabels:
+            uplink: p1
+      - serviceInterface:
+          matchLabels:
+            svc.dpu.nvidia.com/service: doca-hbn
+            svc.dpu.nvidia.com/interface: p1_sf
+    - name: ovs-br-ovn
+      type: ovs
+      ports:
+      - serviceInterface:
+          matchLabels:
+            svc.dpu.nvidia.com/service: doca-hbn
+            svc.dpu.nvidia.com/interface: app_sf
+      - serviceInterface:
+          matchLabels:
+            port: ovn

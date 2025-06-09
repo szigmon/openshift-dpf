@@ -31,6 +31,8 @@ SPECIAL_FILES=(
     "ovn-dpuservice.yaml"
     "dpuflavor-1500.yaml"
     "sriov-policy.yaml"
+    "ovn-template.yaml"
+    "ovn-configuration.yaml"
 )
 
 # Function to check if a file is in the special files list
@@ -91,12 +93,32 @@ function update_hbn_ovn_manifests() {
         "${HBN_OVN_NETWORK}"
     
     # Update ovn-dpuservice.yaml with multiple replacements
-    update_file_multi_replace \
-        "${POST_INSTALL_DIR}/ovn-dpuservice.yaml" \
-        "${GENERATED_POST_INSTALL_DIR}/ovn-dpuservice.yaml" \
-        "HBN_OVN_NETWORK" "${HBN_OVN_NETWORK}" \
-        "HOST_CLUSTER_API" "${HOST_CLUSTER_API}" \
-        "HOST_CIDR" "${machineCidr}"
+    if [ -f "${POST_INSTALL_DIR}/ovn-dpuservice.yaml" ]; then
+        update_file_multi_replace \
+            "${POST_INSTALL_DIR}/ovn-dpuservice.yaml" \
+            "${GENERATED_POST_INSTALL_DIR}/ovn-dpuservice.yaml" \
+            "HBN_OVN_NETWORK" "${HBN_OVN_NETWORK}" \
+            "HOST_CLUSTER_API" "${HOST_CLUSTER_API}" \
+            "HOST_CIDR" "${machineCidr}"
+    fi
+    
+    # Update ovn-template.yaml for DPUDeployment
+    if [ -f "${POST_INSTALL_DIR}/ovn-template.yaml" ]; then
+        update_file_multi_replace \
+            "${POST_INSTALL_DIR}/ovn-template.yaml" \
+            "${GENERATED_POST_INSTALL_DIR}/ovn-template.yaml" \
+            "DPF_VERSION" "${DPF_VERSION}"
+    fi
+    
+    # Update ovn-configuration.yaml for DPUDeployment
+    if [ -f "${POST_INSTALL_DIR}/ovn-configuration.yaml" ]; then
+        update_file_multi_replace \
+            "${POST_INSTALL_DIR}/ovn-configuration.yaml" \
+            "${GENERATED_POST_INSTALL_DIR}/ovn-configuration.yaml" \
+            "HBN_OVN_NETWORK" "${HBN_OVN_NETWORK}" \
+            "HOST_CLUSTER_API" "${HOST_CLUSTER_API}" \
+            "HOST_CIDR" "${machineCidr}"
+    fi
     
     log [INFO] "HBN OVN manifests updated successfully"
 }

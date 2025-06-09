@@ -1,0 +1,27 @@
+apiVersion: svc.dpu.nvidia.com/v1alpha1
+kind: DPUServiceTemplate
+metadata:
+  name: doca-hbn
+  namespace: dpf-operator-system
+spec:
+  deploymentServiceName: "doca-hbn"
+  interfaceTemplates:
+    - name: p0-sf
+      labels:
+        svc.dpu.nvidia.com/interface: "p0_sf"
+    - name: p1-sf
+      labels:
+        svc.dpu.nvidia.com/interface: "p1_sf"
+    - name: app-sf
+      labels:
+        svc.dpu.nvidia.com/interface: "app_sf"
+  resourceRequirements:
+    cpu: 6
+    memory: 6Gi
+    storage: 1Gi
+    vfCount: 3
+  helmChart:
+    source:
+      repoURL: https://helm.ngc.nvidia.com/nvidia/doca
+      chart: doca-hbn
+      version: "1.0.1"
