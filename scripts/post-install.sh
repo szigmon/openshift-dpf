@@ -32,6 +32,8 @@ SPECIAL_FILES=(
     "flannel-dpu-service.yaml"
     "dpuflavor-1500.yaml"
     "sriov-policy.yaml"
+    "ovn-template.yaml"
+    "ovn-configuration.yaml"
 )
 
 # Function to check if a file is in the special files list
@@ -84,6 +86,24 @@ function update_hbn_ovn_manifests() {
         "${POST_INSTALL_DIR}/flannel-dpu-service.yaml" \
         "${GENERATED_POST_INSTALL_DIR}/flannel-dpu-service.yaml" \
         "DPF_VERSION" "${DPF_VERSION}"
+    
+    # Update ovn-template.yaml for DPUDeployment
+    if [ -f "${POST_INSTALL_DIR}/ovn-template.yaml" ]; then
+        process_template \
+            "${POST_INSTALL_DIR}/ovn-template.yaml" \
+            "${GENERATED_POST_INSTALL_DIR}/ovn-template.yaml" \
+            "DPF_VERSION" "${DPF_VERSION}"
+    fi
+    
+    # Update ovn-configuration.yaml for DPUDeployment
+    if [ -f "${POST_INSTALL_DIR}/ovn-configuration.yaml" ]; then
+        process_template \
+            "${POST_INSTALL_DIR}/ovn-configuration.yaml" \
+            "${GENERATED_POST_INSTALL_DIR}/ovn-configuration.yaml" \
+            "HBN_OVN_NETWORK" "${HBN_OVN_NETWORK}" \
+            "HOST_CLUSTER_API" "${HOST_CLUSTER_API}" \
+            "HOST_CIDR" "${machineCidr}"
+    fi
     
     log [INFO] "HBN OVN manifests updated successfully"
 }
