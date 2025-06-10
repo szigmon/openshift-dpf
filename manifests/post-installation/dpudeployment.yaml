@@ -6,14 +6,16 @@ metadata:
 spec:
   dpus:
     bfb: bf-bundle
-    flavor: dpf-provisioning-hbn-ovn
+    flavor: flavor-1500
     dpuSets:
     - nameSuffix: "dpuset1"
       nodeSelector:
         matchLabels:
           feature.node.kubernetes.io/dpu-enabled: "true"
-      nodeEffect: noSchedule
   services:
+    flannel:
+      serviceTemplate: flannel
+      serviceConfiguration: flannel
     doca-hbn:
       serviceTemplate: doca-hbn
       serviceConfiguration: doca-hbn
@@ -29,9 +31,7 @@ spec:
   serviceChains:
     upgradePolicy: {}
     switches:
-    - name: ovs-br
-      type: ovs
-      ports:
+    - ports:
       - serviceInterface:
           matchLabels:
             uplink: p0
@@ -39,9 +39,7 @@ spec:
           matchLabels:
             svc.dpu.nvidia.com/service: doca-hbn
             svc.dpu.nvidia.com/interface: p0_sf
-    - name: ovs-br
-      type: ovs
-      ports:
+    - ports:
       - serviceInterface:
           matchLabels:
             uplink: p1
@@ -49,9 +47,7 @@ spec:
           matchLabels:
             svc.dpu.nvidia.com/service: doca-hbn
             svc.dpu.nvidia.com/interface: p1_sf
-    - name: ovs-br-ovn
-      type: ovs
-      ports:
+    - ports:
       - serviceInterface:
           matchLabels:
             svc.dpu.nvidia.com/service: doca-hbn
