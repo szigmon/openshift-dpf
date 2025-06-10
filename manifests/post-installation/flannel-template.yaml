@@ -1,15 +1,15 @@
 apiVersion: svc.dpu.nvidia.com/v1alpha1
-kind: DPUService
+kind: DPUServiceTemplate
 metadata:
   name: flannel
   namespace: dpf-operator-system
 spec:
+  deploymentServiceName: flannel
   helmChart:
     source:
       chart: dpu-networking
-      path: ""
-      repoURL: oci://ghcr.io/nvidia
-      version: v25.1.1
+      repoURL: https://helm.ngc.nvidia.com/nvidia/doca
+      version: v25.4.0
     values:
       flannel:
         enabled: true
@@ -18,5 +18,10 @@ spec:
           cniConfDir: /run/multus/cni/net.d/
           mtu: "1500"
           skipCNIConfigInstallation: false
+        podCidr: "10.132.0.0/14"
         imagePullSecrets:
           - name: dpf-pull-secret
+  resourceRequirements:
+    cpu: 1
+    memory: 1Gi
+    storage: 1Gi

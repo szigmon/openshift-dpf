@@ -253,7 +253,7 @@ function get_iso() {
     if [ -z "${iso_url}" ]; then
         log "INFO" "No direct URL found. Use console.redhat.com to generate an ISO."
         iso_url="https://console.redhat.com/openshift"
-    fi
+        fi
 
     iso_url="${iso_url%/*}/${iso_type}.iso"
 

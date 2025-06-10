@@ -1,0 +1,20 @@
+apiVersion: svc.dpu.nvidia.com/v1alpha1
+kind: DPUServiceTemplate
+metadata:
+  name: ovn-dpu
+  namespace: dpf-operator-system
+spec:
+  deploymentServiceName: "ovn-dpu"
+  interfaceTemplates:
+    - name: ovn
+      labels:
+        port: ovn
+  resourceRequirements:
+    cpu: 2
+    memory: 2Gi
+    storage: 1Gi
+  helmChart:
+    source:
+      repoURL: oci://ghcr.io/nvidia
+      chart: ovn-kubernetes-chart
+      version: "DPF_VERSION"
