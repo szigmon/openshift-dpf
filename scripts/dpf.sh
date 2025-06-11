@@ -99,14 +99,28 @@ function deploy_cert_manager() {
     local cert_manager_file="$GENERATED_DIR/openshift-cert-manager.yaml"
     if [ -f "$cert_manager_file" ]; then
         # Check if cert-manager is already installed
-        if oc get deployment -n cert-manager cert-manager-operator &>/dev/null; then
+        if oc get deployment -n cert-manager cert-manager &>/dev/null; then
             log [INFO] "Cert-manager already installed. Skipping deployment."
             return 0
         fi
         
         log [INFO] "Deploying cert-manager..."
         apply_manifest "$cert_manager_file"
-        wait_for_pods "cert-manager-operator" "app=webhook" "status.phase=Running" "1/1" 30 5
+        
+        # Wait for cert-manager namespace to be created by the operator
+        log [INFO] "Waiting for cert-manager namespace to be created..."
+        local retries=30
+        while [ $retries -gt 0 ]; do
+            if oc get namespace cert-manager &>/dev/null; then
+                log [INFO] "cert-manager namespace found"
+                break
+            fi
+            sleep 5
+            retries=$((retries-1))
+        done
+        
+        # Wait for webhook pod in cert-manager namespace
+        wait_for_pods "cert-manager" "app.kubernetes.io/component=webhook" "status.phase=Running" "1/1" 30 5
         log [INFO] "Waiting for cert-manager to stabilize..."
         sleep 5
     fi
