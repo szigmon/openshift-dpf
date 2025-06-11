@@ -242,6 +242,12 @@ function apply_dpf() {
     
     get_kubeconfig
     
+    deploy_nfd
+    
+    apply_namespaces
+    apply_crds
+    deploy_cert_manager
+    
     # Install/upgrade DPF Operator using helm (idempotent operation)
     log "INFO" "Installing/upgrading DPF Operator to $DPF_VERSION..."
     
@@ -270,11 +276,6 @@ function apply_dpf() {
         return 1
     fi
     
-    deploy_nfd
-    
-    apply_namespaces
-    apply_crds
-    deploy_cert_manager
     apply_remaining
     apply_scc
     deploy_hosted_cluster
