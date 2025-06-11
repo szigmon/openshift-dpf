@@ -113,18 +113,7 @@ function deploy_cert_manager() {
 }
 
 function deploy_hosted_cluster() {
-    if [ "${DPF_CLUSTER_TYPE}" = "kamaji" ]; then
-        deploy_kamaji
-    else
-        deploy_hypershift
-    fi
-}
-
-function deploy_kamaji() {
-    log [INFO] "Deploying kamaji..."
-    apply_manifest "$GENERATED_DIR/kamaji-manifests.yaml"
-    log [INFO] "Waiting for etcd pods..."
-    wait_for_pods "dpf-operator-system" "application=kamaji-etcd" "status.phase=Running" "1/1" 60 10
+    deploy_hypershift
 }
 
 function deploy_hypershift() {
@@ -223,7 +212,6 @@ function apply_remaining() {
         if [[ ! "$file" =~ .*(-ns)\.yaml$ && \
               ! "$file" =~ .*(-crd)\.yaml$ && \
               "$file" != "$GENERATED_DIR/cert-manager-manifests.yaml" && \
-              "$file" != "$GENERATED_DIR/kamaji-manifests.yaml" && \
               "$file" != "$GENERATED_DIR/scc.yaml" ]]; then
             retry 5 30 apply_manifest "$file" true
             if [[ "$file" =~ .*operator.*\.yaml$ ]]; then
@@ -240,6 +228,35 @@ function apply_dpf() {
     log "INFO" "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
     
     get_kubeconfig
+    
+    # Install/upgrade DPF Operator using helm (idempotent operation)
+    log "INFO" "Installing/upgrading DPF Operator to $DPF_VERSION..."
+    
+    # Authenticate helm with NGC registry using pull secret
+    if [ -f "$DPF_PULL_SECRET" ]; then
+        NGC_USERNAME=$(jq -r '.auths."nvcr.io".username' "$DPF_PULL_SECRET")
+        NGC_PASSWORD=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET")
+        log "INFO" "Authenticating helm with NGC registry..."
+        helm registry login nvcr.io --username "$NGC_USERNAME" --password "$NGC_PASSWORD" >/dev/null 2>&1 || true
+    fi
+    
+    # Construct the full chart URL with version
+    CHART_URL="${DPF_HELM_REPO_URL}-${DPF_VERSION}.tgz"
+    
+    # Install without --wait for immediate feedback
+    if helm upgrade --install dpf-operator \
+        "${CHART_URL}" \
+        --namespace dpf-operator-system \
+        --create-namespace \
+        --values "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"; then
+        
+        log "INFO" "Helm release 'dpf-operator' deployed successfully"
+        log "INFO" "DPF Operator deployment initiated. Use 'oc get pods -n dpf-operator-system' to monitor progress."
+    else
+        log "ERROR" "Helm deployment failed"
+        return 1
+    fi
+    
     deploy_nfd
     
     apply_namespaces
@@ -249,7 +266,7 @@ function apply_dpf() {
     apply_scc
     deploy_hosted_cluster
 
-    wait_for_pods "dpf-operator-system" "dpu.nvidia.com/component=dpf-provisioning-controller-manager" "status.phase=Running" "1/1" 30 5
+    wait_for_pods "dpf-operator-system" "dpu.nvidia.com/component=dpf-operator-controller-manager" "status.phase=Running" "1/1" 30 5
 
     log [INFO] "DPF deployment complete"
 }

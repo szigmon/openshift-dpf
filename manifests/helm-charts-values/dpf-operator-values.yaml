@@ -1,5 +1,6 @@
 imagePullSecrets:
   - name: dpf-pull-secret
+# Kamaji is permanently disabled - only Hypershift is supported
 kamaji:
   enabled: false
 kamaji-etcd:
