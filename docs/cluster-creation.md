@@ -1,10 +1,10 @@
 # OpenShift Cluster Creation
 
-This guide walks you through deploying a new OpenShift cluster to serve as the foundation for NVIDIA DPF. We use Red Hat's Assisted Installer to create a virtualized OpenShift cluster on a physical host.
+This guide walks you through deploying a new OpenShift cluster for NVIDIA DPF using Red Hat's Assisted Installer.
 
 ## Overview
 
-### When to Use This Path
+### When to Use This Guide
 * You need a **new** OpenShift cluster for DPF deployment
 * You have a physical server meeting the [prerequisites](prerequisites.md)
 * You want to use the automated deployment method
@@ -12,333 +12,141 @@ This guide walks you through deploying a new OpenShift cluster to serve as the f
 > If you already have a compatible OpenShift cluster, [skip to DPF Operator Installation](dpf-operator.md).
 
 ### What Gets Deployed
-The automation creates a virtualized OpenShift cluster with:
-
-* **3 Control Plane VMs** running essential OpenShift services
+* **3 Control Plane VMs** running OpenShift services
 * **OVN-Kubernetes** networking optimized for DPU acceleration
 * **Pre-configured operators** required for DPF support
 
-![Cluster Architecture](assets/cluster-architecture.png)
+## Prerequisites
 
-## VM Management and Naming
-
-By default, the automation creates VMs with names following the pattern `${VM_NAME_PREFIX}-vm-{1..3}` for control plane nodes. This naming can be customized to avoid conflicts with existing VMs:
-
-```bash
-# In your .env file, set a unique prefix for your DPF VMs
-VM_NAME_PREFIX=dpf
-
-# This will create VMs named: dpf-vm-1, dpf-vm-2, dpf-vm-3, etc.
-```
-
-> **Important:** The automation detects VMs with matching names. If VMs with the configured naming pattern already exist, the automation might try to use them or flag conflicts.
-
-### VM Management Commands
-
-The automation provides several make targets specifically for VM management:
-
-```bash
-# Create VMs for the OpenShift cluster (downloads ISO too)
-make create-vms
-
-# Delete VMs (without deleting the cluster in Assisted Installer)
-make delete-vms
-
-# Check VM status
-virsh list --all
-
-# Start/stop specific VMs
-virsh start ${VM_NAME_PREFIX}-vm-1
-virsh stop ${VM_NAME_PREFIX}-vm-1
-
-# Clean everything (cluster and VMs)
-make clean-all
-```
-
-> **Note:** The `create-vms` command is a critical step that must be run explicitly before cluster installation. This ensures VMs are created with your specified configuration.
-
-### Environments with Existing VMs
-
-If your server already has VMs that should not be modified, follow these steps:
-
-1. Check existing VMs first:
-   ```bash
-   virsh list --all
-   ```
-
-2. Choose a unique prefix that doesn't conflict with existing VMs:
-   ```bash
-   # In .env file
-   VM_NAME_PREFIX=dpf-ocp4
-   ```
-
-3. Verify VM creation without modifying existing VMs:
-   ```bash
-   # Dry run to check which VMs would be created
-   make vm-check
-   ```
-
-The automation will only create or modify VMs that match your configured prefix.
-
-### VM Configuration Options
-
-| Variable | Description | Default | Example |
-|----------|-------------|---------|---------|
-| `VM_NAME_PREFIX` | Prefix for VM names | Server hostname | `dpf` |
-| `VM_VCPUS` | vCPUs per control plane VM | `16` | `16` |
-| `VM_MEMORY_GB` | Memory (GB) per control plane VM | `42` | `48` |
-| `VM_DISK_GB` | Disk size (GB) per control plane VM | `120` | `150` |
-| `SKIP_BRIDGE_CONFIG` | Skip bridge creation if set to true | `false` | `true` |
-
-## Prerequisite: DNS or /etc/hosts Configuration
-
-Before starting cluster installation, you must ensure that your workstation or jump host can resolve the OpenShift API endpoint:
-
-- `api.<CLUSTER_NAME>.<BASE_DOMAIN>` → `API_VIP`
-
-**You have two options:**
-
-1. **DNS**
-    - Configure the DNS record for the API endpoint as described in the prerequisites.
-    - This is the recommended and production-ready approach.
-2. **/etc/hosts**
-    - If you do not have DNS, you can add an entry to `/etc/hosts` on your machine.
-    - You can automate this with:
-      ```bash
-      make update-etc-hosts
-      ```
-    - This will add the API endpoint automatically.
-
-> **Note:** Only the API endpoint is required for installation and automation. If you want to access the OpenShift web console or application routes from this machine, you may add additional records for those endpoints, but they are not required for the installation process.
-
-> **Before installing, ensure the API DNS record is configured as described in [Prerequisites](prerequisites.md).**
+Before starting, ensure you have:
+- DNS configured for `api.<CLUSTER_NAME>.<BASE_DOMAIN>` → `API_VIP`
+- Or use `make update-etc-hosts` to add /etc/hosts entries
 
 ## Deployment Process
 
-### 1. Prepare Environment (5 minutes)
-
-1. Clone the repository and navigate to it:
-   ```bash
-   git clone https://github.com/szigmon/openshift-dpf.git
-   cd openshift-dpf
-   git fetch origin cert-manager-operatorhub-auto-install
-   git checkout cert-manager-operatorhub-auto-install
-   ```
-
-2. Create and configure your environment file:
-   ```bash
-   cp .env.example .env
-   vim .env  # Edit parameters as needed
-   ```
-
-   > The `.env` file is your main configuration file. It contains all the parameters needed for the deployment.
-
-| Required Parameters | Description | Example |
-|---------------------|-------------|---------|
-| `CLUSTER_NAME` | OpenShift cluster name | `doca` |
-| `BASE_DOMAIN` | Base DNS domain | `lab.nvidia.com` |
-| `OPENSHIFT_VERSION` | Version to deploy | `4.19.0-ec.5` |
-| `API_VIP` | Virtual IP for API | `10.8.2.100` |
-| `INGRESS_VIP` | Virtual IP for Ingress | `10.8.2.101` |
-| `OPENSHIFT_PULL_SECRET` | Path to pull secret | `/path/to/pull-secret.json` |
-
-> For a complete list of parameters, see the [Environment Variables](prerequisites.md#environment-variables) section.
-
-3. Source the environment variables:
-   ```bash
-   source scripts/env.sh
-   ```
-
-   > The `env.sh` script reads the values from your `.env` file and exports them as environment variables. This is a required step before running any make commands.
-
-### 2. Deploy Cluster (60-90 minutes)
-
-> **Note:** The full cluster installation requires multiple steps in the correct order. Follow the steps below carefully.
-
-For **complete** cluster installation, follow these commands in sequence:
+### 1. Prepare Environment
 
 ```bash
-make create-cluster   # Register with the Assisted Installer
-make create-vms       # Create the VMs for the cluster
-make cluster-install  # Complete the OpenShift installation process
+# Clone the repository
+git clone https://github.com/szigmon/openshift-dpf.git
+cd openshift-dpf
+
+# Use the recommended branch
+git checkout docs/update-doca-services
+
+# Configure environment
+cp .env.example .env
+vim .env  # Edit your configuration
+
+# Source environment variables (REQUIRED before any make commands)
+source scripts/env.sh
 ```
 
-The full automation sequence performs these steps:
+Key `.env` parameters:
+- `CLUSTER_NAME` - Your cluster name (e.g., `doca`)
+- `BASE_DOMAIN` - DNS domain (e.g., `lab.nvidia.com`)
+- `API_VIP` - Virtual IP for API endpoint
+- `INGRESS_VIP` - Virtual IP for Ingress
+- `OPENSHIFT_PULL_SECRET` - Path to your pull secret file
 
-1. Registers with Red Hat's Assisted Installer
-2. Creates VMs using libvirt with your configured VM_NAME_PREFIX
-3. Deploys OpenShift platform
-4. Configures networking and storage
+### 2. Deploy Cluster - CRITICAL ORDER
 
-> **Shortcut:** To perform all these steps in one command, you can use `make all` which combines the steps above.
-
-> **Tip:** If you exit the installation process (e.g., with Ctrl+C), you can safely re-run `make cluster-install` at any time. The automation will detect the current cluster status and, if the cluster is already installed, will fetch the kubeconfig for you.
-
-### Verify Cluster Access
-
-After installation, check access to your new OpenShift cluster using the downloaded kubeconfig:
+> **IMPORTANT:** These commands MUST be run in this exact order. Running them out of order will cause errors.
 
 ```bash
-export KUBECONFIG=$PWD/kubeconfig.<CLUSTER_NAME>
+# STEP 1: Create cluster in Assisted Installer (generates ISO)
+make create-cluster
+
+# STEP 2: Create VMs and download ISO (requires cluster from step 1)
+make create-vms
+
+# STEP 3: Install OpenShift on the VMs
+make cluster-install
+```
+
+#### Why This Order Matters
+1. **`make create-cluster`** - Registers cluster and generates ISO
+2. **`make create-vms`** - Downloads ISO and creates VMs
+3. **`make cluster-install`** - Installs OpenShift
+
+> **Common Error:** "Infraenv not found" means you didn't run `make create-cluster` first.
+
+#### Alternative: All-in-One
+```bash
+make all  # Runs all steps automatically in correct order
+```
+
+### 3. Verify Installation
+
+```bash
+# Set kubeconfig
+export KUBECONFIG=$PWD/kubeconfig.${CLUSTER_NAME}
+
+# Verify access
 oc whoami
-```
-If everything is set up correctly, this should return your OpenShift username (e.g., `kubeadmin`).
-
-You can also check cluster status:
-```bash
 oc get nodes
 oc get co
 ```
 
-### 3. Monitor Installation
+## VM Management
 
-Track the progress with these commands:
+### VM Naming
+VMs are created with the pattern: `${VM_PREFIX}-vm-{1..3}`
 
+Configure in `.env`:
 ```bash
-# Check cluster status in Assisted Installer
-aicli list clusters
+VM_PREFIX=dpf  # Creates: dpf-vm-1, dpf-vm-2, dpf-vm-3
+```
 
-# View detailed cluster status
-aicli info cluster $CLUSTER_NAME
-
+### Common Commands
+```bash
 # Check VM status
 virsh list --all
+
+# Delete VMs only
+make delete-vms
+
+# Clean everything (cluster + VMs)
+make clean-all
 ```
-
-#### Handling "pending-for-input" State
-
-If your cluster shows as "pending-for-input" status like this:
-
-```
-+-----------+--------------------------------------+-------------------+-------------------------------+
-|  Cluster  |                  Id                  |       Status      |           Dns Domain          |
-+-----------+--------------------------------------+-------------------+-------------------------------+
-| doca-docs | b816f8df-b3e3-4534-8067-65b2968239b4 | pending-for-input | lab.nvidia.com |
-```
-
-This means the Assisted Installer is waiting for input before proceeding. The most common reasons include:
-
-1. **VMs are not powered on or haven't booted discovery ISO**:
-   ```bash
-   # Start all cluster VMs
-   virsh start ${VM_NAME_PREFIX}-vm-1
-   virsh start ${VM_NAME_PREFIX}-vm-2
-   virsh start ${VM_NAME_PREFIX}-vm-3
-   ```
-
-2. **Cluster configuration is incomplete**:
-   ```bash
-   # Complete the cluster configuration and start installation
-   make cluster-install
-   ```
-
-3. **DNS validation has failed**:
-   Check your DNS records for API and apps endpoints using:
-   ```bash
-   dig api.${CLUSTER_NAME}.${BASE_DOMAIN}
-   dig random-app.apps.${CLUSTER_NAME}.${BASE_DOMAIN}
-   ```
-
-To proceed with the installation, run:
-```bash
-make cluster-install
-```
-
-### 4. Verify Deployment
-
-After the installation process completes, verify that your cluster was created:
-
-```bash
-# View assisted installer clusters
-aicli list clusters
-
-# View detailed cluster status
-aicli info cluster $CLUSTER_NAME
-
-# Check VM status
-virsh list --all
-```
-
-The cluster status should show as "installed" once complete.
-
-## Network Configuration
-
-The cluster network is configured with:
-
-* **Network Type**: OVN-Kubernetes (optimized for DPF)
-* **Service Network**: 172.30.0.0/16
-* **Pod Network**: 10.128.0.0/14
-* **Features**: Network policies, Egress IP, Multicast support
 
 ## Troubleshooting
 
-### Common Issues
+### Cluster Status "pending-for-input"
 
-| Issue | Solution |
-|-------|----------|
-| VM Provisioning Failures | Verify libvirt configuration and resources |
-| DNS Resolution Issues | Ensure DNS resolution works for BASE_DOMAIN |
-| Pull Secret Issues | Verify pull secret validity and permissions |
-| Network Configuration | Check management network internet access |
+If cluster shows "pending-for-input", try:
 
-### VM Creation Fails - VMs Not Starting
-
-If your VMs are created but don't start (you see "Waiting for VM to start..." messages that eventually time out), check:
-
-1. **Check libvirt logs**:
+1. **Start VMs if not running:**
    ```bash
-   journalctl -u libvirtd
+   virsh start ${VM_PREFIX}-vm-1
+   virsh start ${VM_PREFIX}-vm-2
+   virsh start ${VM_PREFIX}-vm-3
    ```
 
-2. **Verify libvirt is running**:
+2. **Complete installation:**
    ```bash
-   systemctl status libvirtd
+   make cluster-install
    ```
 
-3. **Check disk permissions and space**:
-   ```bash
-   df -h
-   ls -la /var/lib/libvirt/images/
-   ```
+### VM Creation Issues
 
-4. **Try manually starting VMs**:
-   ```bash
-   virsh start ${VM_NAME_PREFIX}-vm-1
-   # If it fails, check the VM definition for issues
-   virsh dumpxml ${VM_NAME_PREFIX}-vm-1 > vm-config.xml
-   cat vm-config.xml
-   ```
+If VMs fail to start:
+1. Check libvirt: `systemctl status libvirtd`
+2. Check disk space: `df -h /var/lib/libvirt/images/`
+3. Try manual start: `virsh start ${VM_PREFIX}-vm-1`
 
-5. **Check SELinux status**:
-   ```bash
-   # If SELinux is enforcing, try temporarily setting to permissive
-   getenforce
-   setenforce 0  # Only for testing, not for production
-   make create-vms
-   ```
-
-6. **Resource issues**:
-   - Ensure your host has enough RAM and CPU for VMs (48+ CPU cores, 128+ GB RAM recommended)
-   - Check if there are CPU or memory limits set for libvirt
-
-### Logs and Diagnostics
-
-If you encounter issues:
+### Getting Help
 
 ```bash
-# View VM creation logs
-cat logs/vm-creation.log
+# View cluster status
+aicli info cluster $CLUSTER_NAME
 
-# Download Assisted Installer logs
+# Download logs
 aicli download logs $CLUSTER_NAME
-
-# Gather diagnostic information
-oc adm must-gather
 ```
 
 ## Next Steps
 
-Once your OpenShift cluster is successfully deployed:
-
-1. [DPF Operator Installation](dpf-operator.md) - Install NVIDIA DPF Operator
-2. [DPU Provisioning](dpu-provisioning.md) - Configure and provision BlueField DPUs
+After successful deployment:
+1. [Deploy DPF Operator](dpf-operator.md)
+2. [Provision DPUs](dpu-provisioning.md)
