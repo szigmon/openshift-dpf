@@ -160,6 +160,13 @@ prepare_dpf_manifests() {
     sed -i "s|PULL_SECRET_BASE64|$PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
 
     prepare_nfs
+    
+    # Process dpfoperatorconfig.yaml - replace cluster-specific values
+    process_template \
+        "$MANIFESTS_DIR/dpf-installation/dpfoperatorconfig.yaml" \
+        "$GENERATED_DIR/dpfoperatorconfig.yaml" \
+        "<CLUSTER_NAME>" "$CLUSTER_NAME" \
+        "<BASE_DOMAIN>" "$BASE_DOMAIN"
 }
 
 function generate_ovn_manifests() {
