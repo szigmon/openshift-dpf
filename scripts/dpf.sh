@@ -104,11 +104,24 @@ function deploy_cert_manager() {
             return 0
         fi
         
-        log [INFO] "Deploying cert-manager..."
+        log [INFO] "Deploying cert-manager operator..."
         apply_manifest "$cert_manager_file"
-        wait_for_pods "cert-manager-operator" "app=webhook" "status.phase=Running" "1/1" 30 5
-        log [INFO] "Waiting for cert-manager to stabilize..."
-        sleep 5
+        
+        # Wait for the operator to be ready
+        log [INFO] "Waiting for cert-manager operator CSV..."
+        local retries=30
+        while [ $retries -gt 0 ]; do
+            if oc get csv -n openshift-operators | grep -q "cert-manager.*Succeeded"; then
+                log [INFO] "Cert-manager operator CSV is ready"
+                break
+            fi
+            sleep 5
+            retries=$((retries-1))
+        done
+        
+        # Wait for cert-manager namespace and pods
+        log [INFO] "Waiting for cert-manager pods..."
+        wait_for_pods "cert-manager" "app=cert-manager" "status.phase=Running" "1/1" 60 5
     fi
 }
 

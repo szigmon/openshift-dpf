@@ -72,13 +72,9 @@ function prepare_cluster_manifests() {
         aicli update installconfig "$CLUSTER_NAME" -P network_type=NVIDIA-OVN
     fi
 
-    # Generate Cert-Manager manifests if enabled
-    if [ "$ENABLE_CERT_MANAGER" = "true" ]; then
-        log [INFO] "Generating Cert-Manager manifests..."
-        cp "$MANIFESTS_DIR/cluster-installation/openshift-cert-manager.yaml" "$GENERATED_DIR/"
-    else
-        log [INFO] "Skipping Cert-Manager manifests (ENABLE_CERT_MANAGER=false)"
-    fi
+    # Always copy Cert-Manager manifest (required for DPF operator)
+    log [INFO] "Copying Cert-Manager manifest (required for DPF operator)..."
+    cp "$MANIFESTS_DIR/cluster-installation/openshift-cert-manager.yaml" "$GENERATED_DIR/"
 
     generate_ovn_manifests
     enable_storage
