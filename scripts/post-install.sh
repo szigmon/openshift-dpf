@@ -28,9 +28,14 @@ mkdir -p "${GENERATED_POST_INSTALL_DIR}"
 SPECIAL_FILES=(
     "bfb.yaml"
     "hbn-ovn-ipam.yaml"
-    "ovn-dpuservice.yaml"
     "dpuflavor-1500.yaml"
     "sriov-policy.yaml"
+    "ovn-template.yaml"
+    "ovn-configuration.yaml"
+    "hbn-template.yaml"
+    "dts-template.yaml"
+    "blueman-template.yaml"
+    "flannel-template.yaml"
 )
 
 # Function to check if a file is in the special files list
@@ -90,13 +95,26 @@ function update_hbn_ovn_manifests() {
         "HBN_OVN_NETWORK" \
         "${HBN_OVN_NETWORK}"
     
-    # Update ovn-dpuservice.yaml with multiple replacements
-    update_file_multi_replace \
-        "${POST_INSTALL_DIR}/ovn-dpuservice.yaml" \
-        "${GENERATED_POST_INSTALL_DIR}/ovn-dpuservice.yaml" \
-        "HBN_OVN_NETWORK" "${HBN_OVN_NETWORK}" \
-        "HOST_CLUSTER_API" "${HOST_CLUSTER_API}" \
-        "HOST_CIDR" "${machineCidr}"
+    # Skip ovn-dpuservice.yaml - now handled by DPUDeployment
+    # Services are now managed through DPUDeployment with templates and configurations
+    
+    # Update ovn-template.yaml for DPUDeployment
+    if [ -f "${POST_INSTALL_DIR}/ovn-template.yaml" ]; then
+        update_file_multi_replace \
+            "${POST_INSTALL_DIR}/ovn-template.yaml" \
+            "${GENERATED_POST_INSTALL_DIR}/ovn-template.yaml" \
+            "DPF_VERSION" "${DPF_VERSION}"
+    fi
+    
+    # Update ovn-configuration.yaml for DPUDeployment
+    if [ -f "${POST_INSTALL_DIR}/ovn-configuration.yaml" ]; then
+        update_file_multi_replace \
+            "${POST_INSTALL_DIR}/ovn-configuration.yaml" \
+            "${GENERATED_POST_INSTALL_DIR}/ovn-configuration.yaml" \
+            "HBN_OVN_NETWORK" "${HBN_OVN_NETWORK}" \
+            "HOST_CLUSTER_API" "${HOST_CLUSTER_API}" \
+            "HOST_CIDR" "${machineCidr}"
+    fi
     
     log [INFO] "HBN OVN manifests updated successfully"
 }
@@ -127,6 +145,26 @@ function update_vf_configuration() {
     log [INFO] "VF configuration updated successfully"
 }
 
+# Function to update service template versions
+function update_service_templates() {
+    log [INFO] "Updating service template versions..."
+    
+    # Update all service templates with DPF_VERSION if they exist
+    local templates=("hbn-template.yaml" "dts-template.yaml" "blueman-template.yaml" "flannel-template.yaml")
+    
+    for template in "${templates[@]}"; do
+        if [ -f "${POST_INSTALL_DIR}/${template}" ]; then
+            update_file_multi_replace \
+                "${POST_INSTALL_DIR}/${template}" \
+                "${GENERATED_POST_INSTALL_DIR}/${template}" \
+                "DPF_VERSION" "${DPF_VERSION}"
+            log [INFO] "Updated ${template} with DPF_VERSION=${DPF_VERSION}"
+        fi
+    done
+    
+    log [INFO] "Service template versions updated successfully"
+}
+
 # Function to prepare post-installation manifests
 function prepare_post_installation() {
     log [INFO] "Starting post-installation manifest preparation..."
@@ -141,6 +179,7 @@ function prepare_post_installation() {
     update_bfb_manifest
     update_hbn_ovn_manifests
     update_vf_configuration
+    update_service_templates
     
     # Copy remaining manifests
     for file in "${POST_INSTALL_DIR}"/*.yaml; do
@@ -177,8 +216,17 @@ function apply_post_installation() {
             local filename=$(basename "$file")
             # Skip dpuset.yaml as it will be applied last
             if [[ "${filename}" != "dpuset.yaml" ]]; then
-                log [INFO] "Applying post-installation manifest: ${filename}"
-                apply_manifest "$file" "true"
+                # Special handling for SCC - must be applied to hosted cluster
+                if [[ "${filename}" == "dpu-services-scc.yaml" ]] && [[ "${DPF_CLUSTER_TYPE}" == "hypershift" ]] && [[ -f "${HOSTED_CLUSTER_NAME}.kubeconfig" ]]; then
+                    log [INFO] "Applying SCC to hosted cluster: ${filename}"
+                    local saved_kubeconfig="${KUBECONFIG}"
+                    export KUBECONFIG="${HOSTED_CLUSTER_NAME}.kubeconfig"
+                    apply_manifest "$file" "true"
+                    export KUBECONFIG="${saved_kubeconfig}"
+                else
+                    log [INFO] "Applying post-installation manifest: ${filename}"
+                    apply_manifest "$file" "true"
+                fi
             fi
         fi
     done
