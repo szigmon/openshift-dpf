@@ -63,7 +63,14 @@ function prepare_cluster_manifests() {
 
     # Configure cluster components
     log [INFO] "Configuring cluster installation..."
-    aicli update installconfig "$CLUSTER_NAME" -P network_type=NVIDIA-OVN
+    
+    # Check if cluster is already installed
+    local cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
+    if [ "$cluster_status" = "installed" ]; then
+        log [INFO] "Cluster is already installed, skipping configuration updates"
+    else
+        aicli update installconfig "$CLUSTER_NAME" -P network_type=NVIDIA-OVN
+    fi
 
     # Generate Cert-Manager manifests if enabled
     if [ "$ENABLE_CERT_MANAGER" = "true" ]; then
@@ -77,8 +84,14 @@ function prepare_cluster_manifests() {
     enable_storage
     
     # Install manifests to cluster
-    log [INFO] "Installing manifests to cluster via AICLI..."
-    aicli create manifests --dir "$GENERATED_DIR" "$CLUSTER_NAME"
+    # Check if cluster is already installed
+    local cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
+    if [ "$cluster_status" = "installed" ]; then
+        log [INFO] "Cluster is already installed, skipping manifest installation"
+    else
+        log [INFO] "Installing manifests to cluster via AICLI..."
+        aicli create manifests --dir "$GENERATED_DIR" "$CLUSTER_NAME"
+    fi
 
     log [INFO] "Cluster manifests preparation complete."
 }
@@ -184,6 +197,13 @@ function generate_ovn_manifests() {
 
 function enable_storage() {
     log [INFO] "Enabling storage operator"
+    
+    # Check if cluster is already installed
+    local cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
+    if [ "$cluster_status" = "installed" ]; then
+        log [INFO] "Cluster is already installed, skipping storage operator configuration"
+        return 0
+    fi
     
     if [ "$VM_COUNT" -eq 1 ]; then
         log [INFO] "Enable LVM operator"
