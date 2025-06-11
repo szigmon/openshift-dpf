@@ -81,7 +81,7 @@ if [ "${VM_COUNT}" -lt 2 ]; then
   BFB_STORAGE_CLASS=${BFB_STORAGE_CLASS:-"nfs-client"}
 else
   ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"ocs-storagecluster-ceph-rbd"}
-  BFB_STORAGE_CLASS=${BFB_STORAGE_CLASS:-"ocs-storagecluster-cephfs"}
+  BFB_STORAGE_CLASS=${BFB_STORAGE_CLASS:-""}
 fi
 NUM_VFS=${NUM_VFS:-"46"}
 
