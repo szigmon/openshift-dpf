@@ -96,7 +96,7 @@ function apply_namespaces() {
 }
 
 function deploy_cert_manager() {
-    local cert_manager_file="$GENERATED_DIR/cert-manager-manifests.yaml"
+    local cert_manager_file="$GENERATED_DIR/openshift-cert-manager.yaml"
     if [ -f "$cert_manager_file" ]; then
         # Check if cert-manager is already installed
         if oc get deployment -n cert-manager cert-manager-operator &>/dev/null; then

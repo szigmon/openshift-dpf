@@ -74,7 +74,7 @@ function prepare_cluster_manifests() {
 
     # Always copy Cert-Manager manifest (required for DPF operator)
     log [INFO] "Copying Cert-Manager manifest (required for DPF operator)..."
-    cp "$MANIFESTS_DIR/cluster-installation/openshift-cert-manager.yaml" "$GENERATED_DIR/cert-manager-manifests.yaml"
+    cp "$MANIFESTS_DIR/cluster-installation/openshift-cert-manager.yaml" "$GENERATED_DIR/"
 
     generate_ovn_manifests
     enable_storage
@@ -134,7 +134,7 @@ prepare_dpf_manifests() {
 
     # Copy cert-manager manifest (required for DPF deployment)
     log "INFO" "Copying Cert-Manager manifest (required for DPF operator)..."
-    cp "$MANIFESTS_DIR/cluster-installation/openshift-cert-manager.yaml" "$GENERATED_DIR/cert-manager-manifests.yaml"
+    cp "$MANIFESTS_DIR/cluster-installation/openshift-cert-manager.yaml" "$GENERATED_DIR/"
 
     log "INFO" "DPF manifest preparation completed successfully"
 
