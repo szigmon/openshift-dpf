@@ -224,16 +224,8 @@ function enable_storage() {
     # Check if cluster is already installed
     local cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
     if [ "$cluster_status" = "installed" ]; then
-        log [INFO] "Cluster is already installed, checking if storage class exists..."
-        
-        # Check if storage class already exists
-        if oc get storageclass lvms-vg1 &>/dev/null || oc get storageclass ocs-storagecluster-cephfs &>/dev/null; then
-            log [INFO] "Storage class already exists, skipping storage operator configuration"
-            return 0
-        else
-            log [WARN] "Cluster is installed but no storage class found. Manual intervention may be required."
-            return 0
-        fi
+        log [INFO] "Cluster is already installed, skipping storage operator configuration"
+        return 0
     fi
     
     # Update cluster with storage operator
