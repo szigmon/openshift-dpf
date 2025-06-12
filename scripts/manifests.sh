@@ -187,13 +187,29 @@ function generate_ovn_manifests() {
     sed -i -E 's/:[[:space:]]+/: /g' "$GENERATED_DIR/temp/values.yaml"
 
     # Pull and template OVN chart
-    helm pull oci://ghcr.io/nvidia/ovn-kubernetes-chart \
+    log [INFO] "Pulling OVN chart version $DPF_VERSION..."
+    if ! helm pull oci://ghcr.io/nvidia/ovn-kubernetes-chart \
         --version "$DPF_VERSION" \
-        --untar -d "$GENERATED_DIR/temp"
-    helm template -n ovn-kubernetes ovn-kubernetes \
+        --untar -d "$GENERATED_DIR/temp"; then
+        log [ERROR] "Failed to pull OVN chart version $DPF_VERSION"
+        return 1
+    fi
+    
+    log [INFO] "Generating OVN manifests from helm template..."
+    if ! helm template -n ovn-kubernetes ovn-kubernetes \
         "$GENERATED_DIR/temp/ovn-kubernetes-chart" \
         -f "$GENERATED_DIR/temp/values.yaml" \
-        > "$GENERATED_DIR/ovn-manifests.yaml"
+        > "$GENERATED_DIR/ovn-manifests.yaml"; then
+        log [ERROR] "Failed to generate OVN manifests"
+        return 1
+    fi
+    
+    # Check if the file is not empty
+    if [ ! -s "$GENERATED_DIR/ovn-manifests.yaml" ]; then
+        log [ERROR] "Generated OVN manifest file is empty!"
+        return 1
+    fi
+    
     rm -rf "$GENERATED_DIR/temp"
 
     # Update paths in manifests
@@ -204,13 +220,6 @@ function generate_ovn_manifests() {
 
 function enable_storage() {
     log [INFO] "Enabling storage operator"
-    
-    # Check if cluster is already installed
-    local cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
-    if [ "$cluster_status" = "installed" ]; then
-        log [INFO] "Cluster is already installed, skipping storage operator configuration"
-        return 0
-    fi
     
     if [ "$VM_COUNT" -eq 1 ]; then
         log [INFO] "Enable LVM operator"
