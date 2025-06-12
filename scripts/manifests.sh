@@ -221,6 +221,22 @@ function generate_ovn_manifests() {
 function enable_storage() {
     log [INFO] "Enabling storage operator"
     
+    # Check if cluster is already installed
+    local cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
+    if [ "$cluster_status" = "installed" ]; then
+        log [INFO] "Cluster is already installed, checking if storage class exists..."
+        
+        # Check if storage class already exists
+        if oc get storageclass lvms-vg1 &>/dev/null || oc get storageclass ocs-storagecluster-cephfs &>/dev/null; then
+            log [INFO] "Storage class already exists, skipping storage operator configuration"
+            return 0
+        else
+            log [WARN] "Cluster is installed but no storage class found. Manual intervention may be required."
+            return 0
+        fi
+    fi
+    
+    # Update cluster with storage operator
     if [ "$VM_COUNT" -eq 1 ]; then
         log [INFO] "Enable LVM operator"
         aicli update cluster "$CLUSTER_NAME" -P olm_operators='[{"name": "lvm"}]'
