@@ -235,34 +235,23 @@ function apply_post_installation() {
         log [WARN] "DPF provisioning webhook service not ready after $max_attempts attempts, proceeding anyway..."
     fi
     
-    # Apply each YAML file in the generated post-installation directory, except dpuset.yaml
+    # Apply each YAML file in the generated post-installation directory
     for file in "${GENERATED_POST_INSTALL_DIR}"/*.yaml; do
         if [ -f "$file" ]; then
             local filename=$(basename "$file")
-            # Skip dpuset.yaml as it will be applied last
-            if [[ "${filename}" != "dpuset.yaml" ]]; then
-                # Special handling for SCC - must be applied to hosted cluster
-                if [[ "${filename}" == "dpu-services-scc.yaml" ]] && [[ "${DPF_CLUSTER_TYPE}" == "hypershift" ]] && [[ -f "${HOSTED_CLUSTER_NAME}.kubeconfig" ]]; then
-                    log [INFO] "Applying SCC to hosted cluster: ${filename}"
-                    local saved_kubeconfig="${KUBECONFIG}"
-                    export KUBECONFIG="${HOSTED_CLUSTER_NAME}.kubeconfig"
-                    apply_manifest "$file" "true"
-                    export KUBECONFIG="${saved_kubeconfig}"
-                else
-                    log [INFO] "Applying post-installation manifest: ${filename}"
-                    apply_manifest "$file" "true"
-                fi
+            # Special handling for SCC - must be applied to hosted cluster
+            if [[ "${filename}" == "dpu-services-scc.yaml" ]] && [[ "${DPF_CLUSTER_TYPE}" == "hypershift" ]] && [[ -f "${HOSTED_CLUSTER_NAME}.kubeconfig" ]]; then
+                log [INFO] "Applying SCC to hosted cluster: ${filename}"
+                local saved_kubeconfig="${KUBECONFIG}"
+                export KUBECONFIG="${HOSTED_CLUSTER_NAME}.kubeconfig"
+                apply_manifest "$file" "true"
+                export KUBECONFIG="${saved_kubeconfig}"
+            else
+                log [INFO] "Applying post-installation manifest: ${filename}"
+                apply_manifest "$file" "true"
             fi
         fi
     done
-    
-    # Apply dpuset.yaml last if it exists, with apply_always=true
-    if [ -f "${GENERATED_POST_INSTALL_DIR}/dpuset.yaml" ]; then
-        log [INFO] "Applying dpuset.yaml (last manifest)..."
-        apply_manifest "${GENERATED_POST_INSTALL_DIR}/dpuset.yaml" "true"
-    else
-        log [WARN] "dpuset.yaml not found in ${GENERATED_POST_INSTALL_DIR}"
-    fi
     
     log [INFO] "Post-installation manifest application completed successfully"
 }
@@ -272,7 +261,6 @@ function redeploy() {
     prepare_post_installation
 
     log [INFO] "Deleting existing manifests..."
-    oc delete -f "${GENERATED_POST_INSTALL_DIR}/dpuset.yaml" || true
     oc delete -f "${GENERATED_POST_INSTALL_DIR}/bfb.yaml" || true
 
     # wait till all dpu are removed
