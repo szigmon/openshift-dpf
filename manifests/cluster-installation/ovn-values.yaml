@@ -1,7 +1,22 @@
+nameOverride: ovn-kubernetes
+
+# Enable control plane for OVN
+controlPlaneManifests:
+  enabled: true
+
+# Enable node with DPU manifests
 nodeWithDPUManifests:
   enabled: true
   nodeMgmtPortNetdev: $DPU_P0_VF1
   dpuServiceAccountNamespace: dpf-operator-system
+
+# Enable common manifests
+commonManifests:
+  enabled: true
+
+# Enable regular node manifests for nodes without DPU
+nodeWithoutDPUManifests:
+  enabled: true
 
 global:
   imagePullSecretName: "dpf-pull-secret"
