@@ -80,28 +80,7 @@ prepare-dpf-manifests:
 	@$(MANIFESTS_SCRIPT) prepare-dpf-manifests
 
 upgrade-dpf:
-	@source scripts/env.sh && \
-	echo "🔄 DPF Operator Install (Fresh Installations Only)" && \
-	echo "========================================" && \
-	echo "Target Version: $$DPF_VERSION" && \
-	echo "Chart Source:   $$DPF_HELM_REPO_URL-$$DPF_VERSION.tgz" && \
-	echo "Install Location: dpf-operator-system namespace" && \
-	echo "" && \
-	echo "⚠️  Note: This target is for fresh helm installations only." && \
-	echo "   If you have existing static manifests, use: make prepare-dpf-manifests" && \
-	echo "" && \
-	read -p "❓ Do you want to proceed? (y/N): " confirm; \
-	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
-		echo ""; \
-		echo "🚀 Running prepare-dpf-manifests..."; \
-		echo ""; \
-		$(MAKE) prepare-dpf-manifests; \
-		echo ""; \
-		echo "✅ DPF operator installation completed!"; \
-		echo ""; \
-	else \
-		echo "❌ Cancelled by user"; \
-	fi
+	@scripts/dpf-upgrade.sh interactive
 
 deploy-dpf: prepare-dpf-manifests
 	@$(DPF_SCRIPT) apply-dpf
