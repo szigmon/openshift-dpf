@@ -9,13 +9,11 @@ DPF_SCRIPT := scripts/dpf.sh
 VM_SCRIPT := scripts/vm.sh
 UTILS_SCRIPT := scripts/utils.sh
 POST_INSTALL_SCRIPT := scripts/post-install.sh
-FLANNEL_CONFIG_SCRIPT := scripts/configure-flannel-nodes.sh
 
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
-        install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
-        redeploy-dpu configure-flannel-nodes
+        install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
 
@@ -33,12 +31,6 @@ check-cluster:
 
 create-cluster:
 	@$(CLUSTER_SCRIPT) check-create-cluster
-
-create-day2-cluster:
-	@$(CLUSTER_SCRIPT) create-day2-cluster
-
-get-day2-iso: create-day2-cluster
-	@$(CLUSTER_SCRIPT) get-day2-iso
 
 prepare-manifests:
 	@$(MANIFESTS_SCRIPT) prepare-manifests
@@ -80,28 +72,7 @@ prepare-dpf-manifests:
 	@$(MANIFESTS_SCRIPT) prepare-dpf-manifests
 
 upgrade-dpf:
-	@source scripts/env.sh && \
-	echo "🔄 DPF Operator Install (Fresh Installations Only)" && \
-	echo "========================================" && \
-	echo "Target Version: $$DPF_VERSION" && \
-	echo "Chart Source:   $$DPF_HELM_REPO_URL-$$DPF_VERSION.tgz" && \
-	echo "Install Location: dpf-operator-system namespace" && \
-	echo "" && \
-	echo "⚠️  Note: This target is for fresh helm installations only." && \
-	echo "   If you have existing static manifests, use: make prepare-dpf-manifests" && \
-	echo "" && \
-	read -p "❓ Do you want to proceed? (y/N): " confirm; \
-	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
-		echo ""; \
-		echo "🚀 Running prepare-dpf-manifests..."; \
-		echo ""; \
-		$(MAKE) prepare-dpf-manifests; \
-		echo ""; \
-		echo "✅ DPF operator installation completed!"; \
-		echo ""; \
-	else \
-		echo "❌ Cancelled by user"; \
-	fi
+	@scripts/dpf-upgrade.sh interactive
 
 deploy-dpf: prepare-dpf-manifests
 	@$(DPF_SCRIPT) apply-dpf
@@ -120,9 +91,6 @@ create-ignition-template:
 
 redeploy-dpu:
 	@$(POST_INSTALL_SCRIPT) redeploy
-
-configure-flannel-nodes:
-	@$(FLANNEL_CONFIG_SCRIPT)
 
 update-etc-hosts:
 	@scripts/update-etc-hosts.sh
@@ -176,12 +144,12 @@ help:
 	@echo "  upgrade-dpf       - Interactive DPF operator upgrade (user-friendly wrapper for prepare-dpf-manifests)"
 	@echo "  prepare-dpu-files - Prepare post-installation manifests with custom values"
 	@echo "  deploy-dpu-services - Deploy DPU services to the cluster"
-	@echo "  configure-flannel-nodes - Configure flannel podCIDR for worker nodes (run after adding workers)"
 	@echo ""
 	@echo "Hypershift Management:"
 	@echo "  install-hypershift - Install Hypershift binary and operator"
 	@echo "  create-hypershift-cluster - Create a new Hypershift hosted cluster"
 	@echo "  configure-hypershift-dpucluster - Configure DPF to use Hypershift hosted cluster"
+	@echo "  configure-kamaji-dpucluster - Configure DPF to use Kamaji hosted cluster"
 	@echo ""
 	@echo "Configuration options:"
 	@echo "Cluster Configuration:"
@@ -189,6 +157,7 @@ help:
 	@echo "  BASE_DOMAIN      - Set base DNS domain (default: $(BASE_DOMAIN))"
 	@echo "  OPENSHIFT_VERSION - Set OpenShift version (default: $(OPENSHIFT_VERSION))"
 	@echo "  KUBECONFIG       - Path to kubeconfig file (default: $(KUBECONFIG))"
+	@echo "  DPF_CLUSTER_TYPE - Cluster manager type (options: kamaji, hypershift; default: $(DPF_CLUSTER_TYPE))"
 	@echo ""
 	@echo "Feature Configuration:"
 	@echo "  DISABLE_NFD       - Skip NFD deployment (default: $(DISABLE_NFD))"
@@ -215,8 +184,8 @@ help:
 	@echo "  DISK_SIZE2       - Secondary disk size in GB (default: $(DISK_SIZE2))"
 	@echo ""
 	@echo "DPF Configuration:"
-	@echo "  DPF_VERSION      - DPF operator version (default: $(DPF_VERSION))"
-	@echo "  ETCD_STORAGE_CLASS - StorageClass for hosted cluster etcd (default: $(ETCD_STORAGE_CLASS))"
+	@echo "  KAMAJI_VIP       - VIP for Kamaji hosted cluster (default: $(KAMAJI_VIP))"
+	@echo "  ETCD_STORAGE_CLASS - StorageClass for Kamaji etcd (default: $(ETCD_STORAGE_CLASS))"
 	@echo "  BFB_STORAGE_CLASS - StorageClass for BFB PVC (default: $(BFB_STORAGE_CLASS))"
 	@echo ""
 	@echo "Post-installation Configuration:"
