@@ -39,6 +39,16 @@ ISO_PATH="${ISO_FOLDER}/${CLUSTER_NAME}.iso"
 # * and prints a success message upon completion.
 
 function create_vms() {
+    # First check if cluster is already installed
+    local cluster_status=""
+    if command -v aicli >/dev/null 2>&1 && aicli info cluster ${CLUSTER_NAME} >/dev/null 2>&1; then
+        cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
+        if [ "$cluster_status" = "installed" ]; then
+            log "Cluster ${CLUSTER_NAME} is already installed, skipping VM creation"
+            return 0
+        fi
+    fi
+    
     log "Creating VMs with prefix $VM_PREFIX..."
 
     if [ "$SKIP_BRIDGE_CONFIG" != "true" ]; then
