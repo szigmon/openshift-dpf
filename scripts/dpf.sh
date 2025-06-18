@@ -96,35 +96,38 @@ function apply_namespaces() {
 }
 
 function deploy_cert_manager() {
-    local cert_manager_file="$GENERATED_DIR/cert-manager-manifests.yaml"
+    local cert_manager_file="$GENERATED_DIR/openshift-cert-manager.yaml"
     if [ -f "$cert_manager_file" ]; then
         # Check if cert-manager is already installed
-        if oc get deployment -n cert-manager cert-manager-operator &>/dev/null; then
+        if oc get deployment -n cert-manager cert-manager &>/dev/null; then
             log [INFO] "Cert-manager already installed. Skipping deployment."
             return 0
         fi
         
         log [INFO] "Deploying cert-manager..."
         apply_manifest "$cert_manager_file"
-        wait_for_pods "cert-manager-operator" "app=webhook" "status.phase=Running" "1/1" 30 5
+        
+        # Wait for cert-manager namespace to be created by the operator
+        log [INFO] "Waiting for cert-manager namespace to be created..."
+        local retries=30
+        while [ $retries -gt 0 ]; do
+            if oc get namespace cert-manager &>/dev/null; then
+                log [INFO] "cert-manager namespace found"
+                break
+            fi
+            sleep 5
+            retries=$((retries-1))
+        done
+        
+        # Wait for webhook pod in cert-manager namespace
+        wait_for_pods "cert-manager" "app.kubernetes.io/component=webhook" "status.phase=Running" "1/1" 30 5
         log [INFO] "Waiting for cert-manager to stabilize..."
         sleep 5
     fi
 }
 
 function deploy_hosted_cluster() {
-    if [ "${DPF_CLUSTER_TYPE}" = "kamaji" ]; then
-        deploy_kamaji
-    else
-        deploy_hypershift
-    fi
-}
-
-function deploy_kamaji() {
-    log [INFO] "Deploying kamaji..."
-    apply_manifest "$GENERATED_DIR/kamaji-manifests.yaml"
-    log [INFO] "Waiting for etcd pods..."
-    wait_for_pods "dpf-operator-system" "application=kamaji-etcd" "status.phase=Running" "1/1" 60 10
+    deploy_hypershift
 }
 
 function deploy_hypershift() {
@@ -223,7 +226,6 @@ function apply_remaining() {
         if [[ ! "$file" =~ .*(-ns)\.yaml$ && \
               ! "$file" =~ .*(-crd)\.yaml$ && \
               "$file" != "$GENERATED_DIR/cert-manager-manifests.yaml" && \
-              "$file" != "$GENERATED_DIR/kamaji-manifests.yaml" && \
               "$file" != "$GENERATED_DIR/scc.yaml" ]]; then
             retry 5 30 apply_manifest "$file" true
             if [[ "$file" =~ .*operator.*\.yaml$ ]]; then
@@ -240,16 +242,46 @@ function apply_dpf() {
     log "INFO" "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
     
     get_kubeconfig
+    
     deploy_nfd
     
     apply_namespaces
     apply_crds
     deploy_cert_manager
+    
+    # Install/upgrade DPF Operator using helm (idempotent operation)
+    log "INFO" "Installing/upgrading DPF Operator to $DPF_VERSION..."
+    
+    # Authenticate helm with NGC registry using pull secret
+    if [ -f "$DPF_PULL_SECRET" ]; then
+        NGC_USERNAME=$(jq -r '.auths."nvcr.io".username' "$DPF_PULL_SECRET")
+        NGC_PASSWORD=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET")
+        log "INFO" "Authenticating helm with NGC registry..."
+        helm registry login nvcr.io --username "$NGC_USERNAME" --password "$NGC_PASSWORD" >/dev/null 2>&1 || true
+    fi
+    
+    # Construct the full chart URL with version
+    CHART_URL="${DPF_HELM_REPO_URL}-${DPF_VERSION}.tgz"
+    
+    # Install without --wait for immediate feedback
+    if helm upgrade --install dpf-operator \
+        "${CHART_URL}" \
+        --namespace dpf-operator-system \
+        --create-namespace \
+        --values "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"; then
+        
+        log "INFO" "Helm release 'dpf-operator' deployed successfully"
+        log "INFO" "DPF Operator deployment initiated. Use 'oc get pods -n dpf-operator-system' to monitor progress."
+    else
+        log "ERROR" "Helm deployment failed"
+        return 1
+    fi
+    
     apply_remaining
     apply_scc
     deploy_hosted_cluster
 
-    wait_for_pods "dpf-operator-system" "dpu.nvidia.com/component=dpf-provisioning-controller-manager" "status.phase=Running" "1/1" 30 5
+    wait_for_pods "dpf-operator-system" "dpu.nvidia.com/component=dpf-operator-controller-manager" "status.phase=Running" "1/1" 30 5
 
     log [INFO] "DPF deployment complete"
 }

@@ -231,6 +231,40 @@ function retry() {
 }
 
 # -----------------------------------------------------------------------------
+# Template processing functions
+# -----------------------------------------------------------------------------
+function process_template() {
+    local template_file=$1
+    local output_file=$2
+    shift 2
+    
+    log "INFO" "Processing template: $(basename "$template_file")"
+    
+    # Validate input file exists
+    if [ ! -f "$template_file" ]; then
+        log "ERROR" "Template file not found: $template_file"
+        return 1
+    fi
+    
+    # Copy template to output
+    cp "$template_file" "$output_file" || {
+        log "ERROR" "Failed to copy $template_file to $output_file"
+        return 1
+    }
+    
+    # Apply each substitution
+    while [ $# -gt 0 ]; do
+        local placeholder=$1
+        local value=$2
+        sed -i "s|${placeholder}|${value}|g" "$output_file"
+        log "DEBUG" "Replaced ${placeholder} with ${value} in $(basename "$output_file")"
+        shift 2
+    done
+    
+    log "INFO" "Template processed successfully: $(basename "$output_file")"
+}
+
+# -----------------------------------------------------------------------------
 # Cleanup functions
 # -----------------------------------------------------------------------------
 function clean_resources() {
