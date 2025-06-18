@@ -7,6 +7,7 @@ set -e
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/tools.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
 
 HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
 
@@ -38,11 +39,15 @@ function prepare_manifests() {
 
 
 function prepare_nfs() {
-     if [[ "${VM_COUNT}" = "1" ]]; then
-        log "INFO" "Copying NFS manifest: nfs-sno.yaml (VM count is 1)"
+    # Deploy NFS for clusters that need ReadWriteMany storage but lack OCS/ODF
+    # This includes single-node clusters and small clusters without OCS storage classes
+    if [[ "${VM_COUNT}" -lt 3 ]] || [[ "${BFB_STORAGE_CLASS}" == "nfs-client" ]]; then
+        log "INFO" "Copying NFS manifest: nfs-sno.yaml (VM_COUNT=${VM_COUNT}, need RWX storage)"
         sed -e "s|<STORAGECLASS_NAME>|${ETCD_STORAGE_CLASS}|g" \
             -e "s|<NFS_SERVER_NODE_IP>|${HOST_CLUSTER_API}|g" \
         "${MANIFESTS_DIR}/nfs/nfs-sno.yaml" > "${GENERATED_DIR}/nfs-sno.yaml"
+    else
+        log "INFO" "Skipping NFS deployment (VM_COUNT=${VM_COUNT}, using OCS storage)"
     fi
 }
 
@@ -58,22 +63,31 @@ function prepare_cluster_manifests() {
 
     # Configure cluster components
     log [INFO] "Configuring cluster installation..."
-    aicli update installconfig "$CLUSTER_NAME" -P network_type=NVIDIA-OVN
-
-    # Generate Cert-Manager manifests if enabled
-    if [ "$ENABLE_CERT_MANAGER" = "true" ]; then
-        log [INFO] "Generating Cert-Manager manifests..."
-        cp "$MANIFESTS_DIR/cluster-installation/openshift-cert-manager.yaml" "$GENERATED_DIR/"
+    
+    # Check if cluster is already installed
+    local cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
+    if [ "$cluster_status" = "installed" ]; then
+        log [INFO] "Cluster is already installed, skipping configuration updates"
     else
-        log [INFO] "Skipping Cert-Manager manifests (ENABLE_CERT_MANAGER=false)"
+        aicli update installconfig "$CLUSTER_NAME" -P network_type=NVIDIA-OVN
     fi
+
+    # Always copy Cert-Manager manifest (required for DPF operator)
+    log [INFO] "Copying Cert-Manager manifest (required for DPF operator)..."
+    cp "$MANIFESTS_DIR/cluster-installation/openshift-cert-manager.yaml" "$GENERATED_DIR/"
 
     generate_ovn_manifests
     enable_storage
     
     # Install manifests to cluster
-    log [INFO] "Installing manifests to cluster via AICLI..."
-    aicli create manifests --dir "$GENERATED_DIR" "$CLUSTER_NAME"
+    # Check if cluster is already installed
+    local cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
+    if [ "$cluster_status" = "installed" ]; then
+        log [INFO] "Cluster is already installed, skipping manifest installation"
+    else
+        log [INFO] "Installing manifests to cluster via AICLI..."
+        aicli create manifests --dir "$GENERATED_DIR" "$CLUSTER_NAME"
+    fi
 
     log [INFO] "Cluster manifests preparation complete."
 }
@@ -92,14 +106,6 @@ prepare_dpf_manifests() {
     if [ -z "$GENERATED_DIR" ]; then
       echo "Error: GENERATED_DIR must be set"
       exit 1
-    fi
-
-    # Check cluster type specific requirements
-    if [ "$DPF_CLUSTER_TYPE" = "kamaji" ]; then
-      if [ -z "$KAMAJI_VIP" ]; then
-        echo "Error: KAMAJI_VIP must be set when using Kamaji cluster type"
-        exit 1
-      fi
     fi
 
     # Validate required variables
@@ -121,20 +127,25 @@ prepare_dpf_manifests() {
 
     # Copy and process manifests
     log "INFO" "Processing manifests from ${MANIFESTS_DIR} to ${GENERATED_DIR}"
-
-    # Process each manifest file
-        # Copy all manifests except NFD
+    
+    # Copy all manifests except NFD
     find "$MANIFESTS_DIR/dpf-installation" -maxdepth 1 -type f -name "*.yaml" \
         | xargs -I {} cp {} "$GENERATED_DIR/"
 
-    helm template -n dpf-operator-system dpf-operator oci://ghcr.io/nvidia/dpf-operator \
-    --version v25.1.1 -f "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"  > "${GENERATED_DIR}/00-dpf-operator-manifests.yaml"
+    # Copy cert-manager manifest (required for DPF deployment)
+    log "INFO" "Copying Cert-Manager manifest (required for DPF operator)..."
+    cp "$MANIFESTS_DIR/cluster-installation/openshift-cert-manager.yaml" "$GENERATED_DIR/"
+
     log "INFO" "DPF manifest preparation completed successfully"
 
-
     # Update manifests with configuration
-    sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
-
+    # For single-node clusters (VM_COUNT < 2), we use direct NFS PV binding, so remove storageClassName
+    if [ "${VM_COUNT}" -lt 2 ]; then
+        grep -v 'storageClassName: ""' "$GENERATED_DIR/bfb-pvc.yaml" > "$GENERATED_DIR/bfb-pvc.yaml.tmp"
+        mv "$GENERATED_DIR/bfb-pvc.yaml.tmp" "$GENERATED_DIR/bfb-pvc.yaml"
+    else
+        sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
+    fi
 
     # Update static DPU cluster template
     sed -i "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
@@ -149,6 +160,13 @@ prepare_dpf_manifests() {
     sed -i "s|PULL_SECRET_BASE64|$PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
 
     prepare_nfs
+    
+    # Process dpfoperatorconfig.yaml - replace cluster-specific values
+    process_template \
+        "$MANIFESTS_DIR/dpf-installation/dpfoperatorconfig.yaml" \
+        "$GENERATED_DIR/dpfoperatorconfig.yaml" \
+        "<CLUSTER_NAME>" "$CLUSTER_NAME" \
+        "<BASE_DOMAIN>" "$BASE_DOMAIN"
 }
 
 function generate_ovn_manifests() {
@@ -169,13 +187,29 @@ function generate_ovn_manifests() {
     sed -i -E 's/:[[:space:]]+/: /g' "$GENERATED_DIR/temp/values.yaml"
 
     # Pull and template OVN chart
-    helm pull oci://ghcr.io/nvidia/ovn-kubernetes-chart \
-        --version "$HELM_CHART_VERSION" \
-        --untar -d "$GENERATED_DIR/temp"
-    helm template -n ovn-kubernetes ovn-kubernetes \
+    log [INFO] "Pulling OVN chart version $DPF_VERSION..."
+    if ! helm pull oci://ghcr.io/nvidia/ovn-kubernetes-chart \
+        --version "$DPF_VERSION" \
+        --untar -d "$GENERATED_DIR/temp"; then
+        log [ERROR] "Failed to pull OVN chart version $DPF_VERSION"
+        return 1
+    fi
+    
+    log [INFO] "Generating OVN manifests from helm template..."
+    if ! helm template -n ovn-kubernetes ovn-kubernetes \
         "$GENERATED_DIR/temp/ovn-kubernetes-chart" \
         -f "$GENERATED_DIR/temp/values.yaml" \
-        > "$GENERATED_DIR/ovn-manifests.yaml"
+        > "$GENERATED_DIR/ovn-manifests.yaml"; then
+        log [ERROR] "Failed to generate OVN manifests"
+        return 1
+    fi
+    
+    # Check if the file is not empty
+    if [ ! -s "$GENERATED_DIR/ovn-manifests.yaml" ]; then
+        log [ERROR] "Generated OVN manifest file is empty!"
+        return 1
+    fi
+    
     rm -rf "$GENERATED_DIR/temp"
 
     # Update paths in manifests
@@ -187,6 +221,14 @@ function generate_ovn_manifests() {
 function enable_storage() {
     log [INFO] "Enabling storage operator"
     
+    # Check if cluster is already installed
+    local cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
+    if [ "$cluster_status" = "installed" ]; then
+        log [INFO] "Cluster is already installed, skipping storage operator configuration"
+        return 0
+    fi
+    
+    # Update cluster with storage operator
     if [ "$VM_COUNT" -eq 1 ]; then
         log [INFO] "Enable LVM operator"
         aicli update cluster "$CLUSTER_NAME" -P olm_operators='[{"name": "lvm"}]'
