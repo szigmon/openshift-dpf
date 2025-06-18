@@ -9,11 +9,13 @@ DPF_SCRIPT := scripts/dpf.sh
 VM_SCRIPT := scripts/vm.sh
 UTILS_SCRIPT := scripts/utils.sh
 POST_INSTALL_SCRIPT := scripts/post-install.sh
+FLANNEL_CONFIG_SCRIPT := scripts/configure-flannel-nodes.sh
 
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
-        install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso
+        install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
+        redeploy-dpu configure-flannel-nodes
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
 
@@ -119,6 +121,9 @@ create-ignition-template:
 redeploy-dpu:
 	@$(POST_INSTALL_SCRIPT) redeploy
 
+configure-flannel-nodes:
+	@$(FLANNEL_CONFIG_SCRIPT)
+
 update-etc-hosts:
 	@scripts/update-etc-hosts.sh
 
@@ -171,6 +176,7 @@ help:
 	@echo "  upgrade-dpf       - Interactive DPF operator upgrade (user-friendly wrapper for prepare-dpf-manifests)"
 	@echo "  prepare-dpu-files - Prepare post-installation manifests with custom values"
 	@echo "  deploy-dpu-services - Deploy DPU services to the cluster"
+	@echo "  configure-flannel-nodes - Configure flannel podCIDR for worker nodes (run after adding workers)"
 	@echo ""
 	@echo "Hypershift Management:"
 	@echo "  install-hypershift - Install Hypershift binary and operator"

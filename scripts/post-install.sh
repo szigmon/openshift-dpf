@@ -275,7 +275,7 @@ function redeploy() {
 # If script is executed directly (not sourced), run the appropriate function
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     if [ $# -lt 1 ]; then
-        log [ERROR] "Usage: $0 <prepare|apply>"
+        log [ERROR] "Usage: $0 <prepare|apply|redeploy>"
         exit 1
     fi
     
