@@ -17,8 +17,3 @@ spec:
       resources:
         memory: 6Gi
         nvidia.com/bf_sf: 3
-  resourceRequirements:
-    cpu: 6
-    memory: 6Gi
-    storage: 1Gi
-    vfCount: 3
