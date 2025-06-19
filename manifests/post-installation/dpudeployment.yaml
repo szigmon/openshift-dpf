@@ -16,9 +16,9 @@ spec:
     flannel:
       serviceTemplate: flannel
       serviceConfiguration: flannel
-    doca-hbn:
-      serviceTemplate: doca-hbn
-      serviceConfiguration: doca-hbn
+    hbn:
+      serviceTemplate: hbn
+      serviceConfiguration: hbn
     ovn-dpu:
       serviceTemplate: ovn-dpu
       serviceConfiguration: ovn-dpu
@@ -29,29 +29,25 @@ spec:
       serviceTemplate: doca-blueman-service
       serviceConfiguration: doca-blueman-service
   serviceChains:
-    upgradePolicy: {}
     switches:
-    - ports:
-      - serviceInterface:
-          matchLabels:
-            uplink: p0
-      - serviceInterface:
-          matchLabels:
-            svc.dpu.nvidia.com/service: doca-hbn
-            svc.dpu.nvidia.com/interface: p0_sf
-    - ports:
-      - serviceInterface:
-          matchLabels:
-            uplink: p1
-      - serviceInterface:
-          matchLabels:
-            svc.dpu.nvidia.com/service: doca-hbn
-            svc.dpu.nvidia.com/interface: p1_sf
-    - ports:
-      - serviceInterface:
-          matchLabels:
-            svc.dpu.nvidia.com/service: doca-hbn
-            svc.dpu.nvidia.com/interface: app_sf
-      - serviceInterface:
-          matchLabels:
-            port: ovn
+      - ports:
+        - serviceInterface:
+            matchLabels:
+              uplink: p0
+        - service:
+            name: hbn
+            interface: p0_if
+      - ports:
+        - serviceInterface:
+            matchLabels:
+              uplink: p1
+        - service:
+            name: hbn
+            interface: p1_if
+      - ports:
+        - serviceInterface:
+            matchLabels:
+              port: ovn
+        - service:
+            name: hbn
+            interface: pf2dpu2_if

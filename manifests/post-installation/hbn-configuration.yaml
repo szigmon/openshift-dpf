@@ -1,10 +1,10 @@
 apiVersion: svc.dpu.nvidia.com/v1alpha1
 kind: DPUServiceConfiguration
 metadata:
-  name: doca-hbn
+  name: hbn
   namespace: dpf-operator-system
 spec:
-  deploymentServiceName: "doca-hbn"
+  deploymentServiceName: "hbn"
   serviceConfiguration:
     serviceDaemonSet:
       annotations:
