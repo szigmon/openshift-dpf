@@ -7,6 +7,7 @@ set -e
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
 
 
 
@@ -40,13 +41,9 @@ ISO_PATH="${ISO_FOLDER}/${CLUSTER_NAME}.iso"
 
 function create_vms() {
     # First check if cluster is already installed
-    local cluster_status=""
-    if command -v aicli >/dev/null 2>&1 && aicli info cluster ${CLUSTER_NAME} >/dev/null 2>&1; then
-        cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
-        if [ "$cluster_status" = "installed" ]; then
-            log "Cluster ${CLUSTER_NAME} is already installed, skipping VM creation"
-            return 0
-        fi
+    if check_cluster_installed; then
+        log "INFO" "Skipping VM creation as cluster is already installed"
+        return 0
     fi
     
     log "Creating VMs with prefix $VM_PREFIX..."

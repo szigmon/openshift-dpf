@@ -268,14 +268,17 @@ function get_iso() {
 
     # Check if this is for day1 (master nodes) and cluster is already installed
     if [ "${cluster_type}" = "day1" ] && [ "${action}" = "download" ]; then
-        local cluster_status=""
-        if aicli info cluster ${cluster_name} >/dev/null 2>&1; then
-            cluster_status=$(aicli info cluster "$cluster_name" -f status -v 2>/dev/null || echo "unknown")
-            if [ "$cluster_status" = "installed" ]; then
-                log "INFO" "Cluster ${cluster_name} is already installed, skipping ISO download"
-                return 0
-            fi
+        # Temporarily use the provided cluster name for the check
+        local saved_cluster_name="${CLUSTER_NAME}"
+        CLUSTER_NAME="${cluster_name}"
+        
+        if check_cluster_installed; then
+            log "INFO" "Skipping ISO download as cluster is already installed"
+            CLUSTER_NAME="${saved_cluster_name}"
+            return 0
         fi
+        
+        CLUSTER_NAME="${saved_cluster_name}"
     fi
 
     [ "${cluster_type}" = "day2" ] && cluster_name="${cluster_name}-day2"

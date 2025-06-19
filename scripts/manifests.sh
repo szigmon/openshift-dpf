@@ -65,9 +65,8 @@ function prepare_cluster_manifests() {
     log [INFO] "Configuring cluster installation..."
     
     # Check if cluster is already installed
-    local cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
-    if [ "$cluster_status" = "installed" ]; then
-        log [INFO] "Cluster is already installed, skipping configuration updates"
+    if check_cluster_installed; then
+        log [INFO] "Skipping configuration updates as cluster is already installed"
     else
         aicli update installconfig "$CLUSTER_NAME" -P network_type=NVIDIA-OVN
     fi
@@ -81,9 +80,8 @@ function prepare_cluster_manifests() {
     
     # Install manifests to cluster
     # Check if cluster is already installed
-    local cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
-    if [ "$cluster_status" = "installed" ]; then
-        log [INFO] "Cluster is already installed, skipping manifest installation"
+    if check_cluster_installed; then
+        log [INFO] "Skipping manifest installation as cluster is already installed"
     else
         log [INFO] "Installing manifests to cluster via AICLI..."
         aicli create manifests --dir "$GENERATED_DIR" "$CLUSTER_NAME"
@@ -222,9 +220,8 @@ function enable_storage() {
     log [INFO] "Enabling storage operator"
     
     # Check if cluster is already installed
-    local cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
-    if [ "$cluster_status" = "installed" ]; then
-        log [INFO] "Cluster is already installed, skipping storage operator configuration"
+    if check_cluster_installed; then
+        log [INFO] "Skipping storage operator configuration as cluster is already installed"
         return 0
     fi
     
