@@ -94,8 +94,8 @@ spec:
                             remote-as: external
   interfaces:
     - name: p0_if
-      network: app-hbn-ovn
+      network: mybrhbn
     - name: p1_if
-      network: app-hbn-ovn
+      network: mybrhbn
     - name: pf2dpu2_if
-      network: app-hbn-ovn
+      network: mybrhbn
