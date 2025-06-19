@@ -16,7 +16,7 @@ spec:
       values:
         image:
           repository: quay.io/itsoiref/hbn
-          tag: 24-fix
+          tag: 25.4-doca-3.0-fix-more-output
         resources:
           memory: 6Gi
           nvidia.com/bf_sf: 3

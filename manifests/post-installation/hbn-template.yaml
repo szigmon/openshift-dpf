@@ -24,4 +24,4 @@ spec:
     source:
       repoURL: https://helm.ngc.nvidia.com/nvidia/doca
       chart: doca-hbn
-      version: "1.0.1"
+      version: "1.0.2"
