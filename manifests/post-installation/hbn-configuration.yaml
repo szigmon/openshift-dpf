@@ -6,12 +6,13 @@ metadata:
 spec:
   deploymentServiceName: "doca-hbn"
   serviceConfiguration:
-    annotations:
-      k8s.v1.cni.cncf.io/networks: |-
-        [
-        {"name": "iprequest", "interface": "ip_lo", "cni-args": {"poolNames": ["loopback"], "poolType": "cidrpool"}},
-        {"name": "iprequest", "interface": "ip_pf2dpu2", "cni-args": {"poolNames": ["pool1"], "poolType": "cidrpool", "allocateDefaultGateway": true}}
-        ]
+    serviceDaemonSet:
+      annotations:
+        k8s.v1.cni.cncf.io/networks: |-
+          [
+          {"name": "iprequest", "interface": "ip_lo", "cni-args": {"poolNames": ["loopback"], "poolType": "cidrpool"}},
+          {"name": "iprequest", "interface": "ip_pf2dpu2", "cni-args": {"poolNames": ["pool1"], "poolType": "cidrpool", "allocateDefaultGateway": true}}
+          ]
     helmChart:
       values:
         image:
@@ -91,3 +92,10 @@ spec:
                         peer-group:
                           {{ config.bgp_peer_group }}:
                             remote-as: external
+  interfaces:
+    - name: p0_if
+      network: app-hbn-ovn
+    - name: p1_if
+      network: app-hbn-ovn
+    - name: pf2dpu2_if
+      network: app-hbn-ovn
