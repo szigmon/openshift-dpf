@@ -12,6 +12,8 @@ spec:
         podNetwork: 10.128.0.0/16/24
         serviceNetwork: 172.30.0.0/16
         mtu: 1400
+        cniBinDir: /var/lib/cni/bin/
+        cniConfDir: /run/multus/cni/net.d
         dpuManifests:
           kubernetesSecretName: "ovn-dpu"
           vtepCIDR: "HBN_OVN_NETWORK"
@@ -20,5 +22,3 @@ spec:
           ipamPoolType: "cidrpool"
           ipamVTEPIPIndex: 0
           ipamPFIPIndex: 1
-          cniBinDir: /var/lib/cni/bin/
-          cniConfDir: /run/multus/cni/net.d
