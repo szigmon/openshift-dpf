@@ -15,26 +15,22 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 function configure_flannel_podcidr() {
     log [INFO] "Configuring Flannel podCIDR for cluster nodes..."
     
-    # Get kubeconfig for hosted cluster if using Hypershift
-    if [[ "${DPF_CLUSTER_TYPE}" == "hypershift" ]]; then
-        if [[ -f "${HOSTED_CLUSTER_NAME}.kubeconfig" ]]; then
-            local saved_kubeconfig="${KUBECONFIG}"
-            export KUBECONFIG="${HOSTED_CLUSTER_NAME}.kubeconfig"
-            log [INFO] "Using hosted cluster kubeconfig: ${KUBECONFIG}"
-        else
-            log [ERROR] "Hosted cluster kubeconfig not found: ${HOSTED_CLUSTER_NAME}.kubeconfig"
-            log [ERROR] "Please ensure the hosted cluster is created and kubeconfig is available"
-            exit 1
-        fi
+    # Get kubeconfig for hosted cluster
+    if [[ -f "${HOSTED_CLUSTER_NAME}.kubeconfig" ]]; then
+        local saved_kubeconfig="${KUBECONFIG}"
+        export KUBECONFIG="${HOSTED_CLUSTER_NAME}.kubeconfig"
+        log [INFO] "Using hosted cluster kubeconfig: ${KUBECONFIG}"
+    else
+        log [ERROR] "Hosted cluster kubeconfig not found: ${HOSTED_CLUSTER_NAME}.kubeconfig"
+        log [ERROR] "Please ensure the hosted cluster is created and kubeconfig is available"
+        exit 1
     fi
     
     # Get all nodes
     local nodes=$(oc get nodes -o jsonpath='{.items[*].metadata.name}' 2>/dev/null)
     if [ -z "$nodes" ]; then
         log [ERROR] "No nodes found in the cluster"
-        if [[ "${DPF_CLUSTER_TYPE}" == "hypershift" ]]; then
-            export KUBECONFIG="${saved_kubeconfig}"
-        fi
+        export KUBECONFIG="${saved_kubeconfig}"
         exit 1
     fi
     
@@ -65,9 +61,7 @@ function configure_flannel_podcidr() {
     # If no nodes need configuration, we're done
     if [ ${#nodes_needing_config[@]} -eq 0 ]; then
         log [INFO] "All nodes already have podCIDR configured"
-        if [[ "${DPF_CLUSTER_TYPE}" == "hypershift" ]]; then
-            export KUBECONFIG="${saved_kubeconfig}"
-        fi
+        export KUBECONFIG="${saved_kubeconfig}"
         return 0
     fi
     
@@ -79,9 +73,7 @@ function configure_flannel_podcidr() {
             next_subnet=$((next_subnet + 1))
             if [ $next_subnet -gt 254 ]; then
                 log [ERROR] "Exhausted available subnets in 10.244.0.0/16"
-                if [[ "${DPF_CLUSTER_TYPE}" == "hypershift" ]]; then
-                    export KUBECONFIG="${saved_kubeconfig}"
-                fi
+                export KUBECONFIG="${saved_kubeconfig}"
                 exit 1
             fi
         done
@@ -101,9 +93,7 @@ function configure_flannel_podcidr() {
     done
     
     # Restore original kubeconfig if using Hypershift
-    if [[ "${DPF_CLUSTER_TYPE}" == "hypershift" ]]; then
-        export KUBECONFIG="${saved_kubeconfig}"
-    fi
+    export KUBECONFIG="${saved_kubeconfig}"
     
     log [INFO] "Flannel podCIDR configuration completed"
     log [INFO] "Configured ${#nodes_needing_config[@]} new node(s)"

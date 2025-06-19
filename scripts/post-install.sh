@@ -240,7 +240,7 @@ function apply_post_installation() {
         if [ -f "$file" ]; then
             local filename=$(basename "$file")
             # Special handling for SCC - must be applied to hosted cluster
-            if [[ "${filename}" == "dpu-services-scc.yaml" ]] && [[ "${DPF_CLUSTER_TYPE}" == "hypershift" ]] && [[ -f "${HOSTED_CLUSTER_NAME}.kubeconfig" ]]; then
+            if [[ "${filename}" == "dpu-services-scc.yaml" ]] && [[ -f "${HOSTED_CLUSTER_NAME}.kubeconfig" ]]; then
                 log [INFO] "Applying SCC to hosted cluster: ${filename}"
                 local saved_kubeconfig="${KUBECONFIG}"
                 export KUBECONFIG="${HOSTED_CLUSTER_NAME}.kubeconfig"
