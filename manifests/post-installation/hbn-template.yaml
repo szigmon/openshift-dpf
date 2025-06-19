@@ -5,23 +5,20 @@ metadata:
   namespace: dpf-operator-system
 spec:
   deploymentServiceName: "hbn"
-  interfaceTemplates:
-    - name: p0-sf
-      labels:
-        svc.dpu.nvidia.com/interface: "p0_sf"
-    - name: p1-sf
-      labels:
-        svc.dpu.nvidia.com/interface: "p1_sf"
-    - name: app-sf
-      labels:
-        svc.dpu.nvidia.com/interface: "app_sf"
+  helmChart:
+    source:
+      repoURL: https://helm.ngc.nvidia.com/nvidia/doca
+      version: "1.0.2"
+      chart: doca-hbn
+    values:
+      image:
+        repository: quay.io/itsoiref/hbn
+        tag: 25.4-doca-3.0
+      resources:
+        memory: 6Gi
+        nvidia.com/bf_sf: 3
   resourceRequirements:
     cpu: 6
     memory: 6Gi
     storage: 1Gi
     vfCount: 3
-  helmChart:
-    source:
-      repoURL: https://helm.ngc.nvidia.com/nvidia/doca
-      chart: doca-hbn
-      version: "1.0.2"
