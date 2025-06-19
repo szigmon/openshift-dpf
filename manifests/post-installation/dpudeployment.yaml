@@ -19,9 +19,9 @@ spec:
     hbn:
       serviceTemplate: hbn
       serviceConfiguration: hbn
-    ovn-dpu:
-      serviceTemplate: ovn-dpu
-      serviceConfiguration: ovn-dpu
+    ovn:
+      serviceTemplate: ovn
+      serviceConfiguration: ovn
     doca-telemetry-service:
       serviceTemplate: doca-telemetry-service
       serviceConfiguration: doca-telemetry-service
