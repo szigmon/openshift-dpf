@@ -116,7 +116,7 @@ function update_hbn_ovn_manifests() {
             "${GENERATED_POST_INSTALL_DIR}/ovn-configuration.yaml" \
             "HBN_OVN_NETWORK" "${HBN_OVN_NETWORK}" \
             "HOST_CLUSTER_API" "${HOST_CLUSTER_API}" \
-            "HOST_CIDR" "${DPU_HOST_CIDR}"
+            "DPU_HOST_CIDR" "${DPU_HOST_CIDR}"
     fi
     
     log [INFO] "HBN OVN manifests updated successfully"

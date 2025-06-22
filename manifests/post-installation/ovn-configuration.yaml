@@ -15,7 +15,7 @@ spec:
         dpuManifests:
           kubernetesSecretName: "ovn-dpu"
           vtepCIDR: "HBN_OVN_NETWORK"
-          hostCIDR: "HOST_CIDR"
+          hostCIDR: "DPU_HOST_CIDR"
           ipamPool: "pool1"
           ipamPoolType: "cidrpool"
           ipamVTEPIPIndex: 0
