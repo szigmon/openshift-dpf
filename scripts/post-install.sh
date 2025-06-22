@@ -86,8 +86,11 @@ function update_bfb_manifest() {
 function update_hbn_ovn_manifests() {
     log [INFO] "Updating HBN OVN manifests..."
     
-    machineCidr=$(oc get configmap cluster-config-v1 -n kube-system -o jsonpath='{.data.install-config}' | \
-    grep -A2 "machineNetwork:" | grep "cidr:" | awk '{print $3}')
+    # DPU_HOST_CIDR must be set by user
+    if [ -z "${DPU_HOST_CIDR}" ]; then
+        log [ERROR] "DPU_HOST_CIDR environment variable is not set. Please set it to the DPU nodes subnet (e.g., 10.6.135.0/24)"
+        return 1
+    fi
     # Update hbn-ovn-ipam.yaml
     update_file_multi_replace \
         "${POST_INSTALL_DIR}/hbn-ovn-ipam.yaml" \
@@ -113,7 +116,7 @@ function update_hbn_ovn_manifests() {
             "${GENERATED_POST_INSTALL_DIR}/ovn-configuration.yaml" \
             "HBN_OVN_NETWORK" "${HBN_OVN_NETWORK}" \
             "HOST_CLUSTER_API" "${HOST_CLUSTER_API}" \
-            "HOST_CIDR" "${machineCidr}"
+            "HOST_CIDR" "${DPU_HOST_CIDR}"
     fi
     
     log [INFO] "HBN OVN manifests updated successfully"

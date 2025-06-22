@@ -8,6 +8,7 @@ controlPlaneManifests:
 nodeWithDPUManifests:
   enabled: true
   nodeMgmtPortNetdev: $DPU_P0_VF1
+  dpuServiceAccountNamespace: dpf-operator-system
 
 # Enable common manifests
 commonManifests:
