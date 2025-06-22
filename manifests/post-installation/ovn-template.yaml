@@ -15,11 +15,5 @@ spec:
         enabled: true
       dpuManifests:
         enabled: true
-        cniBinDir: /var/lib/cni/bin/
-        cniConfDir: /run/multus/cni/net.d
-      nodeWithDPUManifests:
-        enabled: true
-        dpuServiceAccountName: ovn-dpu
-        dpuServiceAccountNamespace: dpf-operator-system
       leaseNamespace: "ovn-kubernetes"
       gatewayOpts: "--gateway-interface=br-ovn --gateway-uplink-port=puplinkbrovn"
