@@ -20,10 +20,10 @@ spec:
             - hostnamePattern: "*"
               values:
                 bgp_peer_group: hbn
-            - hostnamePattern: "nvd-srv-24*"
+            - hostnamePattern: "srv24-*"
               values:
                 bgp_autonomous_system: 65101
-            - hostnamePattern: "nvd-srv-25*"
+            - hostnamePattern: "srv25-*"
               values:
                 bgp_autonomous_system: 65201
           startupYAMLJ2: |
