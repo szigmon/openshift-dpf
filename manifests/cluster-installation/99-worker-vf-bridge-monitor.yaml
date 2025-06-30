@@ -1,0 +1,37 @@
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: worker
+  name: 99-worker-vf-bridge-monitor
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    storage:
+      files:
+        - contents:
+            source: data:text/plain;charset=utf-8;base64,IyEvYmluL2Jhc2gKCkJSSURHRV9ERVY9ImJyLWRwdSIKIyBSZWdleCBwYXR0ZXJuIHRvIG1hdGNoIG5ldHdvcmsgaW50ZXJmYWNlIG5hbWVzIGVuZGluZyB3aXRoICIwdjAiCiMgRXhhbXBsZTogZW5zN2YwdjAsIGV0aDB2MCwgZXRjLgpWRl9OQU1FX1BBVFRFUk49IjB2MCQiCkNIRUNLX0lOVEVSVkFMX1NFQz01CgojIEZ1bmN0aW9uIHRvIGxvZyBtZXNzYWdlcyB0byBqb3VybmFsZApsb2coKSB7CiAgICBlY2hvICIkKGRhdGUgKyclWS0lbS0lZCAlSDolTTolUycpIC0gJDEiIHwgc3lzdGVtZC1jYXQgLXQgdmYtYnJpZGdlLW1vbml0b3IKfQoKbG9nICJTdGFydGluZyBWRiBicmlkZ2UgbW9uaXRvcmluZyBzZXJ2aWNlIGZvciBWRnMgbWF0Y2hpbmcgcGF0dGVybiAnJFZGX05BTUVfUEFUVEVSTicuIgoKd2hpbGUgdHJ1ZTsgZG8KICAgIGxvZyAiRGlzY292ZXJpbmcgVkZzIG1hdGNoaW5nICckVkZfTkFNRV9QQVRURVJOJy4uLiIKCiAgICAjIERpc2NvdmVyIFZGczoKICAgICMgLSBgaXAgLW8gbGluayBzaG93YDogTGlzdHMgYWxsIG5ldHdvcmsgZGV2aWNlcyBpbiBhIHBhcnNlYWJsZSBmb3JtYXQuCiAgICAjIC0gYGF3ayAne2dzdWIoLzovLCAiIik7IGlmICgkMiB+IC8wdjAkLykgcHJpbnQgJDJ9J2A6CiAgICAjICAgLSBgZ3N1YigvOi8sICIiKWA6IFJlbW92ZXMgYWxsIGNvbG9ucyBmcm9tIHRoZSBsaW5lLgogICAgIyAgIC0gYGlmICgkMiB+IC8wdjAkLykgcHJpbnQgJDJgOiBDaGVja3MgaWYgdGhlIHNlY29uZCBmaWVsZCAodGhlIGludGVyZmFjZSBuYW1lKQogICAgIyAgICAgZW5kcyB3aXRoICIwdjAiIGFuZCBwcmludHMgaXQgaWYgaXQgZG9lcy4KICAgIFZGU19GT1VORD0kKGlwIC1vIGxpbmsgc2hvdyB8IGF3ayAne2dzdWIoLzovLCAiIik7IGlmICgkMiB+IC8wdjAkLykgcHJpbnQgJDJ9JykKCiAgICBpZiBbIC16ICIkVkZTX0ZPVU5EIiBdOyB0aGVuCiAgICAgICAgbG9nICJObyBWRnMgZm91bmQgbWF0Y2hpbmcgJyRWRl9OQU1FX1BBVFRFUk4nLiBXYWl0aW5nIGZvciB0aGVtIHRvIGFwcGVhci4iCiAgICAgICAgc2xlZXAgIiRDSEVDS19JTlRFUlZBTF9TRUMiCiAgICAgICAgY29udGludWUgIyBTa2lwIHRvIG5leHQgaXRlcmF0aW9uIG9mIHRoZSBsb29wCiAgICBmaQoKICAgICMgQ2hlY2sgaWYgdGhlIGJyaWRnZSBleGlzdHMgZmlyc3QgdG8gYXZvaWQgcmVwZWF0ZWQgY2hlY2tzIGluc2lkZSB0aGUgaW5uZXIgbG9vcAogICAgaWYgISBpcCBsaW5rIHNob3cgZGV2ICIkQlJJREdFX0RFViIgJj4vZGV2L251bGw7IHRoZW4KICAgICAgICBsb2cgIkJyaWRnZSAkQlJJREdFX0RFViBkb2VzIG5vdCBleGlzdC4gV2FpdGluZyBmb3IgaXQgdG8gYmUgY3JlYXRlZC4iCiAgICAgICAgc2xlZXAgIiRDSEVDS19JTlRFUlZBTF9TRUMiCiAgICAgICAgY29udGludWUgIyBTa2lwIHRvIG5leHQgaXRlcmF0aW9uIG9mIHRoZSBsb29wCiAgICBmaQoKICAgICMgTG9vcCB0aHJvdWdoIGVhY2ggZGlzY292ZXJlZCBWRgogICAgZm9yIFZGX0RFViBpbiAkVkZTX0ZPVU5EOyBkbwogICAgICAgIGxvZyAiUHJvY2Vzc2luZyBWRjogJFZGX0RFViIKCiAgICAgICAgIyAxLiBFbnN1cmUgdGhlIFZGIGRldmljZSBpcyB1cAogICAgICAgIGlmICEgaXAgbGluayBzaG93IGRldiAiJFZGX0RFViIgfCBncmVwIC1xICJzdGF0ZSBVUCI7IHRoZW4KICAgICAgICAgICAgbG9nICJEZXZpY2UgJFZGX0RFViBpcyBub3QgVVAuIEF0dGVtcHRpbmcgdG8gYnJpbmcgaXQgdXAuIgogICAgICAgICAgICBpcCBsaW5rIHNldCBkZXYgIiRWRl9ERVYiIHVwCiAgICAgICAgICAgIGlmIFsgJD8gLW5lIDAgXTsgdGhlbgogICAgICAgICAgICAgICAgbG9nICJGYWlsZWQgdG8gYnJpbmcgJFZGX0RFViB1cC4gU2tpcHBpbmcgdGhpcyBWRiBmb3Igbm93LiIKICAgICAgICAgICAgICAgIGNvbnRpbnVlICMgU2tpcCB0byB0aGUgbmV4dCBWRiBpZiB0aGlzIG9uZSBjYW4ndCBiZSBicm91Z2h0IHVwCiAgICAgICAgICAgIGZpCiAgICAgICAgZmkKCiAgICAgICAgIyAyLiBDaGVjayBpZiB0aGUgVkYgaXMgYWxyZWFkeSBhIG1hc3RlciBvZiB0aGUgYnJpZGdlCiAgICAgICAgaWYgaXAgbGluayBzaG93IG1hc3RlciAiJEJSSURHRV9ERVYiIHwgZ3JlcCAtcSAiJFZGX0RFViI7IHRoZW4KICAgICAgICAgICAgbG9nICIkVkZfREVWIGlzIGFscmVhZHkgaW4gJEJSSURHRV9ERVYuIEFsbCBnb29kLiIKICAgICAgICBlbHNlCiAgICAgICAgICAgIGxvZyAiJFZGX0RFViBub3QgaW4gJEJSSURHRV9ERVYuIEF0dGVtcHRpbmcgdG8gYWRkIGl0Li4uIgogICAgICAgICAgICBpcCBsaW5rIHNldCBkZXYgIiRWRl9ERVYiIG1hc3RlciAiJEJSSURHRV9ERVYiCiAgICAgICAgICAgIGlmIFsgJD8gLWVxIDAgXTsgdGhlbgogICAgICAgICAgICAgICAgbG9nICJTdWNjZXNzZnVsbHkgYWRkZWQgJFZGX0RFViB0byAkQlJJREdFX0RFVi4iCiAgICAgICAgICAgIGVsc2UKICAgICAgICAgICAgICAgIGxvZyAiRmFpbGVkIHRvIGFkZCAkVkZfREVWIHRvICRCUklER0VfREVWLiBFcnJvciBvY2N1cnJlZCAoJD8pLiIKICAgICAgICAgICAgICAgICMgVGhlIGxvb3Agd2lsbCBwcm9jZXNzIG90aGVyIFZGcyBhbmQgcmV0cnkgdGhpcyBvbmUgaW4gdGhlIG5leHQgY3ljbGUuCiAgICAgICAgICAgIGZpCiAgICAgICAgZmkKICAgIGRvbmUgIyBFbmQgb2YgZm9yIGxvb3AgZm9yIFZGcwoKICAgICMgV2FpdCBiZWZvcmUgdGhlIG5leHQgb3ZlcmFsbCBjaGVjayBjeWNsZSBmb3IgYWxsIFZGcwogICAgc2xlZXAgIiRDSEVDS19JTlRFUlZBTF9TRUMiCmRvbmUK
+          mode: 0755
+          overwrite: true
+          path: /usr/local/bin/vf-bridge-monitor.sh
+    systemd:
+      units:
+        - contents: |
+            [Unit]
+            Description=Monitor and Add VFs ending with 0v0 to br-dpu bridge
+            After=network-online.target
+            Wants=network-online.target
+            
+            [Service]
+            Type=simple
+            ExecStart=/usr/local/bin/vf-bridge-monitor.sh
+            Restart=always
+            RestartSec=5s
+            StandardOutput=journal
+            StandardError=journal
+            
+            [Install]
+            WantedBy=multi-user.target
+          enabled: true
+          name: vf-bridge-monitor.service
