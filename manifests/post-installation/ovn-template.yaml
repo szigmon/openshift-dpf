@@ -1,0 +1,31 @@
+apiVersion: svc.dpu.nvidia.com/v1alpha1
+kind: DPUServiceTemplate
+metadata:
+  name: ovn
+  namespace: dpf-operator-system
+spec:
+  deploymentServiceName: "ovn"
+  helmChart:
+    source:
+      repoURL: oci://quay.io/szigmon
+      chart: ovn
+      version: "v25.4.0-custom"
+    values:
+      nameOverride: "ovn-kubernetes"
+      commonManifests:
+        enabled: true
+      dpuManifests:
+        enabled: true
+        cniBinDir: /var/lib/cni/bin/
+        cniConfDir: /run/multus/cni/net.d
+        dpuServiceAccountNamespace: "dpf-operator-system"
+      controlPlaneManifests:
+        enabled: false
+      nodeWithDPUManifests:
+        enabled: false
+      nodeWithoutDPUManifests:
+        enabled: false
+      ovn-kubernetes-resource-injector:
+        enabled: false
+      leaseNamespace: "ovn-kubernetes"
+      gatewayOpts: "--gateway-interface=br-ovn --gateway-uplink-port=puplinkbrovn"
