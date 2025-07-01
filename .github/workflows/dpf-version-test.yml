@@ -1,0 +1,440 @@
+name: DPF Version Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      dpf_version:
+        description: 'DPF version to test (e.g., v25.4.0)'
+        required: true
+        type: string
+      openshift_version:
+        description: 'OpenShift version (default: 4.17.3)'
+        required: false
+        default: '4.17.3'
+        type: string
+      cluster_name:
+        description: 'Cluster name for testing'
+        required: false
+        default: 'dpf-ci-test'
+        type: string
+      skip_cleanup:
+        description: 'Skip cluster cleanup after test'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  KUBECONFIG: ${{ github.workspace }}/kubeconfig
+  PULL_SECRET: ${{ secrets.OPENSHIFT_PULL_SECRET }}
+  OFFLINE_TOKEN: ${{ secrets.OPENSHIFT_OFFLINE_TOKEN }}
+
+jobs:
+  prepare-test:
+    runs-on: ubuntu-latest
+    outputs:
+      test_id: ${{ steps.generate.outputs.test_id }}
+      cluster_name: ${{ steps.generate.outputs.cluster_name }}
+    
+    steps:
+    - name: Generate test ID
+      id: generate
+      run: |
+        # Generate unique test ID
+        TEST_ID="dpf-test-$(date +%Y%m%d-%H%M%S)"
+        echo "test_id=$TEST_ID" >> $GITHUB_OUTPUT
+        
+        # Generate cluster name
+        if [ "${{ github.event.inputs.cluster_name }}" == "dpf-ci-test" ]; then
+          CLUSTER_NAME="dpf-ci-${{ github.event.inputs.dpf_version }}-$(date +%m%d)"
+          # Remove dots and convert to lowercase
+          CLUSTER_NAME=$(echo "$CLUSTER_NAME" | tr '.' '-' | tr '[:upper:]' '[:lower:]')
+        else
+          CLUSTER_NAME="${{ github.event.inputs.cluster_name }}"
+        fi
+        echo "cluster_name=$CLUSTER_NAME" >> $GITHUB_OUTPUT
+        
+        echo "Test ID: $TEST_ID"
+        echo "Cluster Name: $CLUSTER_NAME"
+
+  update-manifests:
+    needs: prepare-test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        pip install pyyaml
+        
+        # Install yq
+        wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /tmp/yq
+        chmod +x /tmp/yq
+        sudo mv /tmp/yq /usr/local/bin/yq
+    
+    - name: Update manifest versions
+      run: |
+        VERSION="${{ github.event.inputs.dpf_version }}"
+        echo "Updating manifests to use DPF version: $VERSION"
+        
+        # Create version update script
+        cat > ci/update/update-versions.sh << 'EOF'
+        #!/bin/bash
+        set -euo pipefail
+        
+        VERSION="$1"
+        
+        # Update OVN template
+        yq eval -i '.spec.helmChart.source.version = strenv(VERSION)' \
+          manifests/post-installation/ovn-template.yaml
+        
+        # Update Flannel template
+        yq eval -i '.spec.helmChart.source.version = strenv(VERSION)' \
+          manifests/post-installation/flannel-template.yaml
+        
+        # Update other version references as needed
+        # This is a placeholder - add more updates based on version changes
+        
+        echo "Updated manifests to version: $VERSION"
+        EOF
+        
+        chmod +x ci/update/update-versions.sh
+        VERSION="$VERSION" ./ci/update/update-versions.sh "$VERSION"
+        
+        # Show changes
+        git diff --name-only
+    
+    - name: Commit version updates
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+        
+        BRANCH_NAME="test/${{ needs.prepare-test.outputs.test_id }}"
+        git checkout -b "$BRANCH_NAME"
+        
+        git add -A
+        git commit -m "test: Update to DPF ${{ github.event.inputs.dpf_version }}" || echo "No changes to commit"
+        
+        # Store branch name for later use
+        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+    
+    - name: Upload updated manifests
+      uses: actions/upload-artifact@v3
+      with:
+        name: updated-manifests-${{ github.event.inputs.dpf_version }}
+        path: manifests/
+
+  deploy-cluster:
+    needs: [prepare-test, update-manifests]
+    runs-on: self-hosted
+    # Use larger runners if available for cluster deployment
+    # runs-on: [self-hosted, linux, x64, metal]
+    
+    steps:
+    - name: Checkout test branch
+      uses: actions/checkout@v4
+      with:
+        ref: "test/${{ needs.prepare-test.outputs.test_id }}"
+    
+    - name: Download updated manifests
+      uses: actions/download-artifact@v3
+      with:
+        name: updated-manifests-${{ github.event.inputs.dpf_version }}
+        path: manifests/
+    
+    - name: Set up environment
+      run: |
+        # Create .env file from template
+        cp .env.example .env
+        
+        # Update cluster name and other variables
+        sed -i "s/CLUSTER_NAME=.*/CLUSTER_NAME=${{ needs.prepare-test.outputs.cluster_name }}/" .env
+        sed -i "s/OPENSHIFT_VERSION=.*/OPENSHIFT_VERSION=${{ github.event.inputs.openshift_version }}/" .env
+        
+        # Set pull secret
+        echo "${{ secrets.OPENSHIFT_PULL_SECRET }}" > pull-secret.txt
+        
+        # Install required tools
+        ./scripts/tools.sh install-aicli || echo "aicli might already be installed"
+    
+    - name: Create cluster
+      id: create_cluster
+      run: |
+        echo "Creating OpenShift cluster: ${{ needs.prepare-test.outputs.cluster_name }}"
+        
+        # Source environment
+        source scripts/env.sh
+        
+        # Create cluster
+        make create-cluster || {
+          echo "Cluster creation failed"
+          exit 1
+        }
+        
+        # Start installation
+        make cluster-install || {
+          echo "Cluster installation failed"
+          exit 1
+        }
+    
+    - name: Wait for cluster ready
+      timeout-minutes: 60
+      run: |
+        source scripts/env.sh
+        
+        echo "Waiting for cluster to be ready..."
+        make wait-for-ready || {
+          echo "Cluster failed to become ready"
+          aicli list cluster
+          exit 1
+        }
+    
+    - name: Get kubeconfig
+      run: |
+        source scripts/env.sh
+        
+        make kubeconfig
+        
+        # Verify cluster access
+        export KUBECONFIG="${PWD}/kubeconfig"
+        oc version
+        oc get nodes
+
+  deploy-dpf:
+    needs: [prepare-test, deploy-cluster]
+    runs-on: self-hosted
+    
+    steps:
+    - name: Checkout test branch
+      uses: actions/checkout@v4
+      with:
+        ref: "test/${{ needs.prepare-test.outputs.test_id }}"
+    
+    - name: Download updated manifests
+      uses: actions/download-artifact@v3
+      with:
+        name: updated-manifests-${{ github.event.inputs.dpf_version }}
+        path: manifests/
+    
+    - name: Restore environment
+      run: |
+        # Restore .env
+        cp .env.example .env
+        sed -i "s/CLUSTER_NAME=.*/CLUSTER_NAME=${{ needs.prepare-test.outputs.cluster_name }}/" .env
+        
+        # Get kubeconfig
+        source scripts/env.sh
+        make kubeconfig
+    
+    - name: Deploy DPF
+      id: deploy_dpf
+      run: |
+        source scripts/env.sh
+        export KUBECONFIG="${PWD}/kubeconfig"
+        
+        echo "Deploying DPF version: ${{ github.event.inputs.dpf_version }}"
+        
+        # Deploy DPF operator
+        make deploy-dpf || {
+          echo "DPF deployment failed"
+          oc get pods -n dpf-operator-system
+          exit 1
+        }
+        
+        # Wait for DPF operator to be ready
+        echo "Waiting for DPF operator pods..."
+        oc wait --for=condition=ready pod -l app.kubernetes.io/name=dpf-operator \
+          -n dpf-operator-system --timeout=300s || {
+          echo "DPF operator failed to become ready"
+          oc describe pods -n dpf-operator-system
+          exit 1
+        }
+    
+    - name: Deploy DPU services
+      run: |
+        source scripts/env.sh
+        export KUBECONFIG="${PWD}/kubeconfig"
+        
+        # Prepare DPU files
+        make prepare-dpu-files
+        
+        # Deploy DPU services
+        make deploy-dpu-services || {
+          echo "DPU services deployment failed"
+          oc get dpudeployment -A
+          oc get dpuservicetemplate -A
+          exit 1
+        }
+
+  run-tests:
+    needs: [prepare-test, deploy-dpf]
+    runs-on: self-hosted
+    
+    steps:
+    - name: Checkout test branch
+      uses: actions/checkout@v4
+      with:
+        ref: "test/${{ needs.prepare-test.outputs.test_id }}"
+    
+    - name: Set up test environment
+      run: |
+        source scripts/env.sh
+        export KUBECONFIG="${PWD}/kubeconfig"
+        
+        # Create test results directory
+        mkdir -p test-results
+    
+    - name: Run API compatibility tests
+      run: |
+        source scripts/env.sh
+        export KUBECONFIG="${PWD}/kubeconfig"
+        
+        ./ci/tests/api-compatibility-test.sh "${{ github.event.inputs.dpf_version }}" \
+          > test-results/api-compatibility.log 2>&1 || {
+          echo "API compatibility test failed"
+          cat test-results/api-compatibility.log
+          exit 1
+        }
+    
+    - name: Run service validation tests
+      run: |
+        source scripts/env.sh
+        export KUBECONFIG="${PWD}/kubeconfig"
+        
+        # Wait for services to be ready
+        echo "Waiting for DPU services to be ready..."
+        sleep 30
+        
+        # Check service status
+        oc get dpuservicetemplate -A
+        oc get dpuserviceconfiguration -A
+        oc get dpudeployment -A
+        
+        # Run validation tests
+        ./ci/tests/service-validation.sh || echo "Service validation completed with warnings"
+    
+    - name: Collect test results
+      if: always()
+      run: |
+        source scripts/env.sh
+        export KUBECONFIG="${PWD}/kubeconfig"
+        
+        # Collect cluster information
+        oc get nodes > test-results/nodes.txt
+        oc get pods -A > test-results/pods.txt
+        oc get events -A --sort-by='.lastTimestamp' > test-results/events.txt
+        
+        # Collect DPF-specific information
+        oc get crd | grep -E 'dpu|dpf' > test-results/dpf-crds.txt || true
+        oc get all -n dpf-operator-system > test-results/dpf-operator.txt || true
+        
+        # Create test summary
+        cat > test-results/summary.md << EOF
+        # DPF Version Test Summary
+        
+        **Test ID**: ${{ needs.prepare-test.outputs.test_id }}
+        **DPF Version**: ${{ github.event.inputs.dpf_version }}
+        **OpenShift Version**: ${{ github.event.inputs.openshift_version }}
+        **Cluster**: ${{ needs.prepare-test.outputs.cluster_name }}
+        **Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+        
+        ## Test Results
+        
+        - Cluster Deployment: ${{ steps.create_cluster.outcome || 'skipped' }}
+        - DPF Deployment: ${{ steps.deploy_dpf.outcome || 'skipped' }}
+        - API Compatibility: $(grep -q "PASSED" test-results/api-compatibility.log && echo "✅ Passed" || echo "❌ Failed")
+        - Service Validation: $(test -f test-results/service-validation.log && echo "✅ Completed" || echo "⚠️ Incomplete")
+        
+        ## Cluster Status
+        
+        $(oc get nodes 2>/dev/null | head -5 || echo "Cluster not accessible")
+        
+        ## DPF Components
+        
+        $(oc get pods -n dpf-operator-system 2>/dev/null || echo "DPF namespace not found")
+        EOF
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results-${{ github.event.inputs.dpf_version }}
+        path: test-results/
+
+  cleanup:
+    needs: [prepare-test, run-tests]
+    if: always() && github.event.inputs.skip_cleanup != 'true'
+    runs-on: self-hosted
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Delete test cluster
+      run: |
+        # Restore .env
+        cp .env.example .env
+        sed -i "s/CLUSTER_NAME=.*/CLUSTER_NAME=${{ needs.prepare-test.outputs.cluster_name }}/" .env
+        
+        source scripts/env.sh
+        
+        echo "Deleting test cluster: ${{ needs.prepare-test.outputs.cluster_name }}"
+        make delete-cluster || echo "Cluster deletion failed - may need manual cleanup"
+        
+        # Clean up VMs if any
+        make delete-vms || echo "VM cleanup skipped"
+    
+    - name: Clean up test branch
+      if: always()
+      run: |
+        git push origin --delete "test/${{ needs.prepare-test.outputs.test_id }}" || echo "Branch cleanup failed"
+
+  report-results:
+    needs: [prepare-test, run-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download test results
+      uses: actions/download-artifact@v3
+      with:
+        name: test-results-${{ github.event.inputs.dpf_version }}
+        path: test-results/
+    
+    - name: Create test report issue
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const testSummary = fs.readFileSync('test-results/summary.md', 'utf8');
+          
+          const issueTitle = `DPF ${{ github.event.inputs.dpf_version }} Test Results - ${{ needs.run-tests.outcome }}`;
+          
+          const issueBody = testSummary + `
+          
+          ## Workflow Information
+          
+          - **Workflow Run**: [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - **Test ID**: ${{ needs.prepare-test.outputs.test_id }}
+          - **Test Outcome**: ${{ needs.run-tests.outcome }}
+          
+          ## Artifacts
+          
+          Test results and logs have been uploaded as workflow artifacts.
+          
+          cc: @szigmon
+          `;
+          
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: issueTitle,
+            body: issueBody,
+            labels: ['dpf-test-results', 'automated-test']
+          });

@@ -37,4 +37,14 @@ CLAUDE.md
 
 # Claude directory
 .claude/
-	
+
+# CI artifacts
+test-results/
+ci/cache/
+reports/
+*.pyc
+__pycache__/
+.pytest_cache/
+
+# CI test branches
+test/

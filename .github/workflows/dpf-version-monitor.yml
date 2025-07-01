@@ -1,0 +1,270 @@
+name: DPF Version Monitor
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Specific DPF version to check (e.g., v25.4.0)'
+        required: false
+        type: string
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+jobs:
+  check-new-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      new_versions: ${{ steps.detect.outputs.new_versions }}
+      has_new_versions: ${{ steps.detect.outputs.has_new_versions }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
+        
+        # Install yq
+        wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /tmp/yq
+        chmod +x /tmp/yq
+        sudo mv /tmp/yq /usr/local/bin/yq
+        
+        # Install Python dependencies
+        pip install pyyaml packaging
+    
+    - name: Detect new versions
+      id: detect
+      run: |
+        echo "Checking for new DPF versions..."
+        
+        if [ -n "${{ github.event.inputs.version }}" ]; then
+          # Check specific version
+          VERSION="${{ github.event.inputs.version }}"
+          echo "Checking specific version: $VERSION"
+          
+          if ./ci/scripts/version-detector.sh check "$VERSION"; then
+            echo "Version $VERSION is already tested"
+            echo "has_new_versions=false" >> $GITHUB_OUTPUT
+          else
+            echo "Version $VERSION needs testing"
+            echo "new_versions=$VERSION" >> $GITHUB_OUTPUT
+            echo "has_new_versions=true" >> $GITHUB_OUTPUT
+          fi
+        else
+          # Detect all new versions
+          NEW_VERSIONS=$(./ci/scripts/version-detector.sh detect | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)
+          
+          if [ -n "$NEW_VERSIONS" ]; then
+            # Convert to comma-separated list
+            VERSIONS_CSV=$(echo "$NEW_VERSIONS" | tr '\n' ',' | sed 's/,$//')
+            echo "New versions found: $VERSIONS_CSV"
+            echo "new_versions=$VERSIONS_CSV" >> $GITHUB_OUTPUT
+            echo "has_new_versions=true" >> $GITHUB_OUTPUT
+          else
+            echo "No new versions found"
+            echo "has_new_versions=false" >> $GITHUB_OUTPUT
+          fi
+        fi
+    
+    - name: Create version report
+      if: steps.detect.outputs.has_new_versions == 'true'
+      run: |
+        VERSIONS="${{ steps.detect.outputs.new_versions }}"
+        CURRENT_VERSION=$(./ci/scripts/version-detector.sh current)
+        
+        # Create a report
+        mkdir -p reports
+        
+        echo "# DPF Version Detection Report" > reports/version-detection.md
+        echo "" >> reports/version-detection.md
+        echo "**Date**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> reports/version-detection.md
+        echo "**Current Version**: $CURRENT_VERSION" >> reports/version-detection.md
+        echo "" >> reports/version-detection.md
+        echo "## New Versions Detected" >> reports/version-detection.md
+        
+        IFS=',' read -ra VERSION_ARRAY <<< "$VERSIONS"
+        for VERSION in "${VERSION_ARRAY[@]}"; do
+          echo "- $VERSION" >> reports/version-detection.md
+          
+          # Get release details if available
+          DETAILS=$(./ci/scripts/version-detector.sh details "$VERSION" 2>/dev/null || echo "{}")
+          if [ "$DETAILS" != "{}" ]; then
+            RELEASE_DATE=$(echo "$DETAILS" | jq -r '.published_at // "N/A"' | cut -d'T' -f1)
+            echo "  - Release Date: $RELEASE_DATE" >> reports/version-detection.md
+          fi
+        done
+        
+        cat reports/version-detection.md
+    
+    - name: Upload detection report
+      if: steps.detect.outputs.has_new_versions == 'true'
+      uses: actions/upload-artifact@v3
+      with:
+        name: version-detection-report
+        path: reports/version-detection.md
+
+  compare-versions:
+    needs: check-new-versions
+    if: needs.check-new-versions.outputs.has_new_versions == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: ${{ fromJson(format('[{0}]', needs.check-new-versions.outputs.new_versions)) }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq
+        pip install pyyaml packaging
+    
+    - name: Compare with current version
+      run: |
+        CURRENT_VERSION=$(yq eval '.dpf_versions.current' ci/config/versions.yaml)
+        NEW_VERSION="${{ matrix.version }}"
+        
+        echo "Comparing $CURRENT_VERSION with $NEW_VERSION"
+        
+        mkdir -p reports
+        python3 ci/scripts/version-compare.py \
+          --old-version "$CURRENT_VERSION" \
+          --new-version "$NEW_VERSION" \
+          --output "reports/comparison-${NEW_VERSION}.md"
+    
+    - name: Upload comparison report
+      uses: actions/upload-artifact@v3
+      with:
+        name: comparison-report-${{ matrix.version }}
+        path: reports/comparison-${{ matrix.version }}.md
+
+  trigger-testing:
+    needs: [check-new-versions, compare-versions]
+    if: needs.check-new-versions.outputs.has_new_versions == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Trigger testing workflow
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const versions = '${{ needs.check-new-versions.outputs.new_versions }}'.split(',');
+          
+          for (const version of versions) {
+            console.log(`Triggering test workflow for version: ${version}`);
+            
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'dpf-version-test.yml',
+              ref: 'main',
+              inputs: {
+                dpf_version: version
+              }
+            });
+            
+            // Wait a bit between triggers to avoid rate limits
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          }
+    
+    - name: Create issue for new versions
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const versions = '${{ needs.check-new-versions.outputs.new_versions }}'.split(',');
+          const currentVersion = '${{ needs.check-new-versions.outputs.current_version }}';
+          
+          const issueTitle = `New DPF versions detected: ${versions.join(', ')}`;
+          const issueBody = `## New DPF Versions Detected
+          
+          The following new DPF versions have been detected and need testing:
+          
+          ${versions.map(v => `- [ ] ${v}`).join('\n')}
+          
+          **Current version**: ${currentVersion}
+          
+          ### Actions Required
+          1. Review the comparison reports (attached as artifacts)
+          2. Monitor the automated test results
+          3. Update the automation if any breaking changes are detected
+          4. Update \`ci/config/versions.yaml\` after successful testing
+          
+          ### Automated Actions Taken
+          - Version comparison reports generated
+          - Test workflows triggered for each version
+          - Documentation analysis scheduled
+          
+          cc: @szigmon
+          `;
+          
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: issueTitle,
+            body: issueBody,
+            labels: ['dpf-version-update', 'automation']
+          });
+    
+    - name: Send Slack notification
+      if: env.SLACK_WEBHOOK != ''
+      run: |
+        VERSIONS="${{ needs.check-new-versions.outputs.new_versions }}"
+        
+        curl -X POST ${{ secrets.SLACK_WEBHOOK }} \
+          -H 'Content-Type: application/json' \
+          -d @- << EOF
+        {
+          "text": "New DPF versions detected",
+          "blocks": [
+            {
+              "type": "header",
+              "text": {
+                "type": "plain_text",
+                "text": "🔔 New DPF Versions Detected"
+              }
+            },
+            {
+              "type": "section",
+              "text": {
+                "type": "mrkdwn",
+                "text": "*Versions*: ${VERSIONS}\n*Repository*: openshift-dpf\n*Action*: Automated testing triggered"
+              }
+            },
+            {
+              "type": "actions",
+              "elements": [
+                {
+                  "type": "button",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "View Workflow"
+                  },
+                  "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                }
+              ]
+            }
+          ]
+        }
+        EOF
