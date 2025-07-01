@@ -7,6 +7,7 @@ set -e
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
 
 
 
@@ -39,6 +40,12 @@ ISO_PATH="${ISO_FOLDER}/${CLUSTER_NAME}.iso"
 # * and prints a success message upon completion.
 
 function create_vms() {
+    # First check if cluster is already installed
+    if check_cluster_installed; then
+        log "INFO" "Skipping VM creation as cluster is already installed"
+        return 0
+    fi
+    
     log "Creating VMs with prefix $VM_PREFIX..."
 
     if [ "$SKIP_BRIDGE_CONFIG" != "true" ]; then

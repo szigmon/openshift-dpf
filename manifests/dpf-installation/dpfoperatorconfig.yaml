@@ -8,22 +8,28 @@ spec:
     disable: true
   imagePullSecrets:
     - dpf-pull-secret
+  # Kamaji is permanently disabled - only Hypershift is supported
   kamajiClusterManager:
     disable: true
   multus:
     disable: false
-    helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.2
+    helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.0
   networking:
     controlPlaneMTU: 1500
     highSpeedMTU: 1500
   overrides:
+    kubernetesAPIServerVIP: api.<CLUSTER_NAME>.<BASE_DOMAIN>
+    kubernetesAPIServerPort: 6443
     dpuCNIBinPath: /var/lib/cni/bin/
     dpuCNIPath: /run/multus/cni/net.d/
+  ovsHelper:
+    disable: true
   provisioningController:
     bfCFGTemplateConfigMap: custom-bfb.cfg
     bfbPVCName: bfb-pvc
     dmsTimeout: 1800
   sfcController:
-    helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.2
+    helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.0
+  # Static cluster manager enabled for Hypershift hosted cluster integration
   staticClusterManager:
     disable: false

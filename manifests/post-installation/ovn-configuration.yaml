@@ -1,0 +1,24 @@
+apiVersion: svc.dpu.nvidia.com/v1alpha1
+kind: DPUServiceConfiguration
+metadata:
+  name: ovn
+  namespace: dpf-operator-system
+spec:
+  deploymentServiceName: "ovn"
+  serviceConfiguration:
+    helmChart:
+      values:
+        global:
+          imagePullSecretName: "dpf-pull-secret"
+        k8sAPIServer: https://HOST_CLUSTER_API:6443
+        podNetwork: 10.128.0.0/16
+        serviceNetwork: 172.30.0.0/16
+        mtu: 1400
+        dpuManifests:
+          kubernetesSecretName: "ovn-dpu"
+          vtepCIDR: "HBN_OVN_NETWORK"
+          hostCIDR: "DPU_HOST_CIDR"
+          ipamPool: "pool1"
+          ipamPoolType: "cidrpool"
+          ipamVTEPIPIndex: 0
+          ipamPFIPIndex: 1
