@@ -103,6 +103,10 @@ export KUBECONFIG=/path/to/kubeconfig
 ./ci/tests/service-validation.sh
 ```
 
+## Setup
+
+For detailed setup instructions, see [SETUP.md](SETUP.md).
+
 ## Configuration
 
 ### versions.yaml

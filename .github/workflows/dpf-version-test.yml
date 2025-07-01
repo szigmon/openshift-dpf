@@ -27,6 +27,9 @@ env:
   KUBECONFIG: ${{ github.workspace }}/kubeconfig
   PULL_SECRET: ${{ secrets.OPENSHIFT_PULL_SECRET }}
   OFFLINE_TOKEN: ${{ secrets.OPENSHIFT_OFFLINE_TOKEN }}
+  SSH_HOST: ${{ secrets.SSH_HOST }}
+  SSH_USER: ${{ secrets.SSH_USER }}
+  SSH_KEY_PATH: /tmp/ssh_key
 
 jobs:
   prepare-test:
@@ -130,7 +133,9 @@ jobs:
         name: updated-manifests-${{ github.event.inputs.dpf_version }}
         path: manifests/
 
-  deploy-cluster:
+  # Option 1: Local deployment (if you have self-hosted runners)
+  deploy-cluster-local:
+    if: github.event.inputs.deployment_type == 'local' || env.SSH_HOST == ''
     needs: [prepare-test, update-manifests]
     runs-on: self-hosted
     # Use larger runners if available for cluster deployment

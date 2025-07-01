@@ -1,0 +1,225 @@
+name: DPF Hardware Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      dpf_version:
+        description: 'DPF version to test (e.g., v25.4.0)'
+        required: true
+        type: string
+      test_mode:
+        description: 'Test mode'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - quick
+          - full
+          - hardware-only
+          - validate
+      cluster_name:
+        description: 'Cluster name for testing'
+        required: false
+        default: 'dpf-hw-test'
+        type: string
+
+env:
+  SSH_HOST: ${{ secrets.SSH_HOST }}
+  SSH_USER: ${{ secrets.SSH_USER }}
+  SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+
+jobs:
+  hardware-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up SSH key
+      if: env.SSH_HOST != ''
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        
+        # Add host to known hosts
+        ssh-keyscan -p ${{ env.SSH_PORT }} -H ${{ env.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+        
+        # Set SSH_KEY environment variable
+        echo "SSH_KEY=$HOME/.ssh/id_rsa" >> $GITHUB_ENV
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y jq python3-pip
+        pip3 install -r ci/requirements.txt
+        
+        # Install yq
+        wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /tmp/yq
+        chmod +x /tmp/yq
+        sudo mv /tmp/yq /usr/local/bin/yq
+    
+    - name: Configure test environment
+      run: |
+        # Create .env file with test configuration
+        cat > .env << EOF
+        CLUSTER_NAME=${{ github.event.inputs.cluster_name }}
+        BASE_DOMAIN=example.com
+        OPENSHIFT_VERSION=4.17.3
+        OPENSHIFT_PULL_SECRET='${{ secrets.OPENSHIFT_PULL_SECRET }}'
+        OFFLINE_TOKEN=${{ secrets.OPENSHIFT_OFFLINE_TOKEN }}
+        EOF
+        
+        # Ensure scripts are executable
+        chmod +x ci/scripts/*.sh ci/tests/*.sh
+    
+    - name: Run test orchestrator
+      id: test
+      run: |
+        echo "Starting test orchestrator..."
+        echo "Mode: ${{ github.event.inputs.test_mode }}"
+        echo "Version: ${{ github.event.inputs.dpf_version }}"
+        echo "Target: ${{ env.SSH_HOST }}"
+        
+        # Run the orchestrator
+        ./ci/scripts/test-orchestrator.sh \
+          "${{ github.event.inputs.test_mode }}" \
+          "${{ github.event.inputs.dpf_version }}" || {
+          echo "Test orchestrator failed"
+          exit 1
+        }
+        
+        # Find results directory
+        RESULTS_DIR=$(ls -td test-results/orchestrated-* | head -1)
+        echo "results_dir=$RESULTS_DIR" >> $GITHUB_OUTPUT
+        
+        # Check if deployment was initiated
+        if [ -f "$RESULTS_DIR/deployment-info.json" ]; then
+          DEPLOYMENT_ID=$(jq -r '.deployment_id' "$RESULTS_DIR/deployment-info.json")
+          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+          echo "deployment_initiated=true" >> $GITHUB_OUTPUT
+        else
+          echo "deployment_initiated=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: hardware-test-results-${{ github.event.inputs.dpf_version }}
+        path: ${{ steps.test.outputs.results_dir }}
+    
+    - name: Create deployment tracking issue
+      if: steps.test.outputs.deployment_initiated == 'true'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const resultsDir = '${{ steps.test.outputs.results_dir }}';
+          const deploymentId = '${{ steps.test.outputs.deployment_id }}';
+          
+          // Read deployment info
+          const deploymentInfo = JSON.parse(
+            fs.readFileSync(`${resultsDir}/deployment-info.json`, 'utf8')
+          );
+          
+          // Read final report
+          const finalReport = fs.readFileSync(
+            `${resultsDir}/final-report.md`, 'utf8'
+          );
+          
+          const issueTitle = `Hardware Test: DPF ${{ github.event.inputs.dpf_version }} - ${deploymentId}`;
+          
+          const issueBody = `## Hardware Deployment Test
+          
+          **DPF Version**: ${{ github.event.inputs.dpf_version }}
+          **Test Mode**: ${{ github.event.inputs.test_mode }}
+          **Deployment ID**: ${deploymentId}
+          **Target Host**: ${deploymentInfo.remote_host}
+          **Remote Directory**: ${deploymentInfo.remote_dir}
+          
+          ### Status
+          
+          The hardware deployment has been initiated. CSR monitors are running to automatically approve certificates.
+          
+          ### Next Steps
+          
+          1. **Add Worker Nodes**: Add worker nodes with DPUs to the cluster
+          2. **Monitor Deployment**: 
+             \`\`\`bash
+             ssh ${process.env.SSH_USER}@${process.env.SSH_HOST} '${deploymentInfo.remote_dir}/check-status.sh ${deploymentInfo.remote_dir}/openshift-dpf/kubeconfig'
+             \`\`\`
+          3. **View CSR Monitor Logs**:
+             \`\`\`bash
+             ssh ${process.env.SSH_USER}@${process.env.SSH_HOST} 'tail -f ${deploymentInfo.remote_dir}/csr-monitor.log'
+             \`\`\`
+          
+          ### Test Report
+          
+          ${finalReport}
+          
+          ### Workflow
+          
+          - **Workflow Run**: [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          - **Artifacts**: Test results have been uploaded as workflow artifacts
+          
+          cc: @szigmon
+          `;
+          
+          await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: issueTitle,
+            body: issueBody,
+            labels: ['hardware-test', 'dpf-deployment']
+          });
+    
+    - name: Post deployment summary
+      if: always()
+      run: |
+        RESULTS_DIR="${{ steps.test.outputs.results_dir }}"
+        
+        echo "## Test Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -f "$RESULTS_DIR/final-report.md" ]; then
+          cat "$RESULTS_DIR/final-report.md" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "No final report generated" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- Test results uploaded as workflow artifacts" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ steps.test.outputs.deployment_initiated }}" == "true" ]; then
+          echo "- Deployment ID: ${{ steps.test.outputs.deployment_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Hardware deployment initiated on ${{ env.SSH_HOST }}" >> $GITHUB_STEP_SUMMARY
+        fi
+
+  # Optional: Run validation tests later
+  validate-deployment:
+    if: github.event.inputs.test_mode == 'validate'
+    needs: hardware-test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -p ${{ env.SSH_PORT }} -H ${{ env.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
+        echo "SSH_KEY=$HOME/.ssh/id_rsa" >> $GITHUB_ENV
+    
+    - name: Run validation
+      run: |
+        # For validate mode, we need to find the existing deployment
+        echo "Running validation tests on existing deployment..."
+        
+        # This assumes you've saved the deployment info somewhere accessible
+        ./ci/scripts/test-orchestrator.sh validate "${{ github.event.inputs.dpf_version }}"
