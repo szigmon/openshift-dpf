@@ -1,0 +1,85 @@
+# DPF Version Configuration
+# This file tracks current and tested versions of DPF components
+
+dpf_versions:
+  current: v25.4.0
+  tested:
+    - v25.4.0
+    - v25.1.1
+    - v25.1.0
+    - v24.10.0
+  repository: https://github.com/NVIDIA/doca-platform
+  release_branch_pattern: release-v{version}
+
+helm_charts:
+  ovn-kubernetes:
+    repo: "oci://nvcr.io/nvidia/doca"
+    current: v25.4.0
+    tested:
+      - v25.4.0
+      - v25.1.1
+  blueman:
+    repo: "oci://nvcr.io/nvidia/doca"
+    current: 1.0.5
+    tested:
+      - 1.0.5
+  dts:
+    repo: "oci://nvcr.io/nvidia/doca"
+    current: 0.2.3
+    tested:
+      - 0.2.3
+  hbn:
+    repo: "oci://nvcr.io/nvidia/doca"
+    current: 1.0.1
+    tested:
+      - 1.0.1
+  flannel:
+    repo: "oci://nvcr.io/nvidia/doca"
+    current: v25.4.0
+    tested:
+      - v25.4.0
+      - v25.1.1
+  nic_cluster_policy:
+    repo: "oci://nvcr.io/nvidia/doca"
+    current: v3.9.3
+    tested:
+      - v3.9.3
+
+api_versions:
+  dpuservice: svc.dpu.nvidia.com/v1alpha1
+  dpudeployment: provisioning.dpu.nvidia.com/v1alpha1
+  dpuservicetemplate: svc.dpu.nvidia.com/v1alpha1
+  dpuserviceconfiguration: svc.dpu.nvidia.com/v1alpha1
+  dpuserviceinterface: svc.dpu.nvidia.com/v1alpha1
+  dpuflavor: provisioning.dpu.nvidia.com/v1alpha1
+  bfb: provisioning.dpu.nvidia.com/v1alpha1
+  dpu: provisioning.dpu.nvidia.com/v1alpha1
+  dpucluster: provisioning.dpu.nvidia.com/v1alpha1
+  dpfoperatorconfig: operator.dpu.nvidia.com/v1alpha1
+
+# OpenShift compatibility matrix
+openshift_compatibility:
+  v25.4.0:
+    min_version: "4.17.3"
+    max_version: "4.17.x"
+  v25.1.1:
+    min_version: "4.17.0"
+    max_version: "4.17.x"
+  v25.1.0:
+    min_version: "4.16.0"
+    max_version: "4.17.x"
+
+# Files that typically change between versions
+version_sensitive_files:
+  - manifests/post-installation/ovn-template.yaml
+  - manifests/post-installation/flannel-template.yaml
+  - manifests/post-installation/hbn-template.yaml
+  - manifests/post-installation/blueman-template.yaml
+  - manifests/post-installation/dts-template.yaml
+  - manifests/dpf-installation/dpfoperatorconfig.yaml
+
+# Documentation sources
+documentation:
+  rdg_url: "https://docs.nvidia.com/networking/display/public/sol/rdg+for+dpf+with+ovn-kubernetes+and+hbn+services"
+  doca_platform_docs: "https://github.com/NVIDIA/doca-platform/tree/{branch}/docs"
+  hbn_ovn_folder: "examples/dpf"
