@@ -185,17 +185,17 @@ function generate_ovn_manifests() {
     sed -i -E 's/:[[:space:]]+/: /g' "$GENERATED_DIR/temp/values.yaml"
 
     # Pull and template OVN chart
-    log [INFO] "Pulling OVN chart version $DPF_VERSION..."
-    if ! helm pull oci://ghcr.io/nvidia/ovn-kubernetes-chart \
-        --version "$DPF_VERSION" \
+    log [INFO] "Pulling OVN chart version v25.4.0-custom-v2..."
+    if ! helm pull oci://quay.io/szigmon/ovn \
+        --version "v25.4.0-custom-v2" \
         --untar -d "$GENERATED_DIR/temp"; then
-        log [ERROR] "Failed to pull OVN chart version $DPF_VERSION"
+        log [ERROR] "Failed to pull OVN chart version v25.4.0-custom-v2"
         return 1
     fi
     
     log [INFO] "Generating OVN manifests from helm template..."
     if ! helm template -n ovn-kubernetes ovn-kubernetes \
-        "$GENERATED_DIR/temp/ovn-kubernetes-chart" \
+        "$GENERATED_DIR/temp/ovn" \
         -f "$GENERATED_DIR/temp/values.yaml" \
         > "$GENERATED_DIR/ovn-manifests.yaml"; then
         log [ERROR] "Failed to generate OVN manifests"
@@ -209,11 +209,6 @@ function generate_ovn_manifests() {
     fi
     
     rm -rf "$GENERATED_DIR/temp"
-
-    # Update paths in manifests
-    log [INFO] "Updating paths in manifests..."
-    sed -i 's|path: /etc/cni/net.d|path: /run/multus/cni/net.d|g' "$GENERATED_DIR/ovn-manifests.yaml"
-    sed -i 's|path: /opt/cni/bin|path: /var/lib/cni/bin/|g' "$GENERATED_DIR/ovn-manifests.yaml"
 }
 
 function enable_storage() {

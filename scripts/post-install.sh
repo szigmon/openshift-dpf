@@ -275,10 +275,110 @@ function redeploy() {
 
 }
 
+# Function to enable OVN resource injector using helm template
+function enable_ovn_resource_injector() {
+    log [INFO] "Enabling OVN kubernetes resource injector via helm template..."
+    
+    # Check if helm is installed
+    if ! command -v helm &> /dev/null; then
+        log [ERROR] "Helm is not installed. Please run 'make install-helm' first"
+        exit 1
+    fi
+    
+    # Create temporary directory for processing
+    local temp_dir=$(mktemp -d)
+    
+    # Create injector-only values file
+    log [INFO] "Creating OVN injector values file..."
+    cat > "$temp_dir/ovn-injector-values.yaml" <<EOF
+nameOverride: ovn-kubernetes
+
+# Disable all OVN components (already deployed)
+controlPlaneManifests:
+  enabled: false
+nodeWithDPUManifests:
+  enabled: false
+nodeWithoutDPUManifests:
+  enabled: false
+commonManifests:
+  enabled: false
+dpuManifests:
+  enabled: false
+
+# Enable only the resource injector
+ovn-kubernetes-resource-injector:
+  enabled: true
+  resourceName: openshift.io/bf3-p0-vfs
+  nadName: dpf-ovn-kubernetes
+EOF
+    
+    # Pull the custom chart
+    log [INFO] "Pulling OVN chart version v25.4.0-custom-v2..."
+    if ! helm pull oci://quay.io/szigmon/ovn \
+        --version "v25.4.0-custom-v2" \
+        --untar -d "$temp_dir"; then
+        log [ERROR] "Failed to pull OVN chart"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    # Generate manifests using helm template
+    log [INFO] "Generating OVN injector manifests..."
+    helm template -n ovn-kubernetes ovn-injector \
+        "$temp_dir/ovn" \
+        -f "$temp_dir/ovn-injector-values.yaml" \
+        > "$temp_dir/ovn-injector-manifests.yaml"
+    
+    # Apply the manifests
+    log [INFO] "Applying OVN resource injector manifests..."
+    oc apply -f "$temp_dir/ovn-injector-manifests.yaml"
+    
+    # Clean up temporary directory
+    rm -rf "$temp_dir"
+    
+    # Wait for the injector deployment to be ready
+    log [INFO] "Waiting for OVN injector deployment to be ready..."
+    wait_for_pods "ovn-kubernetes" "app.kubernetes.io/name=ovn-kubernetes-resource-injector" "status.phase=Running" "Running" 30 10
+    
+    # Verify the NetworkAttachmentDefinition was created
+    if oc get networkattachmentdefinition -n ovn-kubernetes dpf-ovn-kubernetes &>/dev/null; then
+        log [INFO] "NetworkAttachmentDefinition 'dpf-ovn-kubernetes' created successfully"
+        log [INFO] "NAD details:"
+        oc get networkattachmentdefinition -n ovn-kubernetes dpf-ovn-kubernetes -o yaml
+    else
+        log [ERROR] "NetworkAttachmentDefinition 'dpf-ovn-kubernetes' was not created"
+        return 1
+    fi
+    
+    log [INFO] "OVN resource injector enabled successfully"
+}
+
+# Function to disable OVN resource injector
+function disable_ovn_resource_injector() {
+    log [INFO] "Disabling OVN resource injector..."
+    
+    # Delete all injector resources by label
+    oc delete all,serviceaccount,clusterrole,clusterrolebinding,mutatingwebhookconfiguration \
+        -l app.kubernetes.io/name=ovn-kubernetes-resource-injector \
+        -n ovn-kubernetes \
+        --ignore-not-found=true
+    
+    # Delete the NAD
+    oc delete networkattachmentdefinition -n ovn-kubernetes dpf-ovn-kubernetes --ignore-not-found=true
+    
+    # Delete any remaining secrets/configmaps
+    oc delete secret,configmap \
+        -l app.kubernetes.io/name=ovn-kubernetes-resource-injector \
+        -n ovn-kubernetes \
+        --ignore-not-found=true
+    
+    log [INFO] "OVN resource injector disabled"
+}
+
 # If script is executed directly (not sourced), run the appropriate function
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     if [ $# -lt 1 ]; then
-        log [ERROR] "Usage: $0 <prepare|apply|redeploy>"
+        log [ERROR] "Usage: $0 <prepare|apply|redeploy|enable-ovn-resource-injector|disable-ovn-resource-injector>"
         exit 1
     fi
     
@@ -292,9 +392,17 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         redeploy)
             redeploy
             ;;
+        enable-ovn-resource-injector)
+            get_kubeconfig
+            enable_ovn_resource_injector
+            ;;
+        disable-ovn-resource-injector)
+            get_kubeconfig
+            disable_ovn_resource_injector
+            ;;
         *)
             log [ERROR] "Unknown command: $1"
-            log [ERROR] "Available commands: prepare, apply, redeploy"
+            log [ERROR] "Available commands: prepare, apply, redeploy, enable-ovn-resource-injector, disable-ovn-resource-injector"
             exit 1
             ;;
     esac
