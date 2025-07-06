@@ -171,6 +171,27 @@ function apply_post_installation() {
     # Get kubeconfig
     get_kubeconfig
     
+    # Wait for DPF provisioning webhook to be ready
+    log [INFO] "Checking DPF provisioning webhook readiness..."
+    local max_attempts=30
+    local attempt=0
+    
+    while [ $attempt -lt $max_attempts ]; do
+        if oc get endpoints -n dpf-operator-system dpf-provisioning-webhook-service -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null | grep -q .; then
+            log [INFO] "DPF provisioning webhook is ready"
+            break
+        fi
+        attempt=$((attempt + 1))
+        if [ $attempt -eq 1 ]; then
+            log [INFO] "Waiting for webhook to be ready..."
+        fi
+        sleep 5
+    done
+    
+    if [ $attempt -eq $max_attempts ]; then
+        log [WARN] "DPF provisioning webhook not ready after $max_attempts attempts, proceeding anyway..."
+    fi
+    
     # Apply each YAML file in the generated post-installation directory, except dpuset.yaml
     for file in "${GENERATED_POST_INSTALL_DIR}"/*.yaml; do
         if [ -f "$file" ]; then
