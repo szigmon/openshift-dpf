@@ -31,6 +31,11 @@ SPECIAL_FILES=(
     "ovn-dpuservice.yaml"
     "dpuflavor-1500.yaml"
     "sriov-policy.yaml"
+    "ovn-template.yaml"
+    "hbn-template.yaml"
+    "dts-template.yaml"
+    "blueman-template.yaml"
+    "flannel-template.yaml"
 )
 
 # Function to check if a file is in the special files list
@@ -127,6 +132,24 @@ function update_vf_configuration() {
     log [INFO] "VF configuration updated successfully"
 }
 
+# Function to update service template versions
+function update_service_templates() {
+    log [INFO] "Updating service template versions..."
+    
+    # Update all service templates with DPF_VERSION if they exist
+    local templates=("ovn-template.yaml" "hbn-template.yaml" "dts-template.yaml" "blueman-template.yaml" "flannel-template.yaml")
+    
+    for template in "${templates[@]}"; do
+        if [ -f "${POST_INSTALL_DIR}/${template}" ]; then
+            cp "${POST_INSTALL_DIR}/${template}" "${GENERATED_POST_INSTALL_DIR}/${template}"
+            sed -i "s|<DPF_VERSION>|${DPF_VERSION}|g" "${GENERATED_POST_INSTALL_DIR}/${template}"
+            log [INFO] "Updated ${template} with DPF_VERSION=${DPF_VERSION}"
+        fi
+    done
+    
+    log [INFO] "Service template versions updated successfully"
+}
+
 # Function to prepare post-installation manifests
 function prepare_post_installation() {
     log [INFO] "Starting post-installation manifest preparation..."
@@ -141,6 +164,7 @@ function prepare_post_installation() {
     update_bfb_manifest
     update_hbn_ovn_manifests
     update_vf_configuration
+    update_service_templates
     
     # Copy remaining manifests
     for file in "${POST_INSTALL_DIR}"/*.yaml; do
