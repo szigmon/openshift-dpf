@@ -240,11 +240,41 @@ function apply_dpf() {
     log "INFO" "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
     
     get_kubeconfig
+    
     deploy_nfd
     
     apply_namespaces
     apply_crds
     deploy_cert_manager
+    
+    # Install/upgrade DPF Operator using helm (idempotent operation)
+    log "INFO" "Installing/upgrading DPF Operator to $DPF_VERSION..."
+    
+    # Authenticate helm with NGC registry using pull secret
+    if [ -f "$DPF_PULL_SECRET" ]; then
+        NGC_USERNAME=$(jq -r '.auths."nvcr.io".username' "$DPF_PULL_SECRET")
+        NGC_PASSWORD=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET")
+        log "INFO" "Authenticating helm with NGC registry..."
+        helm registry login nvcr.io --username "$NGC_USERNAME" --password "$NGC_PASSWORD" >/dev/null 2>&1 || true
+    fi
+    
+    # Construct the full chart URL with version
+    CHART_URL="${DPF_HELM_REPO_URL}-${DPF_VERSION}.tgz"
+    
+    # Install without --wait for immediate feedback
+    if helm upgrade --install dpf-operator \
+        "${CHART_URL}" \
+        --namespace dpf-operator-system \
+        --create-namespace \
+        --values "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"; then
+        
+        log "INFO" "Helm release 'dpf-operator' deployed successfully"
+        log "INFO" "DPF Operator deployment initiated. Use 'oc get pods -n dpf-operator-system' to monitor progress."
+    else
+        log "ERROR" "Failed to deploy DPF Operator helm release"
+        return 1
+    fi
+    
     apply_remaining
     apply_scc
     deploy_hosted_cluster
