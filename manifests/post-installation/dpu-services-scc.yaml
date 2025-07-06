@@ -1,0 +1,111 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: flannel-scc-rolebinding
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: dpu-services
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:privileged
+subjects:
+  - kind: ServiceAccount
+    name: flannel
+    namespace: dpf-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: doca-hbn-scc-rolebinding
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: dpu-services
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:privileged
+subjects:
+  - kind: ServiceAccount
+    name: doca-hbn
+    namespace: dpf-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: doca-telemetry-scc-rolebinding
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: dpu-services
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:privileged
+subjects:
+  - kind: ServiceAccount
+    name: doca-telemetry-service
+    namespace: dpf-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: multus-scc-rolebinding
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: dpu-services
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:privileged
+subjects:
+  - kind: ServiceAccount
+    name: multus
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: whereabouts-scc-rolebinding
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: dpu-services
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:privileged
+subjects:
+  - kind: ServiceAccount
+    name: whereabouts
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: sfc-controller-scc-rolebinding
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: dpu-services
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:privileged
+subjects:
+  - kind: ServiceAccount
+    name: sfc-controller
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ovnkube-scc-rolebinding
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: dpu-services
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:privileged
+subjects:
+  - kind: Group
+    name: system:serviceaccounts:ovn-kubernetes
+    namespace: ovn-kubernetes
