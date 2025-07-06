@@ -39,15 +39,28 @@ function prepare_manifests() {
 
 
 function prepare_nfs() {
-    # Deploy NFS for clusters that need ReadWriteMany storage but lack OCS/ODF
-    # This includes single-node clusters and small clusters without OCS storage classes
-    if [[ "${VM_COUNT}" -lt 3 ]] || [[ "${BFB_STORAGE_CLASS}" == "nfs-client" ]]; then
-        log "INFO" "Copying NFS manifest: nfs-sno.yaml (VM_COUNT=${VM_COUNT}, need RWX storage)"
+    # Deploy NFS when ReadWriteMany storage is needed but OCS/ODF is unavailable
+    # Two scenarios require NFS:
+    # 1. Small clusters (VM_COUNT < 3) that lack OCS/ODF storage classes
+    # 2. Explicit NFS configuration (BFB_STORAGE_CLASS="nfs-client") regardless of cluster size
+    local needs_nfs=false
+    local reason=""
+    
+    if [[ "${VM_COUNT}" -lt 3 ]]; then
+        needs_nfs=true
+        reason="small cluster without OCS (VM_COUNT=${VM_COUNT})"
+    elif [[ "${BFB_STORAGE_CLASS}" == "nfs-client" ]]; then
+        needs_nfs=true
+        reason="explicit NFS configuration (BFB_STORAGE_CLASS=nfs-client)"
+    fi
+    
+    if [[ "$needs_nfs" == "true" ]]; then
+        log "INFO" "Deploying NFS for ReadWriteMany storage: ${reason}"
         sed -e "s|<STORAGECLASS_NAME>|${ETCD_STORAGE_CLASS}|g" \
             -e "s|<NFS_SERVER_NODE_IP>|${HOST_CLUSTER_API}|g" \
         "${MANIFESTS_DIR}/nfs/nfs-sno.yaml" > "${GENERATED_DIR}/nfs-sno.yaml"
     else
-        log "INFO" "Skipping NFS deployment (VM_COUNT=${VM_COUNT}, using OCS storage)"
+        log "INFO" "Skipping NFS deployment: using OCS/ODF storage (VM_COUNT=${VM_COUNT})"
     fi
 }
 

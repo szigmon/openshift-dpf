@@ -252,13 +252,21 @@ function apply_dpf() {
     # Install/upgrade DPF Operator using helm (idempotent operation)
     log "INFO" "Installing/upgrading DPF Operator to $DPF_VERSION..."
     
-    # Authenticate helm with NGC registry using pull secret
-    if [ -f "$DPF_PULL_SECRET" ]; then
-        NGC_USERNAME=$(jq -r '.auths."nvcr.io".username' "$DPF_PULL_SECRET")
-        NGC_PASSWORD=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET")
-        log "INFO" "Authenticating helm with NGC registry..."
-        helm registry login nvcr.io --username "$NGC_USERNAME" --password "$NGC_PASSWORD" >/dev/null 2>&1 || true
+    # Validate required DPF_PULL_SECRET exists
+    if [ ! -f "$DPF_PULL_SECRET" ]; then
+        log "ERROR" "DPF_PULL_SECRET file not found: $DPF_PULL_SECRET"
+        log "ERROR" "Please ensure the pull secret file exists and contains valid NGC credentials"
+        return 1
     fi
+    
+    # Authenticate helm with NGC registry using pull secret
+    NGC_USERNAME=$(jq -r '.auths."nvcr.io".username' "$DPF_PULL_SECRET")
+    NGC_PASSWORD=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET")
+    log "INFO" "Authenticating helm with NGC registry..."
+    helm registry login nvcr.io --username "$NGC_USERNAME" --password "$NGC_PASSWORD" >/dev/null 2>&1 || {
+        log "ERROR" "Failed to authenticate with NGC registry. Please check your pull secret credentials."
+        return 1
+    }
     
     # Construct the full chart URL with version
     CHART_URL="${DPF_HELM_REPO_URL}-${DPF_VERSION}.tgz"
