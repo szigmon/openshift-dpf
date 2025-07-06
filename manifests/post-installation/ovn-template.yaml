@@ -9,7 +9,7 @@ spec:
     source:
       repoURL: oci://quay.io/szigmon
       chart: ovn
-      version: "v25.4.0-custom"
+      version: "v25.4.0-custom-v2"
     values:
       nameOverride: "ovn-kubernetes"
       commonManifests:
