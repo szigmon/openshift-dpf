@@ -46,7 +46,6 @@ CLUSTER_NAME=${CLUSTER_NAME:-"doca"}
 BASE_DOMAIN=${BASE_DOMAIN:-"lab.nvidia.com"}
 OPENSHIFT_VERSION=${OPENSHIFT_VERSION:-"4.14.0"}
 KUBECONFIG=${KUBECONFIG:-"./${CLUSTER_NAME}-kubeconfig"}
-DPF_CLUSTER_TYPE=${DPF_CLUSTER_TYPE:-"hypershift"}
 SSH_KEY=${SSH_KEY:-"$HOME/.ssh/id_rsa.pub"}
 
 # Network Configuration
@@ -73,14 +72,17 @@ BRIDGE_NAME=${BRIDGE_NAME:-br0}
 SKIP_BRIDGE_CONFIG=${SKIP_BRIDGE_CONFIG:-"false"}
 
 # DPF Configuration
+DPF_VERSION="v25.4.0"
+DPF_HELM_REPO_URL=${DPF_HELM_REPO_URL:-"https://helm.ngc.nvidia.com/nvidia/doca/charts/dpf-operator"}
 HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
-KAMAJI_VIP=${KAMAJI_VIP:-"10.1.178.225"}
+
 if [ "${VM_COUNT}" -lt 2 ]; then
   ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"lvms-vg1"}
+  BFB_STORAGE_CLASS=${BFB_STORAGE_CLASS:-"nfs-client"}
 else
   ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"ocs-storagecluster-ceph-rbd"}
+  BFB_STORAGE_CLASS=${BFB_STORAGE_CLASS:-""}
 fi
-BFB_STORAGE_CLASS=${BFB_STORAGE_CLASS:-""}
 NUM_VFS=${NUM_VFS:-"46"}
 
 # Feature Configuration

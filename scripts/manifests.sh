@@ -170,7 +170,7 @@ function generate_ovn_manifests() {
 
     # Pull and template OVN chart
     helm pull oci://ghcr.io/nvidia/ovn-kubernetes-chart \
-        --version "$HELM_CHART_VERSION" \
+        --version "$DPF_VERSION" \
         --untar -d "$GENERATED_DIR/temp"
     helm template -n ovn-kubernetes ovn-kubernetes \
         "$GENERATED_DIR/temp/ovn-kubernetes-chart" \
