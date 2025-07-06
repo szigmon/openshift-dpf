@@ -3,12 +3,16 @@ nameOverride: ovn-kubernetes
 # Enable control plane for OVN
 controlPlaneManifests:
   enabled: true
+  cniBinDir: "/var/lib/cni/bin/"
+  cniConfDir: "/run/multus/cni/net.d"
 
 # Enable node with DPU manifests
 nodeWithDPUManifests:
   enabled: true
   nodeMgmtPortNetdev: $DPU_P0_VF1
   dpuServiceAccountNamespace: dpf-operator-system
+  cniBinDir: "/var/lib/cni/bin/"
+  cniConfDir: "/run/multus/cni/net.d"
 
 # Enable common manifests
 commonManifests:
@@ -17,6 +21,8 @@ commonManifests:
 # Enable regular node manifests for nodes without DPU
 nodeWithoutDPUManifests:
   enabled: true
+  cniBinDir: "/var/lib/cni/bin/"
+  cniConfDir: "/run/multus/cni/net.d"
 
 global:
   imagePullSecretName: "dpf-pull-secret"
