@@ -232,13 +232,20 @@ function redeploy() {
     oc delete -f "${GENERATED_POST_INSTALL_DIR}/dpuflavor-1500.yaml" || true
 
     apply_post_installation
+}
 
+# Function to enable OVN resource injector
+function enable_ovn_resource_injector() {
+    log [INFO] "Enabling OVN kubernetes resource injector..."
+    log [INFO] "This function will be implemented when OVN custom chart v2 is available"
+    log [INFO] "For now, please apply the OVN resource injector manually"
+    return 0
 }
 
 # If script is executed directly (not sourced), run the appropriate function
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     if [ $# -lt 1 ]; then
-        log [ERROR] "Usage: $0 <prepare|apply>"
+        log [ERROR] "Usage: $0 <prepare|apply|redeploy|enable-ovn-injector>"
         exit 1
     fi
     
@@ -252,9 +259,13 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
         redeploy)
             redeploy
             ;;
+        enable-ovn-injector)
+            get_kubeconfig
+            enable_ovn_resource_injector
+            ;;
         *)
             log [ERROR] "Unknown command: $1"
-            log [ERROR] "Available commands: prepare, apply, redeploy"
+            log [ERROR] "Available commands: prepare, apply, redeploy, enable-ovn-injector"
             exit 1
             ;;
     esac
