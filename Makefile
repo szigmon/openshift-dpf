@@ -13,7 +13,7 @@ POST_INSTALL_SCRIPT := scripts/post-install.sh
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
-        install-hypershift install-helm deploy-dpu-services prepare-dpu-files
+        install-hypershift install-helm deploy-dpu-services prepare-dpu-files enable-ovn-injector
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
 
@@ -88,6 +88,9 @@ create-ignition-template:
 
 redeploy-dpu:
 	@$(POST_INSTALL_SCRIPT) redeploy
+
+enable-ovn-injector: install-helm
+	@scripts/enable-ovn-injector.sh
 
 update-etc-hosts:
 	@scripts/update-etc-hosts.sh
