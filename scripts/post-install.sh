@@ -171,24 +171,50 @@ function apply_post_installation() {
     # Get kubeconfig
     get_kubeconfig
     
+    # Wait for DPF provisioning webhook to be ready before applying manifests
+    log [INFO] "Waiting for DPF provisioning webhook service to be ready..."
+    local webhook_ready=false
+    local max_attempts=30
+    local attempt=0
+    
+    while [ $attempt -lt $max_attempts ]; do
+        attempt=$((attempt + 1))
+        
+        # Check if webhook endpoints are available
+        if oc get endpoints -n dpf-operator-system dpf-provisioning-webhook-service -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null | grep -q .; then
+            log [INFO] "DPF provisioning webhook service is ready"
+            webhook_ready=true
+            break
+        else
+            if [ $attempt -eq 1 ]; then
+                log [INFO] "Waiting for webhook endpoints to be available..."
+            fi
+            sleep 2
+        fi
+    done
+    
+    if [ "$webhook_ready" = "false" ]; then
+        log [WARN] "DPF provisioning webhook service not ready after $max_attempts attempts, proceeding anyway..."
+    fi
+    
     # Apply each YAML file in the generated post-installation directory, except dpuset.yaml
     for file in "${GENERATED_POST_INSTALL_DIR}"/*.yaml; do
         if [ -f "$file" ]; then
             local filename=$(basename "$file")
-            # Skip dpuset.yaml as it will be applied last
-            if [[ "${filename}" != "dpuset.yaml" ]]; then
+            # Skip dpudeployment.yaml as it will be applied last
+            if [[ "${filename}" != "dpudeployment.yaml" ]]; then
                 log [INFO] "Applying post-installation manifest: ${filename}"
                 apply_manifest "$file" "true"
             fi
         fi
     done
     
-    # Apply dpuset.yaml last if it exists, with apply_always=true
-    if [ -f "${GENERATED_POST_INSTALL_DIR}/dpuset.yaml" ]; then
-        log [INFO] "Applying dpuset.yaml (last manifest)..."
-        apply_manifest "${GENERATED_POST_INSTALL_DIR}/dpuset.yaml" "true"
+    # Apply dpudeployment.yaml last if it exists, with apply_always=true
+    if [ -f "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
+        log [INFO] "Applying dpudeployment.yaml (last manifest)..."
+        apply_manifest "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" "true"
     else
-        log [WARN] "dpuset.yaml not found in ${GENERATED_POST_INSTALL_DIR}"
+        log [WARN] "dpudeployment.yaml not found in ${GENERATED_POST_INSTALL_DIR}"
     fi
     
     log [INFO] "Post-installation manifest application completed successfully"
@@ -199,7 +225,7 @@ function redeploy() {
     prepare_post_installation
 
     log [INFO] "Deleting existing manifests..."
-    oc delete -f "${GENERATED_POST_INSTALL_DIR}/dpuset.yaml" || true
+    oc delete -f "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" || true
     oc delete -f "${GENERATED_POST_INSTALL_DIR}/bfb.yaml" || true
 
     # wait till all dpu are removed

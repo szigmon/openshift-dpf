@@ -31,4 +31,10 @@ node-feature-discovery
 
 # discovery iso
 discovery_image*
+
+# Documentation
+CLAUDE.md
+
+# Claude directory
+.claude/
 	
