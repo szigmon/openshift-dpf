@@ -77,9 +77,11 @@ function update_bfb_manifest() {
     local bfb_filename=$(basename "${BFB_URL}")
     # Copy the file
     cp "${POST_INSTALL_DIR}/bfb.yaml" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
-    # Update the manifest with custom values
-    sed -i "s|BFB_FILENAME|${bfb_filename}|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
-    sed -i "s|BFB_URL|\"${BFB_URL}\"|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
+    # Update the manifest with custom values (escape special characters)
+    local escaped_filename=$(escape_sed_replacement "${bfb_filename}")
+    local escaped_url=$(escape_sed_replacement "${BFB_URL}")
+    sed -i "s|BFB_FILENAME|${escaped_filename}|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
+    sed -i "s|BFB_URL|\"${escaped_url}\"|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
     log [INFO] "BFB manifest updated successfully"
 }
 
