@@ -169,7 +169,7 @@ prepare_dpf_manifests() {
     sed "s|HOSTED_CLUSTER_NAME|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml" > "$GENERATED_DIR/static-dpucluster-template.yaml.tmp" && mv "$GENERATED_DIR/static-dpucluster-template.yaml.tmp" "$GENERATED_DIR/static-dpucluster-template.yaml"
 
     # Extract NGC API key and update secrets
-    NGC_API_KEY=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET" 2>/dev/null)
+    NGC_API_KEY=$(jq -r '.auths."nvcr.io".password // empty' "$DPF_PULL_SECRET" 2>/dev/null)
     if [ -z "$NGC_API_KEY" ] || [ "$NGC_API_KEY" = "null" ]; then
         log "ERROR" "Failed to extract NGC API key from pull secret"
         return 1
@@ -177,7 +177,20 @@ prepare_dpf_manifests() {
     sed "s|<PASSWORD>|$NGC_API_KEY|g" "$GENERATED_DIR/ngc-secrets.yaml" > "$GENERATED_DIR/ngc-secrets.yaml.tmp" && mv "$GENERATED_DIR/ngc-secrets.yaml.tmp" "$GENERATED_DIR/ngc-secrets.yaml"
 
     # Update pull secret
-    PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64 -w 0 2>/dev/null || cat "$DPF_PULL_SECRET" | base64)
+    # Detect platform and use appropriate base64 command
+    if command -v base64 >/dev/null 2>&1; then
+        # Check if base64 supports -w flag (GNU coreutils)
+        if base64 --help 2>&1 | grep -q -- '-w'; then
+            PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64 -w 0)
+        else
+            # macOS/BSD base64 doesn't support -w, output is already single line
+            PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64)
+        fi
+    else
+        log "ERROR" "base64 command not found"
+        return 1
+    fi
+    
     if [ -z "$PULL_SECRET" ]; then
         log "ERROR" "Failed to encode pull secret"
         return 1

@@ -234,6 +234,27 @@ function retry() {
 }
 
 # -----------------------------------------------------------------------------
+# Helper functions
+# -----------------------------------------------------------------------------
+# Portable sed in-place editing
+sed_inplace() {
+    local expression="$1"
+    local file="$2"
+    
+    if [ ! -f "$file" ]; then
+        log "ERROR" "File not found for sed_inplace: $file"
+        return 1
+    fi
+    
+    # Use temp file for portability across GNU and BSD sed
+    sed "$expression" "$file" > "$file.sed_tmp" && mv "$file.sed_tmp" "$file" || {
+        rm -f "$file.sed_tmp"
+        log "ERROR" "sed_inplace failed for: $file"
+        return 1
+    }
+}
+
+# -----------------------------------------------------------------------------
 # Template processing functions
 # -----------------------------------------------------------------------------
 function process_template() {
