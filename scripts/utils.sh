@@ -256,7 +256,7 @@ function process_template() {
     while [ $# -gt 0 ]; do
         local placeholder=$1
         local value=$2
-        sed -i "s|${placeholder}|${value}|g" "$output_file"
+        sed "s|${placeholder}|${value}|g" "$output_file" > "$output_file.tmp" && mv "$output_file.tmp" "$output_file"
         log "DEBUG" "Replaced ${placeholder} with ${value} in $(basename "$output_file")"
         shift 2
     done

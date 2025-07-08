@@ -260,8 +260,14 @@ function apply_dpf() {
     fi
     
     # Authenticate helm with NGC registry using pull secret
-    NGC_USERNAME=$(jq -r '.auths."nvcr.io".username' "$DPF_PULL_SECRET")
-    NGC_PASSWORD=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET")
+    NGC_USERNAME=$(jq -r '.auths."nvcr.io".username' "$DPF_PULL_SECRET" 2>/dev/null)
+    NGC_PASSWORD=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET" 2>/dev/null)
+    
+    # Validate credentials were extracted
+    if [ -z "$NGC_USERNAME" ] || [ -z "$NGC_PASSWORD" ]; then
+        log "ERROR" "Failed to extract NGC credentials from pull secret. Please check the file format."
+        return 1
+    fi
     log "INFO" "Authenticating helm with NGC registry..."
     helm registry login nvcr.io --username "$NGC_USERNAME" --password "$NGC_PASSWORD" >/dev/null 2>&1 || {
         log "ERROR" "Failed to authenticate with NGC registry. Please check your pull secret credentials."
