@@ -47,7 +47,10 @@ function deploy_nfd() {
     get_kubeconfig
 
     # Deploy the NFD operator
-    make -C cluster-nfd-operator deploy IMAGE_TAG=$NFD_OPERATOR_IMAGE KUBECONFIG=$KUBECONFIG
+    if ! make -C cluster-nfd-operator deploy IMAGE_TAG=$NFD_OPERATOR_IMAGE KUBECONFIG=$KUBECONFIG; then
+        log [ERROR] "Failed to deploy NFD operator"
+        return 1
+    fi
 
     log [INFO] "NFD operator deployment from source completed"
 
@@ -56,8 +59,8 @@ function deploy_nfd() {
     mkdir -p "$GENERATED_DIR"
     cp "$MANIFESTS_DIR/dpf-installation/nfd-cr-template.yaml" "$GENERATED_DIR/nfd-cr-template.yaml"
     echo
-    sed -i "s|api.CLUSTER_FQDN|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr-template.yaml"
-    sed -i "s|image: quay.io/yshnaidm/node-feature-discovery:dpf|image: $NFD_OPERAND_IMAGE|g" "$GENERATED_DIR/nfd-cr-template.yaml"
+    sed "s|api.CLUSTER_FQDN|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr-template.yaml" > "$GENERATED_DIR/nfd-cr-template.yaml.tmp" && mv "$GENERATED_DIR/nfd-cr-template.yaml.tmp" "$GENERATED_DIR/nfd-cr-template.yaml"
+    sed "s|image: quay.io/yshnaidm/node-feature-discovery:dpf|image: $NFD_OPERAND_IMAGE|g" "$GENERATED_DIR/nfd-cr-template.yaml" > "$GENERATED_DIR/nfd-cr-template.yaml.tmp" && mv "$GENERATED_DIR/nfd-cr-template.yaml.tmp" "$GENERATED_DIR/nfd-cr-template.yaml"
 
     # Apply the NFD CR
     KUBECONFIG=$KUBECONFIG oc apply -f "$GENERATED_DIR/nfd-cr-template.yaml"
@@ -118,6 +121,12 @@ function deploy_cert_manager() {
             sleep 5
             retries=$((retries-1))
         done
+        
+        # Verify namespace was actually created
+        if [ $retries -eq 0 ]; then
+            log [ERROR] "Timeout: cert-manager namespace was not created after 150 seconds"
+            return 1
+        fi
         
         # Wait for webhook pod in cert-manager namespace
         wait_for_pods "cert-manager" "app.kubernetes.io/component=webhook" "status.phase=Running" "1/1" 30 5
