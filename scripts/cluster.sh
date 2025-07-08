@@ -186,9 +186,8 @@ function get_kubeconfig() {
         kubeconfig_path="${KUBECONFIG:-}"
     fi
 
-    # Trim leading and trailing whitespace
-    kubeconfig_path="${kubeconfig_path#"${kubeconfig_path%%[![:space:]]*}"}"  # Trim leading spaces
-    kubeconfig_path="${kubeconfig_path%"${kubeconfig_path##*[![:space:]]}"}"  # Trim trailing spaces
+    # Trim whitespace using a more readable approach
+    kubeconfig_path=$(echo "$kubeconfig_path" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
     echo "KUBECONFIG: $kubeconfig_path"
     if [ ! -f "$kubeconfig_path" ]; then

@@ -60,8 +60,8 @@ function deploy_nfd() {
     mkdir -p "$GENERATED_DIR"
     cp "$MANIFESTS_DIR/dpf-installation/nfd-cr-template.yaml" "$GENERATED_DIR/nfd-cr-template.yaml"
     echo
-    sed "s|api.CLUSTER_FQDN|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr-template.yaml" > "$GENERATED_DIR/nfd-cr-template.yaml.tmp" && mv "$GENERATED_DIR/nfd-cr-template.yaml.tmp" "$GENERATED_DIR/nfd-cr-template.yaml"
-    sed "s|image: quay.io/yshnaidm/node-feature-discovery:dpf|image: $NFD_OPERAND_IMAGE|g" "$GENERATED_DIR/nfd-cr-template.yaml" > "$GENERATED_DIR/nfd-cr-template.yaml.tmp" && mv "$GENERATED_DIR/nfd-cr-template.yaml.tmp" "$GENERATED_DIR/nfd-cr-template.yaml"
+    sed_inplace "s|api.CLUSTER_FQDN|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr-template.yaml"
+    sed_inplace "s|image: quay.io/yshnaidm/node-feature-discovery:dpf|image: $NFD_OPERAND_IMAGE|g" "$GENERATED_DIR/nfd-cr-template.yaml"
 
     # Apply the NFD CR
     KUBECONFIG=$KUBECONFIG oc apply -f "$GENERATED_DIR/nfd-cr-template.yaml"
@@ -222,8 +222,24 @@ function copy_hypershift_kubeconfig() {
     log [INFO] "Copying hypershift kubeconfig..."
     
     # Extract kubeconfig from secret
-    if ! oc get secret -n "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" -o jsonpath='{.data.kubeconfig}' | base64 -d > ${HOSTED_CLUSTER_NAME}.kubeconfig; then
-        log [ERROR] "Failed to extract kubeconfig from secret"
+    local kubeconfig_b64=$(oc get secret -n "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" -o jsonpath='{.data.kubeconfig}' 2>/dev/null)
+    if [ -z "$kubeconfig_b64" ]; then
+        log [ERROR] "Failed to get kubeconfig secret"
+        return 1
+    fi
+    
+    # Decode base64 (handle both GNU and BSD variants)
+    if command -v base64 >/dev/null 2>&1; then
+        if echo "$kubeconfig_b64" | base64 -d > ${HOSTED_CLUSTER_NAME}.kubeconfig 2>/dev/null; then
+            : # GNU base64 succeeded
+        elif echo "$kubeconfig_b64" | base64 -D > ${HOSTED_CLUSTER_NAME}.kubeconfig 2>/dev/null; then
+            : # BSD base64 succeeded
+        else
+            log [ERROR] "Failed to decode kubeconfig"
+            return 1
+        fi
+    else
+        log [ERROR] "base64 command not found"
         return 1
     fi
     
@@ -293,16 +309,17 @@ function apply_dpf() {
     fi
     
     # Authenticate helm with NGC registry using pull secret
-    NGC_USERNAME=$(jq -r '.auths."nvcr.io".username' "$DPF_PULL_SECRET" 2>/dev/null)
-    NGC_PASSWORD=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET" 2>/dev/null)
+    NGC_USERNAME=$(jq -r '.auths."nvcr.io".username // empty' "$DPF_PULL_SECRET" 2>/dev/null)
+    NGC_PASSWORD=$(jq -r '.auths."nvcr.io".password // empty' "$DPF_PULL_SECRET" 2>/dev/null)
     
-    # Validate credentials were extracted
-    if [ -z "$NGC_USERNAME" ] || [ -z "$NGC_PASSWORD" ]; then
+    # Validate credentials were extracted (check for empty or 'null' string)
+    if [ -z "$NGC_USERNAME" ] || [ -z "$NGC_PASSWORD" ] || [ "$NGC_USERNAME" = "null" ] || [ "$NGC_PASSWORD" = "null" ]; then
         log "ERROR" "Failed to extract NGC credentials from pull secret. Please check the file format."
         return 1
     fi
     log "INFO" "Authenticating helm with NGC registry..."
-    helm registry login nvcr.io --username "$NGC_USERNAME" --password "$NGC_PASSWORD" >/dev/null 2>&1 || {
+    # Use stdin to avoid password in process list
+    echo "$NGC_PASSWORD" | helm registry login nvcr.io --username "$NGC_USERNAME" --password-stdin >/dev/null 2>&1 || {
         log "ERROR" "Failed to authenticate with NGC registry. Please check your pull secret credentials."
         return 1
     }
