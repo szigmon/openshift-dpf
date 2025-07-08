@@ -268,17 +268,14 @@ function get_iso() {
 
     # Check if this is for day1 (master nodes) and cluster is already installed
     if [ "${cluster_type}" = "day1" ] && [ "${action}" = "download" ]; then
-        # Temporarily use the provided cluster name for the check
-        local saved_cluster_name="${CLUSTER_NAME}"
-        CLUSTER_NAME="${cluster_name}"
-        
-        if check_cluster_installed; then
+        # Use a subshell to avoid side effects from modifying CLUSTER_NAME
+        if (
+            CLUSTER_NAME="${cluster_name}"
+            check_cluster_installed
+        ); then
             log "INFO" "Skipping ISO download as cluster is already installed"
-            CLUSTER_NAME="${saved_cluster_name}"
             return 0
         fi
-        
-        CLUSTER_NAME="${saved_cluster_name}"
     fi
 
     [ "${cluster_type}" = "day2" ] && cluster_name="${cluster_name}-day2"

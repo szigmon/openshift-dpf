@@ -79,7 +79,7 @@ enable-storage:
 prepare-dpf-manifests:
 	@$(MANIFESTS_SCRIPT) prepare-dpf-manifests
 
-upgrade-dpf:
+upgrade-dpf: install-helm
 	@scripts/dpf-upgrade.sh interactive
 
 deploy-dpf: prepare-dpf-manifests
