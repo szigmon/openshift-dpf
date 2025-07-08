@@ -235,7 +235,14 @@ function apply_post_installation() {
     done
     
     if [ "$webhook_ready" = "false" ]; then
-        log [WARN] "DPF provisioning webhook service not ready after $max_attempts attempts, proceeding anyway..."
+        log [ERROR] "DPF provisioning webhook service not ready after $max_attempts attempts"
+        log [ERROR] "This may cause failures when applying DPU manifests that require webhook validation"
+        # Check if we should fail or continue based on environment variable
+        if [ "${STRICT_WEBHOOK_CHECK:-true}" = "true" ]; then
+            return 1
+        else
+            log [WARN] "STRICT_WEBHOOK_CHECK is disabled, proceeding anyway..."
+        fi
     fi
     
     # Apply each YAML file in the generated post-installation directory
