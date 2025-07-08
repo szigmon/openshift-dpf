@@ -60,8 +60,8 @@ function deploy_nfd() {
     mkdir -p "$GENERATED_DIR"
     cp "$MANIFESTS_DIR/dpf-installation/nfd-cr-template.yaml" "$GENERATED_DIR/nfd-cr-template.yaml"
     echo
-    sed_inplace "s|api.CLUSTER_FQDN|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr-template.yaml"
-    sed_inplace "s|image: quay.io/yshnaidm/node-feature-discovery:dpf|image: $NFD_OPERAND_IMAGE|g" "$GENERATED_DIR/nfd-cr-template.yaml"
+    sed -i "s|api.CLUSTER_FQDN|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr-template.yaml"
+    sed -i "s|image: quay.io/yshnaidm/node-feature-discovery:dpf|image: $NFD_OPERAND_IMAGE|g" "$GENERATED_DIR/nfd-cr-template.yaml"
 
     # Apply the NFD CR
     KUBECONFIG=$KUBECONFIG oc apply -f "$GENERATED_DIR/nfd-cr-template.yaml"
@@ -222,24 +222,8 @@ function copy_hypershift_kubeconfig() {
     log [INFO] "Copying hypershift kubeconfig..."
     
     # Extract kubeconfig from secret
-    local kubeconfig_b64=$(oc get secret -n "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" -o jsonpath='{.data.kubeconfig}' 2>/dev/null)
-    if [ -z "$kubeconfig_b64" ]; then
-        log [ERROR] "Failed to get kubeconfig secret"
-        return 1
-    fi
-    
-    # Decode base64 (handle both GNU and BSD variants)
-    if command -v base64 >/dev/null 2>&1; then
-        if echo "$kubeconfig_b64" | base64 -d > ${HOSTED_CLUSTER_NAME}.kubeconfig 2>/dev/null; then
-            : # GNU base64 succeeded
-        elif echo "$kubeconfig_b64" | base64 -D > ${HOSTED_CLUSTER_NAME}.kubeconfig 2>/dev/null; then
-            : # BSD base64 succeeded
-        else
-            log [ERROR] "Failed to decode kubeconfig"
-            return 1
-        fi
-    else
-        log [ERROR] "base64 command not found"
+    if ! oc get secret -n "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" -o jsonpath='{.data.kubeconfig}' | base64 -d > ${HOSTED_CLUSTER_NAME}.kubeconfig; then
+        log [ERROR] "Failed to extract kubeconfig from secret"
         return 1
     fi
     
