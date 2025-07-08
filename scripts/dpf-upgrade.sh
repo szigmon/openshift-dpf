@@ -29,7 +29,10 @@ echo "🚀 Running DPF deployment..."
 echo ""
 
 # Just call the existing scripts
-make -C "$(dirname "${BASH_SOURCE[0]}")/.." prepare-dpf-manifests
+if ! make -C "$(dirname "${BASH_SOURCE[0]}")/.." prepare-dpf-manifests; then
+    echo "❌ Failed to prepare DPF manifests"
+    exit 1
+fi
 
 echo ""
 echo "✅ DPF operator installation completed!"

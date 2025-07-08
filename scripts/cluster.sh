@@ -134,7 +134,13 @@ function wait_for_cluster_status() {
     
     log "INFO" "Waiting for cluster ${CLUSTER_NAME} to reach status: ${status}"
     while [ $retries -lt $max_retries ]; do
-        current_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v)
+        # Capture aicli output, handle potential failures
+        if ! current_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null); then
+            log "WARN" "Failed to get cluster status (attempt $((retries + 1))/${max_retries})"
+            retries=$((retries + 1))
+            sleep $sleep_time
+            continue
+        fi
         # If waiting for 'ready' but status is already 'installed', treat as success
         if [ "$status" == "ready" ] && [ "$current_status" == "installed" ]; then
             log "INFO" "Cluster ${CLUSTER_NAME} is already installed. Skipping wait for 'ready'."

@@ -209,6 +209,12 @@ prepare_dpf_manifests() {
 function generate_ovn_manifests() {
     log [INFO] "Generating OVN manifests..."
     
+    # Validate DPF_VERSION is set
+    if [ -z "$DPF_VERSION" ]; then
+        log [ERROR] "DPF_VERSION is not set. Required for OVN chart pull"
+        return 1
+    fi
+    
     # Ensure helm is installed
     ensure_helm_installed
     
