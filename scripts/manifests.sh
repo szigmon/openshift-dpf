@@ -161,12 +161,12 @@ prepare_dpf_manifests() {
         grep -v 'storageClassName: ""' "$GENERATED_DIR/bfb-pvc.yaml" > "$GENERATED_DIR/bfb-pvc.yaml.tmp"
         mv "$GENERATED_DIR/bfb-pvc.yaml.tmp" "$GENERATED_DIR/bfb-pvc.yaml"
     else
-        sed "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml" > "$GENERATED_DIR/bfb-pvc.yaml.tmp" && mv "$GENERATED_DIR/bfb-pvc.yaml.tmp" "$GENERATED_DIR/bfb-pvc.yaml"
+        sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
     fi
 
     # Update static DPU cluster template
-    sed "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml" > "$GENERATED_DIR/static-dpucluster-template.yaml.tmp" && mv "$GENERATED_DIR/static-dpucluster-template.yaml.tmp" "$GENERATED_DIR/static-dpucluster-template.yaml"
-    sed "s|HOSTED_CLUSTER_NAME|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml" > "$GENERATED_DIR/static-dpucluster-template.yaml.tmp" && mv "$GENERATED_DIR/static-dpucluster-template.yaml.tmp" "$GENERATED_DIR/static-dpucluster-template.yaml"
+    sed -i "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
+    sed -i "s|HOSTED_CLUSTER_NAME|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
 
     # Extract NGC API key and update secrets
     NGC_API_KEY=$(jq -r '.auths."nvcr.io".password // empty' "$DPF_PULL_SECRET" 2>/dev/null)
@@ -174,28 +174,16 @@ prepare_dpf_manifests() {
         log "ERROR" "Failed to extract NGC API key from pull secret"
         return 1
     fi
-    sed "s|<PASSWORD>|$NGC_API_KEY|g" "$GENERATED_DIR/ngc-secrets.yaml" > "$GENERATED_DIR/ngc-secrets.yaml.tmp" && mv "$GENERATED_DIR/ngc-secrets.yaml.tmp" "$GENERATED_DIR/ngc-secrets.yaml"
+    sed -i "s|<PASSWORD>|$NGC_API_KEY|g" "$GENERATED_DIR/ngc-secrets.yaml"
 
     # Update pull secret
-    # Detect platform and use appropriate base64 command
-    if command -v base64 >/dev/null 2>&1; then
-        # Check if base64 supports -w flag (GNU coreutils)
-        if base64 --help 2>&1 | grep -q -- '-w'; then
-            PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64 -w 0)
-        else
-            # macOS/BSD base64 doesn't support -w, output is already single line
-            PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64)
-        fi
-    else
-        log "ERROR" "base64 command not found"
-        return 1
-    fi
-    
+    # Encode pull secret (Linux/GNU base64)
+    PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64 -w 0)
     if [ -z "$PULL_SECRET" ]; then
         log "ERROR" "Failed to encode pull secret"
         return 1
     fi
-    sed "s|PULL_SECRET_BASE64|$PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml" > "$GENERATED_DIR/dpf-pull-secret.yaml.tmp" && mv "$GENERATED_DIR/dpf-pull-secret.yaml.tmp" "$GENERATED_DIR/dpf-pull-secret.yaml"
+    sed -i "s|PULL_SECRET_BASE64|$PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
 
     prepare_nfs
     
