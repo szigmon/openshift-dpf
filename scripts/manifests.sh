@@ -56,6 +56,11 @@ function prepare_nfs() {
     
     if [[ "$needs_nfs" == "true" ]]; then
         log "INFO" "Deploying NFS for ReadWriteMany storage: ${reason}"
+        # Validate ETCD_STORAGE_CLASS is set
+        if [ -z "${ETCD_STORAGE_CLASS}" ]; then
+            log "ERROR" "ETCD_STORAGE_CLASS is not set but required for NFS deployment"
+            return 1
+        fi
         sed -e "s|<STORAGECLASS_NAME>|${ETCD_STORAGE_CLASS}|g" \
             -e "s|<NFS_SERVER_NODE_IP>|${HOST_CLUSTER_API}|g" \
         "${MANIFESTS_DIR}/nfs/nfs-sno.yaml" > "${GENERATED_DIR}/nfs-sno.yaml"

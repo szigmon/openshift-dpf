@@ -246,6 +246,15 @@ function process_template() {
         return 1
     fi
     
+    # Ensure output directory exists
+    local output_dir=$(dirname "$output_file")
+    if [ ! -d "$output_dir" ]; then
+        mkdir -p "$output_dir" || {
+            log "ERROR" "Failed to create output directory: $output_dir"
+            return 1
+        }
+    fi
+    
     # Copy template to output
     cp "$template_file" "$output_file" || {
         log "ERROR" "Failed to copy $template_file to $output_file"
