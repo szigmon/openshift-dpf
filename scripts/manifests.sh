@@ -1,8 +1,9 @@
 #!/bin/bash
 # manifests.sh - Manifest management operations
 
-# Exit on error
+# Exit on error and catch pipe failures
 set -e
+set -o pipefail
 
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"

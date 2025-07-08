@@ -1,8 +1,9 @@
 #!/bin/bash
 # post-install.sh - Prepare and apply post-installation manifests to the cluster
 
-# Exit on error
+# Exit on error and catch pipe failures
 set -e
+set -o pipefail
 
 # Source common utilities and configuration
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
@@ -274,7 +275,10 @@ function redeploy() {
     oc delete -f "${GENERATED_POST_INSTALL_DIR}/bfb.yaml" || true
 
     # wait till all dpu are removed
-    retry 60 5 oc wait --for=delete dpu -A --all || exit 1
+    if ! retry 60 5 oc wait --for=delete dpu -A --all; then
+        log [ERROR] "Failed to wait for DPU deletion"
+        return 1
+    fi
 
     oc delete -f "${GENERATED_POST_INSTALL_DIR}/dpuflavor-1500.yaml" || true
 
