@@ -155,6 +155,12 @@ function update_vf_configuration() {
 function update_service_templates() {
     log [INFO] "Updating service template versions..."
     
+    # Validate DPF_VERSION is set
+    if [ -z "$DPF_VERSION" ]; then
+        log [ERROR] "DPF_VERSION is not set. Required for service template updates"
+        return 1
+    fi
+    
     # Update all service templates with DPF_VERSION if they exist
     local templates=("hbn-template.yaml" "dts-template.yaml" "blueman-template.yaml" "flannel-template.yaml")
     

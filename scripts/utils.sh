@@ -121,7 +121,8 @@ function wait_for_pods() {
     local delay=$6
 
     for i in $(seq 1 "$max_attempts"); do
-        oc get pods -n "$namespace" -l "$label" --field-selector "$selector"
+        # Display pod status (allow this to fail without exiting)
+        oc get pods -n "$namespace" -l "$label" --field-selector "$selector" 2>&1 || true
         if oc get pods -n "$namespace" -l "$label" --field-selector "$selector" 2>/dev/null | grep -q "$expected_state"; then
             log "INFO" "$label pods are ready"
             return 0
