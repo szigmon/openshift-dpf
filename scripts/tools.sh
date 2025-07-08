@@ -10,6 +10,16 @@ source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 # -----------------------------------------------------------------------------
 # Tool installation functions
 # -----------------------------------------------------------------------------
+function ensure_jq_installed() {
+    if ! command -v jq &> /dev/null; then
+        log "ERROR" "jq is not installed but required for JSON processing"
+        log "ERROR" "Please install jq before continuing:"
+        log "ERROR" "  RHEL/CentOS: sudo yum install -y jq"
+        log "ERROR" "  Ubuntu/Debian: sudo apt-get install -y jq"
+        return 1
+    fi
+}
+
 function ensure_helm_installed() {
     if ! command -v helm &> /dev/null; then
         log "INFO" "Helm not found. Installing helm..."

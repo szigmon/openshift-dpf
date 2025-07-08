@@ -285,6 +285,9 @@ function apply_dpf() {
     # Install/upgrade DPF Operator using helm (idempotent operation)
     log "INFO" "Installing/upgrading DPF Operator to $DPF_VERSION..."
     
+    # Ensure helm is installed before using it
+    ensure_helm_installed || return 1
+    
     # Validate DPF_VERSION is set
     if [ -z "$DPF_VERSION" ]; then
         log "ERROR" "DPF_VERSION is not set. Please set it in env.sh or as environment variable"
@@ -297,6 +300,9 @@ function apply_dpf() {
         log "ERROR" "Please ensure the pull secret file exists and contains valid NGC credentials"
         return 1
     fi
+    
+    # Ensure jq is installed before using it
+    ensure_jq_installed || return 1
     
     # Authenticate helm with NGC registry using pull secret
     NGC_USERNAME=$(jq -r '.auths."nvcr.io".username // empty' "$DPF_PULL_SECRET" 2>/dev/null)

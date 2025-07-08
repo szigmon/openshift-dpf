@@ -177,6 +177,9 @@ prepare_dpf_manifests() {
     sed -i "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
     sed -i "s|HOSTED_CLUSTER_NAME|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
 
+    # Ensure jq is installed before using it
+    ensure_jq_installed || return 1
+    
     # Extract NGC API key and update secrets
     NGC_API_KEY=$(jq -r '.auths."nvcr.io".password // empty' "$DPF_PULL_SECRET" 2>/dev/null)
     if [ -z "$NGC_API_KEY" ] || [ "$NGC_API_KEY" = "null" ]; then
