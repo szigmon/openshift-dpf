@@ -234,6 +234,16 @@ function retry() {
 }
 
 # -----------------------------------------------------------------------------
+# Helper functions
+# -----------------------------------------------------------------------------
+# Escape string for safe use in sed replacement
+escape_sed_replacement() {
+    local str="$1"
+    # Escape backslashes first, then ampersands, then forward slashes
+    printf '%s' "$str" | sed 's/\\/\\\\/g; s/&/\\&/g; s/\//\\\//g'
+}
+
+# -----------------------------------------------------------------------------
 # Template processing functions
 # -----------------------------------------------------------------------------
 function process_template() {
@@ -268,7 +278,9 @@ function process_template() {
     while [ $# -gt 0 ]; do
         local placeholder=$1
         local value=$2
-        sed -i "s|${placeholder}|${value}|g" "$output_file"
+        # Escape the replacement value for sed
+        local escaped_value=$(escape_sed_replacement "$value")
+        sed -i "s|${placeholder}|${escaped_value}|g" "$output_file"
         log "DEBUG" "Replaced ${placeholder} with ${value} in $(basename "$output_file")"
         shift 2
     done

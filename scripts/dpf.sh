@@ -285,6 +285,12 @@ function apply_dpf() {
     # Install/upgrade DPF Operator using helm (idempotent operation)
     log "INFO" "Installing/upgrading DPF Operator to $DPF_VERSION..."
     
+    # Validate DPF_VERSION is set
+    if [ -z "$DPF_VERSION" ]; then
+        log "ERROR" "DPF_VERSION is not set. Please set it in env.sh or as environment variable"
+        return 1
+    fi
+    
     # Validate required DPF_PULL_SECRET exists
     if [ ! -f "$DPF_PULL_SECRET" ]; then
         log "ERROR" "DPF_PULL_SECRET file not found: $DPF_PULL_SECRET"

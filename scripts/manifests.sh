@@ -156,9 +156,18 @@ prepare_dpf_manifests() {
     log "INFO" "DPF manifest preparation completed successfully"
 
     # Update manifests with configuration
+    # Check if bfb-pvc.yaml exists before modifying
+    if [ ! -f "$GENERATED_DIR/bfb-pvc.yaml" ]; then
+        log "ERROR" "bfb-pvc.yaml not found in $GENERATED_DIR"
+        return 1
+    fi
+    
     # For single-node clusters (VM_COUNT < 2), we use direct NFS PV binding, so remove storageClassName
     if [ "${VM_COUNT}" -lt 2 ]; then
-        grep -v 'storageClassName: ""' "$GENERATED_DIR/bfb-pvc.yaml" > "$GENERATED_DIR/bfb-pvc.yaml.tmp"
+        if ! grep -v 'storageClassName: ""' "$GENERATED_DIR/bfb-pvc.yaml" > "$GENERATED_DIR/bfb-pvc.yaml.tmp"; then
+            log "ERROR" "Failed to process bfb-pvc.yaml for single-node cluster"
+            return 1
+        fi
         mv "$GENERATED_DIR/bfb-pvc.yaml.tmp" "$GENERATED_DIR/bfb-pvc.yaml"
     else
         sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
@@ -174,7 +183,8 @@ prepare_dpf_manifests() {
         log "ERROR" "Failed to extract NGC API key from pull secret"
         return 1
     fi
-    sed -i "s|<PASSWORD>|$NGC_API_KEY|g" "$GENERATED_DIR/ngc-secrets.yaml"
+    local escaped_api_key=$(escape_sed_replacement "$NGC_API_KEY")
+    sed -i "s|<PASSWORD>|$escaped_api_key|g" "$GENERATED_DIR/ngc-secrets.yaml"
 
     # Update pull secret
     # Encode pull secret (Linux/GNU base64)
@@ -183,7 +193,8 @@ prepare_dpf_manifests() {
         log "ERROR" "Failed to encode pull secret"
         return 1
     fi
-    sed -i "s|PULL_SECRET_BASE64|$PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
+    local escaped_secret=$(escape_sed_replacement "$PULL_SECRET")
+    sed -i "s|PULL_SECRET_BASE64|$escaped_secret|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
 
     prepare_nfs
     
