@@ -155,20 +155,28 @@ prepare_dpf_manifests() {
         grep -v 'storageClassName: ""' "$GENERATED_DIR/bfb-pvc.yaml" > "$GENERATED_DIR/bfb-pvc.yaml.tmp"
         mv "$GENERATED_DIR/bfb-pvc.yaml.tmp" "$GENERATED_DIR/bfb-pvc.yaml"
     else
-        sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
+        sed "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml" > "$GENERATED_DIR/bfb-pvc.yaml.tmp" && mv "$GENERATED_DIR/bfb-pvc.yaml.tmp" "$GENERATED_DIR/bfb-pvc.yaml"
     fi
 
     # Update static DPU cluster template
-    sed -i "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
-    sed -i "s|HOSTED_CLUSTER_NAME|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
+    sed "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml" > "$GENERATED_DIR/static-dpucluster-template.yaml.tmp" && mv "$GENERATED_DIR/static-dpucluster-template.yaml.tmp" "$GENERATED_DIR/static-dpucluster-template.yaml"
+    sed "s|HOSTED_CLUSTER_NAME|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml" > "$GENERATED_DIR/static-dpucluster-template.yaml.tmp" && mv "$GENERATED_DIR/static-dpucluster-template.yaml.tmp" "$GENERATED_DIR/static-dpucluster-template.yaml"
 
     # Extract NGC API key and update secrets
-    NGC_API_KEY=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET")
-    sed -i "s|<PASSWORD>|$NGC_API_KEY|g" "$GENERATED_DIR/ngc-secrets.yaml"
+    NGC_API_KEY=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET" 2>/dev/null)
+    if [ -z "$NGC_API_KEY" ] || [ "$NGC_API_KEY" = "null" ]; then
+        log "ERROR" "Failed to extract NGC API key from pull secret"
+        return 1
+    fi
+    sed "s|<PASSWORD>|$NGC_API_KEY|g" "$GENERATED_DIR/ngc-secrets.yaml" > "$GENERATED_DIR/ngc-secrets.yaml.tmp" && mv "$GENERATED_DIR/ngc-secrets.yaml.tmp" "$GENERATED_DIR/ngc-secrets.yaml"
 
     # Update pull secret
-    PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64 -w 0)
-    sed -i "s|PULL_SECRET_BASE64|$PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
+    PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64 -w 0 2>/dev/null || cat "$DPF_PULL_SECRET" | base64)
+    if [ -z "$PULL_SECRET" ]; then
+        log "ERROR" "Failed to encode pull secret"
+        return 1
+    fi
+    sed "s|PULL_SECRET_BASE64|$PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml" > "$GENERATED_DIR/dpf-pull-secret.yaml.tmp" && mv "$GENERATED_DIR/dpf-pull-secret.yaml.tmp" "$GENERATED_DIR/dpf-pull-secret.yaml"
 
     prepare_nfs
     
@@ -195,7 +203,7 @@ function generate_ovn_manifests() {
         -e "s|nodeMgmtPortNetdev:.*|nodeMgmtPortNetdev: $DPU_OVN_VF|" \
         -e "s|gatewayOpts:.*|gatewayOpts: --gateway-interface=$DPU_INTERFACE|" \
         "$MANIFESTS_DIR/cluster-installation/ovn-values.yaml" > "$GENERATED_DIR/temp/values.yaml"
-    sed -i -E 's/:[[:space:]]+/: /g' "$GENERATED_DIR/temp/values.yaml"
+    sed -E 's/:[[:space:]]+/: /g' "$GENERATED_DIR/temp/values.yaml" > "$GENERATED_DIR/temp/values.yaml.tmp" && mv "$GENERATED_DIR/temp/values.yaml.tmp" "$GENERATED_DIR/temp/values.yaml"
 
     # Pull and template OVN chart
     log [INFO] "Pulling OVN chart version $DPF_VERSION..."
@@ -225,8 +233,8 @@ function generate_ovn_manifests() {
 
     # Update paths in manifests
     log [INFO] "Updating paths in manifests..."
-    sed -i 's|path: /etc/cni/net.d|path: /run/multus/cni/net.d|g' "$GENERATED_DIR/ovn-manifests.yaml"
-    sed -i 's|path: /opt/cni/bin|path: /var/lib/cni/bin/|g' "$GENERATED_DIR/ovn-manifests.yaml"
+    sed 's|path: /etc/cni/net.d|path: /run/multus/cni/net.d|g' "$GENERATED_DIR/ovn-manifests.yaml" > "$GENERATED_DIR/ovn-manifests.yaml.tmp" && mv "$GENERATED_DIR/ovn-manifests.yaml.tmp" "$GENERATED_DIR/ovn-manifests.yaml"
+    sed 's|path: /opt/cni/bin|path: /var/lib/cni/bin/|g' "$GENERATED_DIR/ovn-manifests.yaml" > "$GENERATED_DIR/ovn-manifests.yaml.tmp" && mv "$GENERATED_DIR/ovn-manifests.yaml.tmp" "$GENERATED_DIR/ovn-manifests.yaml"
 }
 
 function enable_storage() {

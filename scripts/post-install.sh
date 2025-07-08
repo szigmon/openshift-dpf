@@ -62,7 +62,7 @@ update_file_multi_replace() {
     while [ $i -lt ${#pairs[@]} ]; do
         local placeholder="${pairs[$i]}"
         local value="${pairs[$((i+1))]}"
-        sed -i "s|${placeholder}|${value}|g" "${target_file}"
+        sed "s|${placeholder}|${value}|g" "${target_file}" > "${target_file}.tmp" && mv "${target_file}.tmp" "${target_file}"
         log [INFO] "Replaced ${placeholder} with ${value} in ${target_file}"
         i=$((i+2))
     done
@@ -77,8 +77,8 @@ function update_bfb_manifest() {
     # Copy the file
     cp "${POST_INSTALL_DIR}/bfb.yaml" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
     # Update the manifest with custom values
-    sed -i "s|BFB_FILENAME|${bfb_filename}|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
-    sed -i "s|BFB_URL|\"${BFB_URL}\"|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
+    sed "s|BFB_FILENAME|${bfb_filename}|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml" > "${GENERATED_POST_INSTALL_DIR}/bfb.yaml.tmp" && mv "${GENERATED_POST_INSTALL_DIR}/bfb.yaml.tmp" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
+    sed "s|BFB_URL|\"${BFB_URL}\"|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml" > "${GENERATED_POST_INSTALL_DIR}/bfb.yaml.tmp" && mv "${GENERATED_POST_INSTALL_DIR}/bfb.yaml.tmp" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
     log [INFO] "BFB manifest updated successfully"
 }
 
