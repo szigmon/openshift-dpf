@@ -3,6 +3,7 @@
 
 # Exit on error
 set -e
+set -o pipefail
 
 # Source environment variables
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
@@ -220,7 +221,9 @@ function retry() {
     local attempt=0
 
     while (( attempt < retries )); do
-        "$@" && return 0
+        if "$@"; then
+            return 0
+        fi
         attempt=$(( attempt + 1 ))
         echo "Attempt $attempt failed. Retrying in $delay seconds..."
         sleep "$delay"

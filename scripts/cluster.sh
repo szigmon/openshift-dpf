@@ -11,8 +11,9 @@
 # - Special handling for token-based URLs to preserve authentication
 # - Support for both minimal and full ISO types
 
-# Exit on error
+# Exit on error and catch pipe failures
 set -e
+set -o pipefail
 
 # Source environment variables
 source "$(dirname "$0")/env.sh"

@@ -1,8 +1,9 @@
 #!/bin/bash
 # dpf.sh - DPF deployment operations
 
-# Exit on error
+# Exit on error and catch pipe failures
 set -e
+set -o pipefail
 
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
@@ -89,6 +90,10 @@ function apply_namespaces() {
     for file in "$GENERATED_DIR"/*-ns.yaml; do
         if [ -f "$file" ]; then
             local namespace=$(grep -m 1 "name:" "$file" | awk '{print $2}')
+            if [ -z "$namespace" ]; then
+                log [ERROR] "Failed to extract namespace from $file"
+                return 1
+            fi
             if check_namespace_exists "$namespace"; then
                 log [INFO] "Skipping namespace $namespace creation"
             else
@@ -214,13 +219,32 @@ function configure_hypershift() {
 }
 
 function copy_hypershift_kubeconfig() {
-   oc get secret -n "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" -o jsonpath='{.data.kubeconfig}' | base64 -d > ${HOSTED_CLUSTER_NAME}.kubeconfig
-   oc create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig -n dpf-operator-system \
-         --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque || \
-         oc -n dpf-operator-system create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig \
-         --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque --dry-run=client -o yaml | oc apply -f -
-
-
+    log [INFO] "Copying hypershift kubeconfig..."
+    
+    # Extract kubeconfig from secret
+    if ! oc get secret -n "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" -o jsonpath='{.data.kubeconfig}' | base64 -d > ${HOSTED_CLUSTER_NAME}.kubeconfig; then
+        log [ERROR] "Failed to extract kubeconfig from secret"
+        return 1
+    fi
+    
+    # Verify kubeconfig is not empty
+    if [ ! -s "${HOSTED_CLUSTER_NAME}.kubeconfig" ]; then
+        log [ERROR] "Extracted kubeconfig is empty"
+        return 1
+    fi
+    
+    # Create or update secret in dpf-operator-system namespace
+    if ! oc create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig -n dpf-operator-system \
+         --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque 2>/dev/null; then
+        log [INFO] "Secret already exists, updating..."
+        if ! oc -n dpf-operator-system create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig \
+             --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque --dry-run=client -o yaml | oc apply -f -; then
+            log [ERROR] "Failed to update kubeconfig secret"
+            return 1
+        fi
+    fi
+    
+    log [INFO] "Hypershift kubeconfig copied successfully"
 }
 
 function apply_remaining() {
