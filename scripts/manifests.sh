@@ -146,8 +146,8 @@ prepare_dpf_manifests() {
     fi
 
     # Update static DPU cluster template
-    sed -i "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
-    sed -i "s|HOSTED_CLUSTER_NAME|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
+    sed -i "s|<KUBERNETES_VERSION>|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
+    sed -i "s|<HOSTED_CLUSTER_NAME>|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
 
     # Extract NGC API key and update secrets
     NGC_API_KEY=$(jq -r '.auths."nvcr.io".password' "$DPF_PULL_SECRET")
@@ -176,11 +176,12 @@ function generate_ovn_manifests() {
     mkdir -p "$GENERATED_DIR/temp"
     local API_SERVER="api.$CLUSTER_NAME.$BASE_DOMAIN:6443"
     
-    sed -e "s|k8sAPIServer:.*|k8sAPIServer: https://$API_SERVER|" \
-        -e "s|podNetwork:.*|podNetwork: $POD_CIDR|" \
-        -e "s|serviceNetwork:.*|serviceNetwork: $SERVICE_CIDR|" \
-        -e "s|nodeMgmtPortNetdev:.*|nodeMgmtPortNetdev: $DPU_OVN_VF|" \
-        -e "s|gatewayOpts:.*|gatewayOpts: --gateway-interface=$DPU_INTERFACE|" \
+    sed -e "s|<TARGETCLUSTER_API_SERVER_HOST>|$CLUSTER_NAME.$BASE_DOMAIN|" \
+        -e "s|<TARGETCLUSTER_API_SERVER_PORT>|6443|" \
+        -e "s|<POD_CIDR>|$POD_CIDR|" \
+        -e "s|<SERVICE_CIDR>|$SERVICE_CIDR|" \
+        -e "s|<DPU_P0_VF1>|$DPU_OVN_VF|" \
+        -e "s|<DPU_P0>|$DPU_INTERFACE|" \
         "$MANIFESTS_DIR/cluster-installation/ovn-values.yaml" > "$GENERATED_DIR/temp/values.yaml"
     sed -i -E 's/:[[:space:]]+/: /g' "$GENERATED_DIR/temp/values.yaml"
 
