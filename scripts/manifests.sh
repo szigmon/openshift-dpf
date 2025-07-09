@@ -174,8 +174,8 @@ prepare_dpf_manifests() {
     fi
 
     # Update static DPU cluster template
-    sed -i "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
-    sed -i "s|HOSTED_CLUSTER_NAME|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
+    sed -i "s|<KUBERNETES_VERSION>|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
+    sed -i "s|<HOSTED_CLUSTER_NAME>|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
 
     # Extract NGC API key and update secrets
     NGC_API_KEY=$(jq -r '.auths."nvcr.io".password // empty' "$DPF_PULL_SECRET" 2>/dev/null)
@@ -194,7 +194,7 @@ prepare_dpf_manifests() {
         return 1
     fi
     local escaped_secret=$(escape_sed_replacement "$PULL_SECRET")
-    sed -i "s|PULL_SECRET_BASE64|$escaped_secret|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
+    sed -i "s|<PULL_SECRET_BASE64>|$escaped_secret|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
 
     prepare_nfs
     

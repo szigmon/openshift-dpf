@@ -9,7 +9,7 @@ spec:
     source:
       chart: dpu-networking
       repoURL: https://helm.ngc.nvidia.com/nvidia/doca
-      version: DPF_VERSION
+      version: <DPF_VERSION>
     values:
       flannel:
         enabled: true
