@@ -78,6 +78,7 @@ function prepare_cluster_manifests() {
     log [INFO] "Copying static manifests..."
     find "$MANIFESTS_DIR/cluster-installation" -maxdepth 1 -type f -name "*.yaml" -o -name "*.yml" \
         | grep -v "ovn-values.yaml" \
+        | grep -v "ovn-values-with-injector.yaml" \
         | xargs -I {} cp {} "$GENERATED_DIR/"
 
     # Configure cluster components
