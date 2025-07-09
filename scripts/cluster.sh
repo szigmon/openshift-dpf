@@ -11,8 +11,9 @@
 # - Special handling for token-based URLs to preserve authentication
 # - Support for both minimal and full ISO types
 
-# Exit on error
+# Exit on error and catch pipe failures
 set -e
+set -o pipefail
 
 # Source environment variables
 source "$(dirname "$0")/env.sh"
@@ -59,8 +60,29 @@ function is_valid_ip() {
 # -----------------------------------------------------------------------------
 # Cluster management functions
 # -----------------------------------------------------------------------------
+function check_cluster_installed() {
+    log "INFO" "Checking if cluster ${CLUSTER_NAME} is installed..."
+    
+    # Check if cluster exists and get its status
+    local cluster_status=""
+    if aicli info cluster ${CLUSTER_NAME} >/dev/null 2>&1; then
+        cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
+        if [ "$cluster_status" = "installed" ]; then
+            log "INFO" "Cluster ${CLUSTER_NAME} is already installed"
+            return 0
+        fi
+    fi
+    return 1
+}
+
 function check_create_cluster() {
     log "INFO" "Checking if cluster ${CLUSTER_NAME} exists..."
+    
+    # First check if cluster is already installed
+    if check_cluster_installed; then
+        log "INFO" "Cluster is already installed, skipping creation"
+        return 0
+    fi
     
     if ! aicli info cluster ${CLUSTER_NAME} >/dev/null 2>&1; then
         log "INFO" "Cluster ${CLUSTER_NAME} not found, creating..."
@@ -112,7 +134,13 @@ function wait_for_cluster_status() {
     
     log "INFO" "Waiting for cluster ${CLUSTER_NAME} to reach status: ${status}"
     while [ $retries -lt $max_retries ]; do
-        current_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v)
+        # Capture aicli output, handle potential failures
+        if ! current_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null); then
+            log "WARN" "Failed to get cluster status (attempt $((retries + 1))/${max_retries})"
+            retries=$((retries + 1))
+            sleep $sleep_time
+            continue
+        fi
         # If waiting for 'ready' but status is already 'installed', treat as success
         if [ "$status" == "ready" ] && [ "$current_status" == "installed" ]; then
             log "INFO" "Cluster ${CLUSTER_NAME} is already installed. Skipping wait for 'ready'."
@@ -164,9 +192,8 @@ function get_kubeconfig() {
         kubeconfig_path="${KUBECONFIG:-}"
     fi
 
-    # Trim leading and trailing whitespace
-    kubeconfig_path="${kubeconfig_path#"${kubeconfig_path%%[![:space:]]*}"}"  # Trim leading spaces
-    kubeconfig_path="${kubeconfig_path%"${kubeconfig_path##*[![:space:]]}"}"  # Trim trailing spaces
+    # Trim whitespace using a more readable approach
+    kubeconfig_path=$(echo "$kubeconfig_path" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 
     echo "KUBECONFIG: $kubeconfig_path"
     if [ ! -f "$kubeconfig_path" ]; then
@@ -244,6 +271,18 @@ function get_iso() {
     local action="${3:-download}"
     local download_path="${ISO_FOLDER}"
     local iso_type="${ISO_TYPE}"
+
+    # Check if this is for day1 (master nodes) and cluster is already installed
+    if [ "${cluster_type}" = "day1" ] && [ "${action}" = "download" ]; then
+        # Use a subshell to avoid side effects from modifying CLUSTER_NAME
+        if (
+            CLUSTER_NAME="${cluster_name}"
+            check_cluster_installed
+        ); then
+            log "INFO" "Skipping ISO download as cluster is already installed"
+            return 0
+        fi
+    fi
 
     [ "${cluster_type}" = "day2" ] && cluster_name="${cluster_name}-day2"
 

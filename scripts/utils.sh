@@ -3,6 +3,7 @@
 
 # Exit on error
 set -e
+set -o pipefail
 
 # Source environment variables
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
@@ -120,7 +121,8 @@ function wait_for_pods() {
     local delay=$6
 
     for i in $(seq 1 "$max_attempts"); do
-        oc get pods -n "$namespace" -l "$label" --field-selector "$selector"
+        # Display pod status (allow this to fail without exiting)
+        oc get pods -n "$namespace" -l "$label" --field-selector "$selector" 2>&1 || true
         if oc get pods -n "$namespace" -l "$label" --field-selector "$selector" 2>/dev/null | grep -q "$expected_state"; then
             log "INFO" "$label pods are ready"
             return 0
@@ -220,7 +222,9 @@ function retry() {
     local attempt=0
 
     while (( attempt < retries )); do
-        "$@" && return 0
+        if "$@"; then
+            return 0
+        fi
         attempt=$(( attempt + 1 ))
         echo "Attempt $attempt failed. Retrying in $delay seconds..."
         sleep "$delay"
@@ -228,6 +232,61 @@ function retry() {
 
     echo "All $retries attempts failed."
     return 1
+}
+
+# -----------------------------------------------------------------------------
+# Helper functions
+# -----------------------------------------------------------------------------
+# Escape string for safe use in sed replacement
+escape_sed_replacement() {
+    local str="$1"
+    # Escape backslashes first, then ampersands, then forward slashes
+    printf '%s' "$str" | sed 's/\\/\\\\/g; s/&/\\&/g; s/\//\\\//g'
+}
+
+# -----------------------------------------------------------------------------
+# Template processing functions
+# -----------------------------------------------------------------------------
+function process_template() {
+    local template_file=$1
+    local output_file=$2
+    shift 2
+    
+    log "INFO" "Processing template: $(basename "$template_file")"
+    
+    # Validate input file exists
+    if [ ! -f "$template_file" ]; then
+        log "ERROR" "Template file not found: $template_file"
+        return 1
+    fi
+    
+    # Ensure output directory exists
+    local output_dir=$(dirname "$output_file")
+    if [ ! -d "$output_dir" ]; then
+        mkdir -p "$output_dir" || {
+            log "ERROR" "Failed to create output directory: $output_dir"
+            return 1
+        }
+    fi
+    
+    # Copy template to output
+    cp "$template_file" "$output_file" || {
+        log "ERROR" "Failed to copy $template_file to $output_file"
+        return 1
+    }
+    
+    # Apply each substitution
+    while [ $# -gt 0 ]; do
+        local placeholder=$1
+        local value=$2
+        # Escape the replacement value for sed
+        local escaped_value=$(escape_sed_replacement "$value")
+        sed -i "s|${placeholder}|${escaped_value}|g" "$output_file"
+        log "DEBUG" "Replaced ${placeholder} with ${value} in $(basename "$output_file")"
+        shift 2
+    done
+    
+    log "INFO" "Template processed successfully: $(basename "$output_file")"
 }
 
 # -----------------------------------------------------------------------------
