@@ -155,7 +155,7 @@ prepare_dpf_manifests() {
 
     # Update pull secret
     PULL_SECRET=$(cat "$DPF_PULL_SECRET" | base64 -w 0)
-    sed -i "s|PULL_SECRET_BASE64|$PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
+    sed -i "s|<PULL_SECRET_BASE64>|$PULL_SECRET|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
 
     prepare_nfs
     
@@ -180,7 +180,7 @@ function generate_ovn_manifests() {
         -e "s|<TARGETCLUSTER_API_SERVER_PORT>|6443|" \
         -e "s|<POD_CIDR>|$POD_CIDR|" \
         -e "s|<SERVICE_CIDR>|$SERVICE_CIDR|" \
-        -e "s|<DPU_P0_VF1>|$DPU_OVN_VF|" \
+        -e "s|<DPU_P0_VF1>|${DPU_OVN_VF:-ens7f0v1}|" \
         -e "s|<DPU_P0>|$DPU_INTERFACE|" \
         "$MANIFESTS_DIR/cluster-installation/ovn-values.yaml" > "$GENERATED_DIR/temp/values.yaml"
     sed -i -E 's/:[[:space:]]+/: /g' "$GENERATED_DIR/temp/values.yaml"
