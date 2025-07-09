@@ -170,7 +170,7 @@ function generate_ovn_manifests() {
         --untar -d "$GENERATED_DIR/temp"
     
     # Replace template variables in values file
-    sed -e "s|<TARGETCLUSTER_API_SERVER_HOST>|$CLUSTER_NAME.$BASE_DOMAIN|" \
+    sed -e "s|<TARGETCLUSTER_API_SERVER_HOST>|api.$CLUSTER_NAME.$BASE_DOMAIN|" \
         -e "s|<TARGETCLUSTER_API_SERVER_PORT>|6443|" \
         -e "s|<POD_CIDR>|$POD_CIDR|" \
         -e "s|<SERVICE_CIDR>|$SERVICE_CIDR|" \
