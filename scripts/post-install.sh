@@ -77,8 +77,8 @@ function update_bfb_manifest() {
     # Copy the file
     cp "${POST_INSTALL_DIR}/bfb.yaml" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
     # Update the manifest with custom values
-    sed -i "s|BFB_FILENAME|${bfb_filename}|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
-    sed -i "s|BFB_URL|\"${BFB_URL}\"|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
+    sed -i "s|<BFB_FILENAME>|${bfb_filename}|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
+    sed -i "s|<BFB_URL>|${BFB_URL}|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
     log [INFO] "BFB manifest updated successfully"
 }
 
@@ -95,7 +95,7 @@ function update_hbn_ovn_manifests() {
     update_file_multi_replace \
         "${POST_INSTALL_DIR}/hbn-ovn-ipam.yaml" \
         "${GENERATED_POST_INSTALL_DIR}/hbn-ovn-ipam.yaml" \
-        "HBN_OVN_NETWORK" \
+        "<HBN_OVN_NETWORK>" \
         "${HBN_OVN_NETWORK}"
     
     # Skip ovn-dpuservice.yaml - now handled by DPUDeployment
@@ -106,7 +106,7 @@ function update_hbn_ovn_manifests() {
         update_file_multi_replace \
             "${POST_INSTALL_DIR}/ovn-template.yaml" \
             "${GENERATED_POST_INSTALL_DIR}/ovn-template.yaml" \
-            "DPF_VERSION" "${DPF_VERSION}"
+            "<DPF_VERSION>" "${DPF_VERSION}"
     fi
     
     # Update ovn-configuration.yaml for DPUDeployment
@@ -114,9 +114,9 @@ function update_hbn_ovn_manifests() {
         update_file_multi_replace \
             "${POST_INSTALL_DIR}/ovn-configuration.yaml" \
             "${GENERATED_POST_INSTALL_DIR}/ovn-configuration.yaml" \
-            "HBN_OVN_NETWORK" "${HBN_OVN_NETWORK}" \
-            "HOST_CLUSTER_API" "${HOST_CLUSTER_API}" \
-            "DPU_HOST_CIDR" "${DPU_HOST_CIDR}"
+            "<HBN_OVN_NETWORK>" "${HBN_OVN_NETWORK}" \
+            "<HOST_CLUSTER_API>" "${HOST_CLUSTER_API}" \
+            "<DPU_HOST_CIDR>" "${DPU_HOST_CIDR}"
     fi
     
     log [INFO] "HBN OVN manifests updated successfully"
@@ -160,8 +160,8 @@ function update_service_templates() {
             update_file_multi_replace \
                 "${POST_INSTALL_DIR}/${template}" \
                 "${GENERATED_POST_INSTALL_DIR}/${template}" \
-                "DPF_VERSION" "${DPF_VERSION}"
-            log [INFO] "Updated ${template} with DPF_VERSION=${DPF_VERSION}"
+                "<DPF_VERSION>" "${DPF_VERSION}"
+            log [INFO] "Updated ${template} with <DPF_VERSION>=${DPF_VERSION}"
         fi
     done
     

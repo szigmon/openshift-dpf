@@ -10,14 +10,14 @@ spec:
       values:
         global:
           imagePullSecretName: "dpf-pull-secret"
-        k8sAPIServer: https://HOST_CLUSTER_API:6443
+        k8sAPIServer: https://<HOST_CLUSTER_API>:6443
         podNetwork: 10.128.0.0/16
         serviceNetwork: 172.30.0.0/16
         mtu: 1400
         dpuManifests:
           kubernetesSecretName: "ovn-dpu"
-          vtepCIDR: "HBN_OVN_NETWORK"
-          hostCIDR: "DPU_HOST_CIDR"
+          vtepCIDR: "<HBN_OVN_NETWORK>"
+          hostCIDR: "<DPU_HOST_CIDR>"
           ipamPool: "pool1"
           ipamPoolType: "cidrpool"
           ipamVTEPIPIndex: 0
