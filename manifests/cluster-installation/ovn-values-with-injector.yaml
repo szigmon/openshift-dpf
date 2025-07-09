@@ -33,5 +33,6 @@ serviceNetwork: <SERVICE_CIDR>
 gatewayOpts: --gateway-interface=<DPU_P0>
 
 ovn-kubernetes-resource-injector:
-  enabled: false
+  enabled: true
   resourceName: openshift.io/bf3-p0-vfs
+  nadName: dpf-ovn-kubernetes

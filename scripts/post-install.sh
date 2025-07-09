@@ -258,19 +258,30 @@ function apply_post_installation() {
     for file in "${GENERATED_POST_INSTALL_DIR}"/*.yaml; do
         if [ -f "$file" ]; then
             local filename=$(basename "$file")
-            # Special handling for SCC - must be applied to hosted cluster
-            if [[ "${filename}" == "dpu-services-scc.yaml" ]] && [[ -f "${HOSTED_CLUSTER_NAME}.kubeconfig" ]]; then
-                log [INFO] "Applying SCC to hosted cluster: ${filename}"
-                local saved_kubeconfig="${KUBECONFIG}"
-                export KUBECONFIG="${HOSTED_CLUSTER_NAME}.kubeconfig"
-                apply_manifest "$file" "true"
-                export KUBECONFIG="${saved_kubeconfig}"
-            else
-                log [INFO] "Applying post-installation manifest: ${filename}"
-                apply_manifest "$file" "true"
+            # Skip dpudeployment.yaml as it will be applied last
+            if [[ "${filename}" != "dpudeployment.yaml" ]]; then
+                # Special handling for SCC - must be applied to hosted cluster
+                if [[ "${filename}" == "dpu-services-scc.yaml" ]] && [[ -f "${HOSTED_CLUSTER_NAME}.kubeconfig" ]]; then
+                    log [INFO] "Applying SCC to hosted cluster: ${filename}"
+                    local saved_kubeconfig="${KUBECONFIG}"
+                    export KUBECONFIG="${HOSTED_CLUSTER_NAME}.kubeconfig"
+                    apply_manifest "$file" "true"
+                    export KUBECONFIG="${saved_kubeconfig}"
+                else
+                    log [INFO] "Applying post-installation manifest: ${filename}"
+                    apply_manifest "$file" "true"
+                fi
             fi
         fi
     done
+    
+    # Apply dpudeployment.yaml last if it exists, with apply_always=true
+    if [ -f "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
+        log [INFO] "Applying dpudeployment.yaml (last manifest)..."
+        apply_manifest "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" "true"
+    else
+        log [WARN] "dpudeployment.yaml not found in ${GENERATED_POST_INSTALL_DIR}"
+    fi
     
     log [INFO] "Post-installation manifest application completed successfully"
 }
@@ -280,6 +291,7 @@ function redeploy() {
     prepare_post_installation
 
     log [INFO] "Deleting existing manifests..."
+    oc delete -f "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" || true
     oc delete -f "${GENERATED_POST_INSTALL_DIR}/bfb.yaml" || true
 
     # wait till all dpu are removed
