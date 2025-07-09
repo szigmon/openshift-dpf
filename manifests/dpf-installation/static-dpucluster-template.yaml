@@ -6,5 +6,5 @@ metadata:
 spec:
   type: static
   maxNodes: 10
-  version: KUBERNETES_VERSION
-  kubeconfig: HOSTED_CLUSTER_NAME-admin-kubeconfig
+  version: <KUBERNETES_VERSION>
+  kubeconfig: <HOSTED_CLUSTER_NAME>-admin-kubeconfig
