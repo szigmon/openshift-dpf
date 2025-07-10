@@ -5,5 +5,5 @@ metadata:
   name: bf-bundle
   namespace: dpf-operator-system
 spec:
-  fileName: BFB_FILENAME
-  url: BFB_URL
+  fileName: <BFB_FILENAME>
+  url: <BFB_URL>
