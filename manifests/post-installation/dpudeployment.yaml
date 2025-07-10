@@ -1,0 +1,53 @@
+apiVersion: svc.dpu.nvidia.com/v1alpha1
+kind: DPUDeployment
+metadata:
+  name: dpudeployment
+  namespace: dpf-operator-system
+spec:
+  dpus:
+    bfb: bf-bundle
+    flavor: flavor-1500
+    dpuSets:
+    - nameSuffix: "dpuset1"
+      nodeSelector:
+        matchLabels:
+          feature.node.kubernetes.io/dpu-enabled: "true"
+  services:
+    flannel:
+      serviceTemplate: flannel
+      serviceConfiguration: flannel
+    hbn:
+      serviceTemplate: hbn
+      serviceConfiguration: hbn
+    ovn:
+      serviceTemplate: ovn
+      serviceConfiguration: ovn
+    doca-telemetry-service:
+      serviceTemplate: doca-telemetry-service
+      serviceConfiguration: doca-telemetry-service
+    doca-blueman-service:
+      serviceTemplate: doca-blueman-service
+      serviceConfiguration: doca-blueman-service
+  serviceChains:
+    switches:
+      - ports:
+        - serviceInterface:
+            matchLabels:
+              uplink: p0
+        - service:
+            name: hbn
+            interface: p0_if
+      - ports:
+        - serviceInterface:
+            matchLabels:
+              uplink: p1
+        - service:
+            name: hbn
+            interface: p1_if
+      - ports:
+        - serviceInterface:
+            matchLabels:
+              port: ovn
+        - service:
+            name: hbn
+            interface: pf2dpu2_if

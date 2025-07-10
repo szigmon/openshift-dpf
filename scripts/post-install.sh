@@ -80,8 +80,8 @@ function update_bfb_manifest() {
     # Update the manifest with custom values (escape special characters)
     local escaped_filename=$(escape_sed_replacement "${bfb_filename}")
     local escaped_url=$(escape_sed_replacement "${BFB_URL}")
-    sed -i "s|BFB_FILENAME|${escaped_filename}|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
-    sed -i "s|BFB_URL|\"${escaped_url}\"|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
+    sed -i "s|<BFB_FILENAME>|${escaped_filename}|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
+    sed -i "s|<BFB_URL>|\"${escaped_url}\"|g" "${GENERATED_POST_INSTALL_DIR}/bfb.yaml"
     log [INFO] "BFB manifest updated successfully"
 }
 
@@ -98,7 +98,7 @@ function update_hbn_ovn_manifests() {
     update_file_multi_replace \
         "${POST_INSTALL_DIR}/hbn-ovn-ipam.yaml" \
         "${GENERATED_POST_INSTALL_DIR}/hbn-ovn-ipam.yaml" \
-        "HBN_OVN_NETWORK" \
+        "<HBN_OVN_NETWORK>" \
         "${HBN_OVN_NETWORK}"
     
     # Skip ovn-dpuservice.yaml - now handled by DPUDeployment
@@ -109,7 +109,7 @@ function update_hbn_ovn_manifests() {
         update_file_multi_replace \
             "${POST_INSTALL_DIR}/ovn-template.yaml" \
             "${GENERATED_POST_INSTALL_DIR}/ovn-template.yaml" \
-            "DPF_VERSION" "${DPF_VERSION}"
+            "<DPF_VERSION>" "${DPF_VERSION}"
     fi
     
     # Update ovn-configuration.yaml for DPUDeployment
@@ -117,9 +117,9 @@ function update_hbn_ovn_manifests() {
         update_file_multi_replace \
             "${POST_INSTALL_DIR}/ovn-configuration.yaml" \
             "${GENERATED_POST_INSTALL_DIR}/ovn-configuration.yaml" \
-            "HBN_OVN_NETWORK" "${HBN_OVN_NETWORK}" \
-            "HOST_CLUSTER_API" "${HOST_CLUSTER_API}" \
-            "DPU_HOST_CIDR" "${DPU_HOST_CIDR}"
+            "<HBN_OVN_NETWORK>" "${HBN_OVN_NETWORK}" \
+            "<HOST_CLUSTER_API>" "${HOST_CLUSTER_API}" \
+            "<DPU_HOST_CIDR>" "${DPU_HOST_CIDR}"
     fi
     
     log [INFO] "HBN OVN manifests updated successfully"
@@ -169,8 +169,8 @@ function update_service_templates() {
             update_file_multi_replace \
                 "${POST_INSTALL_DIR}/${template}" \
                 "${GENERATED_POST_INSTALL_DIR}/${template}" \
-                "DPF_VERSION" "${DPF_VERSION}"
-            log [INFO] "Updated ${template} with DPF_VERSION=${DPF_VERSION}"
+                "<DPF_VERSION>" "${DPF_VERSION}"
+            log [INFO] "Updated ${template} with <DPF_VERSION>=${DPF_VERSION}"
         fi
     done
     
@@ -258,19 +258,30 @@ function apply_post_installation() {
     for file in "${GENERATED_POST_INSTALL_DIR}"/*.yaml; do
         if [ -f "$file" ]; then
             local filename=$(basename "$file")
-            # Special handling for SCC - must be applied to hosted cluster
-            if [[ "${filename}" == "dpu-services-scc.yaml" ]] && [[ -f "${HOSTED_CLUSTER_NAME}.kubeconfig" ]]; then
-                log [INFO] "Applying SCC to hosted cluster: ${filename}"
-                local saved_kubeconfig="${KUBECONFIG}"
-                export KUBECONFIG="${HOSTED_CLUSTER_NAME}.kubeconfig"
-                apply_manifest "$file" "true"
-                export KUBECONFIG="${saved_kubeconfig}"
-            else
-                log [INFO] "Applying post-installation manifest: ${filename}"
-                apply_manifest "$file" "true"
+            # Skip dpudeployment.yaml as it will be applied last
+            if [[ "${filename}" != "dpudeployment.yaml" ]]; then
+                # Special handling for SCC - must be applied to hosted cluster
+                if [[ "${filename}" == "dpu-services-scc.yaml" ]] && [[ -f "${HOSTED_CLUSTER_NAME}.kubeconfig" ]]; then
+                    log [INFO] "Applying SCC to hosted cluster: ${filename}"
+                    local saved_kubeconfig="${KUBECONFIG}"
+                    export KUBECONFIG="${HOSTED_CLUSTER_NAME}.kubeconfig"
+                    apply_manifest "$file" "true"
+                    export KUBECONFIG="${saved_kubeconfig}"
+                else
+                    log [INFO] "Applying post-installation manifest: ${filename}"
+                    apply_manifest "$file" "true"
+                fi
             fi
         fi
     done
+    
+    # Apply dpudeployment.yaml last if it exists, with apply_always=true
+    if [ -f "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
+        log [INFO] "Applying dpudeployment.yaml (last manifest)..."
+        apply_manifest "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" "true"
+    else
+        log [WARN] "dpudeployment.yaml not found in ${GENERATED_POST_INSTALL_DIR}"
+    fi
     
     log [INFO] "Post-installation manifest application completed successfully"
 }
@@ -280,6 +291,7 @@ function redeploy() {
     prepare_post_installation
 
     log [INFO] "Deleting existing manifests..."
+    oc delete -f "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" || true
     oc delete -f "${GENERATED_POST_INSTALL_DIR}/bfb.yaml" || true
 
     # wait till all dpu are removed
