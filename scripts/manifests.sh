@@ -78,6 +78,7 @@ function prepare_cluster_manifests() {
     log [INFO] "Copying static manifests..."
     find "$MANIFESTS_DIR/cluster-installation" -maxdepth 1 -type f -name "*.yaml" -o -name "*.yml" \
         | grep -v "ovn-values.yaml" \
+        | grep -v "ovn-values-with-injector.yaml" \
         | xargs -I {} cp {} "$GENERATED_DIR/"
 
     # Configure cluster components
@@ -174,8 +175,8 @@ prepare_dpf_manifests() {
     fi
 
     # Update static DPU cluster template
-    sed -i "s|KUBERNETES_VERSION|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
-    sed -i "s|HOSTED_CLUSTER_NAME|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
+    sed -i "s|<KUBERNETES_VERSION>|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
+    sed -i "s|<HOSTED_CLUSTER_NAME>|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
 
     # Extract NGC API key and update secrets
     NGC_API_KEY=$(jq -r '.auths."nvcr.io".password // empty' "$DPF_PULL_SECRET" 2>/dev/null)
@@ -194,7 +195,7 @@ prepare_dpf_manifests() {
         return 1
     fi
     local escaped_secret=$(escape_sed_replacement "$PULL_SECRET")
-    sed -i "s|PULL_SECRET_BASE64|$escaped_secret|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
+    sed -i "s|<PULL_SECRET_BASE64>|$escaped_secret|g" "$GENERATED_DIR/dpf-pull-secret.yaml"
 
     prepare_nfs
     
@@ -207,7 +208,10 @@ prepare_dpf_manifests() {
 }
 
 function generate_ovn_manifests() {
-    log [INFO] "Generating OVN manifests..."
+    log [INFO] "Generating OVN manifests for cluster installation..."
+    
+    # NOTE: We must use helm template here because these manifests are added to the cluster
+    # via 'aicli create manifests' before the cluster API is available for helm install
     
     # Validate DPF_VERSION is set
     if [ -z "$DPF_VERSION" ]; then
@@ -221,27 +225,28 @@ function generate_ovn_manifests() {
     mkdir -p "$GENERATED_DIR/temp"
     local API_SERVER="api.$CLUSTER_NAME.$BASE_DOMAIN:6443"
     
-    sed -e "s|k8sAPIServer:.*|k8sAPIServer: https://$API_SERVER|" \
-        -e "s|podNetwork:.*|podNetwork: $POD_CIDR|" \
-        -e "s|serviceNetwork:.*|serviceNetwork: $SERVICE_CIDR|" \
-        -e "s|nodeMgmtPortNetdev:.*|nodeMgmtPortNetdev: $DPU_OVN_VF|" \
-        -e "s|gatewayOpts:.*|gatewayOpts: --gateway-interface=$DPU_INTERFACE|" \
-        "$MANIFESTS_DIR/cluster-installation/ovn-values.yaml" > "$GENERATED_DIR/temp/values.yaml"
-    sed -E 's/:[[:space:]]+/: /g' "$GENERATED_DIR/temp/values.yaml" > "$GENERATED_DIR/temp/values.yaml.tmp" && mv "$GENERATED_DIR/temp/values.yaml.tmp" "$GENERATED_DIR/temp/values.yaml"
-
-    # Pull and template OVN chart
-    log [INFO] "Pulling OVN chart version $DPF_VERSION..."
-    if ! helm pull oci://ghcr.io/nvidia/ovn-kubernetes-chart \
-        --version "$DPF_VERSION" \
+    # Pull and template OVN chart v2 (no sed needed with custom chart)
+    log [INFO] "Pulling OVN chart v25.4.0-custom-v2..."
+    if ! helm pull oci://quay.io/szigmon/ovn \
+        --version "v25.4.0-custom-v2" \
         --untar -d "$GENERATED_DIR/temp"; then
-        log [ERROR] "Failed to pull OVN chart version $DPF_VERSION"
+        log [ERROR] "Failed to pull OVN chart v25.4.0-custom-v2"
         return 1
     fi
     
+    # Replace template variables in values file
+    sed -e "s|<TARGETCLUSTER_API_SERVER_HOST>|api.$CLUSTER_NAME.$BASE_DOMAIN|" \
+        -e "s|<TARGETCLUSTER_API_SERVER_PORT>|6443|" \
+        -e "s|<POD_CIDR>|$POD_CIDR|" \
+        -e "s|<SERVICE_CIDR>|$SERVICE_CIDR|" \
+        -e "s|<DPU_P0_VF1>|${DPU_OVN_VF:-ens7f0v1}|" \
+        -e "s|<DPU_P0>|$DPU_INTERFACE|" \
+        "$MANIFESTS_DIR/cluster-installation/ovn-values.yaml" > "$GENERATED_DIR/temp/ovn-values-resolved.yaml"
+    
     log [INFO] "Generating OVN manifests from helm template..."
     if ! helm template -n ovn-kubernetes ovn-kubernetes \
-        "$GENERATED_DIR/temp/ovn-kubernetes-chart" \
-        -f "$GENERATED_DIR/temp/values.yaml" \
+        "$GENERATED_DIR/temp/ovn" \
+        -f "$GENERATED_DIR/temp/ovn-values-resolved.yaml" \
         > "$GENERATED_DIR/ovn-manifests.yaml"; then
         log [ERROR] "Failed to generate OVN manifests"
         return 1
@@ -254,11 +259,8 @@ function generate_ovn_manifests() {
     fi
     
     rm -rf "$GENERATED_DIR/temp"
-
-    # Update paths in manifests
-    log [INFO] "Updating paths in manifests..."
-    sed 's|path: /etc/cni/net.d|path: /run/multus/cni/net.d|g' "$GENERATED_DIR/ovn-manifests.yaml" > "$GENERATED_DIR/ovn-manifests.yaml.tmp" && mv "$GENERATED_DIR/ovn-manifests.yaml.tmp" "$GENERATED_DIR/ovn-manifests.yaml"
-    sed 's|path: /opt/cni/bin|path: /var/lib/cni/bin/|g' "$GENERATED_DIR/ovn-manifests.yaml" > "$GENERATED_DIR/ovn-manifests.yaml.tmp" && mv "$GENERATED_DIR/ovn-manifests.yaml.tmp" "$GENERATED_DIR/ovn-manifests.yaml"
+    
+    log [INFO] "OVN manifests generated successfully"
 }
 
 function enable_storage() {

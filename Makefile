@@ -15,7 +15,7 @@ FLANNEL_CONFIG_SCRIPT := scripts/configure-flannel-nodes.sh
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
-        redeploy-dpu configure-flannel-nodes
+        redeploy-dpu configure-flannel-nodes enable-ovn-injector
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
 
@@ -102,6 +102,9 @@ redeploy-dpu:
 
 configure-flannel-nodes:
 	@$(FLANNEL_CONFIG_SCRIPT)
+
+enable-ovn-injector: install-helm
+	@scripts/enable-ovn-injector.sh
 
 update-etc-hosts:
 	@scripts/update-etc-hosts.sh
