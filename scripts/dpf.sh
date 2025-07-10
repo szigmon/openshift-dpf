@@ -269,11 +269,50 @@ function apply_remaining() {
     done
 }
 
+function install_cert_manager_operatorhub() {
+    # Consider cert-manager installed if deployment exists in cert-manager ns or CSV is succeeded in openshift-operators
+    if oc get deployment -n cert-manager cert-manager &>/dev/null; then
+        log [INFO] "cert-manager deployment found in cert-manager namespace. Skipping installation."
+        return 0
+    fi
+    if oc get csv -n openshift-operators | grep -q 'cert-manager.*Succeeded'; then
+        log [INFO] "cert-manager CSV found and succeeded in openshift-operators. Skipping installation."
+        return 0
+    fi
+    log [INFO] "Installing cert-manager operator from OperatorHub (Subscription only)..."
+    oc apply -f manifests/cluster-installation/openshift-cert-manager.yaml
+    # Wait for the operator deployment or CSV to be available
+    for i in {1..30}; do
+        if oc get deployment -n cert-manager cert-manager &>/dev/null; then
+            log [INFO] "cert-manager deployment is now installed."
+            return 0
+        fi
+        if oc get csv -n openshift-operators | grep -q 'cert-manager.*Succeeded'; then
+            log [INFO] "cert-manager CSV is now succeeded."
+            return 0
+        fi
+        log [INFO] "Waiting for cert-manager operator to be available... ($i/30)"
+        sleep 10
+    done
+    log [ERROR] "Timed out waiting for cert-manager operator to be installed."
+    return 1
+}
+
 function apply_dpf() {
     log "INFO" "Starting DPF deployment sequence..."
     log "INFO" "Provided kubeconfig ${KUBECONFIG}"
     log "INFO" "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
-    
+
+    # Install cert-manager operator if needed
+    install_cert_manager_operatorhub
+
+    # Check if prepare-dpf-manifests.sh exists
+    local prepare_script="$(dirname "${BASH_SOURCE[0]}")/prepare-dpf-manifests.sh"
+    if [ ! -f "$prepare_script" ]; then
+        log [INFO] "Error: $prepare_script not found"
+        exit 1
+    fi
+
     get_kubeconfig
     
     deploy_nfd
