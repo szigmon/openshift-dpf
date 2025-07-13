@@ -13,4 +13,6 @@ spec:
     source:
       repoURL: https://helm.ngc.nvidia.com/nvidia/doca
       chart: doca-telemetry
-      version: "0.2.3"
+      version: "1.0.8"
+    values:
+      hostVolumePrefix: "/var/lib"
