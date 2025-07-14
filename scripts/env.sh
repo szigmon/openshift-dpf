@@ -93,8 +93,6 @@ fi
 NUM_VFS=${NUM_VFS:-"46"}
 
 # Feature Configuration
-DISABLE_NFD=${DISABLE_NFD:-"false"}
-NFD_OPERAND_IMAGE=${NFD_OPERAND_IMAGE:-"quay.io/yshnaidm/node-feature-discovery:dpf"}
 
 # Hypershift Configuration
 HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/hypershift/hypershift-operator:latest"}
