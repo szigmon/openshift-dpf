@@ -2,7 +2,7 @@
 apiVersion: svc.dpu.nvidia.com/v1alpha1
 kind: DPUServiceInterface
 metadata:
-  name: app-sf 
+  name: p0
   namespace: dpf-operator-system
 spec:
   template:
@@ -10,20 +10,16 @@ spec:
       template:
         metadata:
           labels:
-            svc.dpu.nvidia.com/interface: "app_sf"
-            svc.dpu.nvidia.com/service: doca-hbn
+            uplink: "p0"
         spec:
-          interfaceType: service
-          service:
-            serviceID: doca-hbn
-            network: mybrhbn
-            ## NOTE: Interfaces inside the HBN pod must have the `_if` suffix due to a naming convention in HBN.
-            interfaceName: pf2dpu2_if
+          interfaceType: physical
+          physical:
+            interfaceName: p0
 ---
 apiVersion: svc.dpu.nvidia.com/v1alpha1
 kind: DPUServiceInterface
 metadata:
-  name: p0-sf
+  name: p1
   namespace: dpf-operator-system
 spec:
   template:
@@ -31,33 +27,8 @@ spec:
       template:
         metadata:
           labels:
-            svc.dpu.nvidia.com/interface: "p0_sf"
-            svc.dpu.nvidia.com/service: doca-hbn
+            uplink: "p1"
         spec:
-          interfaceType: service
-          service:
-            serviceID: doca-hbn
-            network: mybrhbn
-            ## NOTE: Interfaces inside the HBN pod must have the `_if` suffix due to a naming convention in HBN.
-            interfaceName: p0_if
----
-apiVersion: svc.dpu.nvidia.com/v1alpha1
-kind: DPUServiceInterface
-metadata:
-  name: p1-sf
-  namespace: dpf-operator-system
-spec:
-  template:
-    spec:
-      template:
-        metadata:
-          labels:
-            svc.dpu.nvidia.com/interface: "p1_sf"
-            svc.dpu.nvidia.com/service: doca-hbn
-        spec:
-          interfaceType: service
-          service:
-            serviceID: doca-hbn
-            network: mybrhbn
-            ## NOTE: Interfaces inside the HBN pod must have the `_if` suffix due to a naming convention in HBN.
-            interfaceName: p1_if
+          interfaceType: physical
+          physical:
+            interfaceName: p1
