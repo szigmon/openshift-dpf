@@ -195,6 +195,7 @@ help:
 	@echo "  VCPUS            - Number of vCPUs for VMs (default: $(VCPUS))"
 	@echo "  DISK_SIZE1       - Primary disk size in GB (default: $(DISK_SIZE1))"
 	@echo "  DISK_SIZE2       - Secondary disk size in GB (default: $(DISK_SIZE2))"
+	@echo "  VM_MAC_CUSTOM_PREFIX - Static MAC Prefix for VM (default: $(VM_MAC_CUSTOM_PREFIX))"
 	@echo ""
 	@echo "DPF Configuration:"
 	@echo "  DPF_VERSION      - DPF operator version (default: $(DPF_VERSION))"

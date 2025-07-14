@@ -14,6 +14,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
 # Configuration with defaults
 VM_PREFIX=${VM_PREFIX:-"vm-dpf"}
 VM_COUNT=${VM_COUNT:-3}
+VM_MAC_CUSTOM_PREFIX=${VM_MAC_CUSTOM_PREFIX:-"C0:00"}
 
 # Get the default physical NIC
 PHYSICAL_NIC=${PHYSICAL_NIC:-$(ip route | awk '/default/ {print $5; exit}')}
@@ -56,22 +57,33 @@ function create_vms() {
         echo "Skipping bridge creation as SKIP_BRIDGE_CONFIG is set to true."
     fi
 
+    
     # Create VMs
+
+    # Designate a clear range for YOUR scripted VMs to avoid libvirt's common random choices
+    VM_MAC_OUI_PREFIX="52:54:00"
+
     for i in $(seq 1 "$VM_COUNT"); do
         VM_NAME="${VM_PREFIX}${i}"
-        echo "Creating VM: $VM_NAME"
-        nohup virt-install --name "$VM_NAME" --memory $RAM \
-                --vcpus "$VCPUS" \
-                --os-variant=rhel9.4 \
-                --disk pool=default,size="${DISK_SIZE1}" \
-                --disk pool=default,size="${DISK_SIZE2}" \
-                --network bridge=${BRIDGE_NAME},model=e1000e \
-                --graphics=vnc \
-                --events on_reboot=restart \
-                --cdrom "$ISO_PATH" \
-                --cpu host-passthrough \
-                --noautoconsole \
-                --wait=-1 &
+
+        # Generate the last octet, ensuring it's unique within this batch
+        # This example creates MACs like 52:54:00:C0:00:01, 52:54:00:C0:00:02 etc.
+        LAST_OCTET_HEX=$(printf '%02x' "$i") # Starts from 01, 02...
+        UNIQUE_MAC="${MAC_OUI_PREFIX}:${VM_MAC_CUSTOM_PREFIX}:${LAST_OCTET_HEX}"
+
+        echo "Creating VM: $VM_NAME with MAC: $UNIQUE_MAC"
+        nohup virt-install --name "$VM_NAME" --memory "$RAM" \
+                           --vcpus "$VCPUS" \
+                           --os-variant=rhel9.4 \
+                           --disk pool=default,size="${DISK_SIZE1}" \
+                           --disk pool=default,size="${DISK_SIZE2}" \
+                           --network bridge=${BRIDGE_NAME},model=e1000e,mac="$UNIQUE_MAC" \
+                           --graphics=vnc \
+                           --events on_reboot=restart \
+                           --cdrom "$ISO_PATH" \
+                           --cpu host-passthrough \
+                           --noautoconsole \
+                           --wait=-1 &
     done
 
     # Wait for all VMs to be running using retry mechanism
