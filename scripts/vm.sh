@@ -69,7 +69,7 @@ function create_vms() {
         # Generate the last octet, ensuring it's unique within this batch
         # This example creates MACs like 52:54:00:C0:00:01, 52:54:00:C0:00:02 etc.
         LAST_OCTET_HEX=$(printf '%02x' "$i") # Starts from 01, 02...
-        UNIQUE_MAC="${MAC_OUI_PREFIX}:${VM_MAC_CUSTOM_PREFIX}:${LAST_OCTET_HEX}"
+        UNIQUE_MAC="${VM_MAC_OUI_PREFIX}:${VM_MAC_CUSTOM_PREFIX}:${LAST_OCTET_HEX}"
 
         echo "Creating VM: $VM_NAME with MAC: $UNIQUE_MAC"
         nohup virt-install --name "$VM_NAME" --memory "$RAM" \
