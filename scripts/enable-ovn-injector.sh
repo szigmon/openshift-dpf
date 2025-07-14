@@ -8,6 +8,7 @@ set -e
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/tools.sh"
 
 # Set cluster-specific values
 API_SERVER="api.$CLUSTER_NAME.$BASE_DOMAIN:6443"
