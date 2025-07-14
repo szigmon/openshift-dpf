@@ -11,19 +11,14 @@ source "$(dirname "${BASH_SOURCE[0]}")/cluster.sh"
 
 
 
-# Configuration with defaults
-VM_PREFIX=${VM_PREFIX:-"vm-dpf"}
-VM_COUNT=${VM_COUNT:-3}
+# Configuration
+# Most VM configuration variables are defined in env.sh:
+# VM_PREFIX, VM_COUNT, API_VIP, BRIDGE_NAME, DISK_PATH, RAM, VCPUS, DISK_SIZE1, DISK_SIZE2
 
-# Get the default physical NIC
+# Get the default physical NIC (not defined in env.sh)
 PHYSICAL_NIC=${PHYSICAL_NIC:-$(ip route | awk '/default/ {print $5; exit}')}
-API_VIP=${API_VIP}
-BRIDGE_NAME=${BRIDGE_NAME:-br0}
-RAM=${RAM:-16384}  # Memory in MB
-VCPUS=${VCPUS:-8}   # Number of virtual CPUs
-DISK_SIZE1=${DISK_SIZE1:-120}  # Size of first disk
-DISK_SIZE2=${DISK_SIZE2:-40}  # Size of second disk
-DISK_PATH=${DISK_PATH:-"/var/lib/libvirt/images"}
+
+# ISO path derived from env.sh variables
 ISO_PATH="${ISO_FOLDER}/${CLUSTER_NAME}.iso"
 
 
