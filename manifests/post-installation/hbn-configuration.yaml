@@ -23,7 +23,7 @@ spec:
             - hostnamePattern: "<HBN_HOSTNAME_NODE1>"
               values:
                 bgp_autonomous_system: 65101
-            - hostnamePattern: "<HBN_HOSTNAME_NODE1>"
+            - hostnamePattern: "<HBN_HOSTNAME_NODE2>"
               values:
                 bgp_autonomous_system: 65201
           startupYAMLJ2: |
