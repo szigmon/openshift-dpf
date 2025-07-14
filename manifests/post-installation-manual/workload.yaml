@@ -1,8 +1,34 @@
+# 1. Namespace
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: workload
+
+# 2. SCC RoleBinding (grants 'default' ServiceAccount in 'workload' NS access to 'privileged' SCC)
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: privileged-scc-default-sa
+  namespace: workload
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: workload
+roleRef:
+  kind: ClusterRole
+  name: system:openshift:scc:privileged
+  apiGroup: rbac.authorization.k8s.io
+
+# 3. Deployments and Services
+# Deployment: sriov-test-master
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sriov-test-master
+  namespace: workload
   labels:
     app: sriov-test-master
 spec:
@@ -51,10 +77,12 @@ spec:
             cpu: 1
             memory: 1Gi
 ---
+# Service: sriov-test-master
 apiVersion: v1
 kind: Service
 metadata:
   name: sriov-test-master
+  namespace: workload
   labels:
     app: sriov-test-master
 spec:
@@ -65,10 +93,12 @@ spec:
     port: 5000
     targetPort: 5000
 ---
+# Service: sriov-test-master-nodeport
 apiVersion: v1
 kind: Service
 metadata:
   name: sriov-test-master-nodeport
+  namespace: workload
   labels:
     app: sriov-test-master
 spec:
@@ -80,10 +110,12 @@ spec:
     port: 5000
     targetPort: 5000
 ---
+# Deployment: sriov-test-worker
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sriov-test-worker
+  namespace: workload
   labels:
     app: sriov-test-worker
 spec:
@@ -125,10 +157,12 @@ spec:
             cpu: 16
             memory: 6Gi
 ---
+# Service: sriov-test-worker
 apiVersion: v1
 kind: Service
 metadata:
   name: sriov-test-worker
+  namespace: workload
   labels:
     app: sriov-test-worker
 spec:
@@ -139,10 +173,12 @@ spec:
     port: 5000
     targetPort: 5000
 ---
+# Service: sriov-test-worker-nodeport
 apiVersion: v1
 kind: Service
 metadata:
   name: sriov-test-worker-nodeport
+  namespace: workload
   labels:
     app: sriov-test-worker
 spec:
@@ -154,10 +190,12 @@ spec:
     port: 5000
     targetPort: 5000
 ---
+# Deployment: sriov-test-worker-hostnetwork
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sriov-test-worker-hostnetwork
+  namespace: workload
   labels:
     app: sriov-test-worker-hostnetwork
 spec:
@@ -200,10 +238,12 @@ spec:
             cpu: 1
             memory: 1Gi
 ---
+# Service: sriov-test-worker-hostnetwork
 apiVersion: v1
 kind: Service
 metadata:
   name: sriov-test-worker-hostnetwork
+  namespace: workload
   labels:
     app: sriov-test-worker-hostnetwork
 spec:
@@ -214,10 +254,12 @@ spec:
     port: 5000
     targetPort: 5000
 ---
+# Service: sriov-test-worker-hostnetwork-nodeport
 apiVersion: v1
 kind: Service
 metadata:
   name: sriov-test-worker-hostnetwork-nodeport
+  namespace: workload
   labels:
     app: sriov-test-worker-hostnetwork
 spec:
