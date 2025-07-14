@@ -19,10 +19,7 @@ VM_COUNT=${VM_COUNT:-3}
 PHYSICAL_NIC=${PHYSICAL_NIC:-$(ip route | awk '/default/ {print $5; exit}')}
 API_VIP=${API_VIP}
 BRIDGE_NAME=${BRIDGE_NAME:-br0}
-RAM=${RAM:-16384}  # Memory in MB
-VCPUS=${VCPUS:-8}   # Number of virtual CPUs
-DISK_SIZE1=${DISK_SIZE1:-120}  # Size of first disk
-DISK_SIZE2=${DISK_SIZE2:-40}  # Size of second disk
+# RAM, VCPUS, DISK_SIZE1, DISK_SIZE2 are defined in env.sh
 DISK_PATH=${DISK_PATH:-"/var/lib/libvirt/images"}
 ISO_PATH="${ISO_FOLDER}/${CLUSTER_NAME}.iso"
 
@@ -33,11 +30,12 @@ ISO_PATH="${ISO_FOLDER}/${CLUSTER_NAME}.iso"
 # * Create VMs with prefix $VM_PREFIX.
 # *
 # * This function creates $VM_COUNT number of VMs with the given prefix.
-# * The VMs are created with the given memory, number of virtual CPUs,
-# * and disk sizes. The VMs are also configured with a direct network
-# * connection to the given physical NIC and a VNC graphics device.
-# * The function waits for all VMs to be running using a retry mechanism
-# * and prints a success message upon completion.
+# * The VMs are created with the given memory (RAM from env.sh), 
+# * number of virtual CPUs (VCPUS from env.sh), and disk sizes 
+# * (DISK_SIZE1, DISK_SIZE2 from env.sh). The VMs are also configured 
+# * with a direct network connection to the given physical NIC and a VNC 
+# * graphics device. The function waits for all VMs to be running using 
+# * a retry mechanism and prints a success message upon completion.
 
 function create_vms() {
     # First check if cluster is already installed
@@ -48,99 +46,168 @@ function create_vms() {
     
     log "Creating VMs with prefix $VM_PREFIX..."
 
-    if [ "$SKIP_BRIDGE_CONFIG" != "true" ]; then
-        # Ensure the bridge is created before creating VMs
-        echo "Creating bridge with force mode..."
-        "$(dirname "${BASH_SOURCE[0]}")/vm-bridge-ops.sh" --force
-    else
-        echo "Skipping bridge creation as SKIP_BRIDGE_CONFIG is set to true."
+    # Check if ISO exists
+    if [ ! -f "$ISO_PATH" ]; then
+        log "ERROR" "ISO not found at $ISO_PATH. Please run 'make create-aicli-iso' first."
+        return 1
     fi
 
-    # Create VMs
-    for i in $(seq 1 "$VM_COUNT"); do
-        VM_NAME="${VM_PREFIX}${i}"
-        echo "Creating VM: $VM_NAME"
-        nohup virt-install --name "$VM_NAME" --memory $RAM \
-                --vcpus "$VCPUS" \
-                --os-variant=rhel9.4 \
-                --disk pool=default,size="${DISK_SIZE1}" \
-                --disk pool=default,size="${DISK_SIZE2}" \
-                --network bridge=${BRIDGE_NAME},model=e1000e \
-                --graphics=vnc \
-                --events on_reboot=restart \
-                --cdrom "$ISO_PATH" \
-                --cpu host-passthrough \
-                --noautoconsole \
-                --wait=-1 &
+    # Create disks and VMs
+    for i in $(seq 1 $VM_COUNT); do
+        local vm_name="${VM_PREFIX}-${i}"
+        local disk1="${DISK_PATH}/${vm_name}-disk1.qcow2"
+        local disk2="${DISK_PATH}/${vm_name}-disk2.qcow2"
+
+        # Skip if VM already exists
+        if virsh list --all | grep -q "$vm_name"; then
+            log "VM $vm_name already exists. Skipping creation."
+            continue
+        fi
+
+        # Create disk images
+        log "Creating disks for $vm_name..."
+        qemu-img create -f qcow2 "$disk1" "${DISK_SIZE1}G"
+        qemu-img create -f qcow2 "$disk2" "${DISK_SIZE2}G"
+
+        # Create VM
+        log "Creating VM $vm_name..."
+        virt-install \
+            --name="$vm_name" \
+            --memory="$RAM" \
+            --vcpus="$VCPUS" \
+            --disk "path=$disk1,size=$DISK_SIZE1,format=qcow2" \
+            --disk "path=$disk2,size=$DISK_SIZE2,format=qcow2" \
+            --network network=default,model=virtio \
+            --network bridge=${BRIDGE_NAME},model=virtio \
+            --os-variant=rhel9.0 \
+            --cdrom="$ISO_PATH" \
+            --graphics vnc \
+            --noautoconsole \
+            --boot hd,cdrom
+
+        log "VM $vm_name created successfully."
     done
 
-    # Wait for all VMs to be running using retry mechanism
-    MAX_RETRIES=24  # 2 minutes (24 retries * 5s)
-    INTERVAL=5      # Check every 5 seconds
+    # Start all VMs
+    log "Starting all VMs..."
+    for i in $(seq 1 $VM_COUNT); do
+        local vm_name="${VM_PREFIX}-${i}"
+        if ! virsh list --state-running | grep -q "$vm_name"; then
+            virsh start "$vm_name" || log "WARN" "Failed to start $vm_name"
+        fi
+    done
 
-    for i in $(seq 1 "$VM_COUNT"); do
-        VM_NAME="${VM_PREFIX}${i}"
-        retries=0
-        until [[ "$(virsh domstate "$VM_NAME" 2>/dev/null || true )" == "running" ]]; do
-            if [[ $retries -ge $MAX_RETRIES ]]; then
-                echo "Error: VM $VM_NAME did not reach running state within 2 minutes."
-                exit 1
+    # Wait for VMs to be running
+    log "Waiting for all VMs to be running..."
+    local success=false
+    for attempt in $(seq 1 30); do
+        local all_running=true
+        for i in $(seq 1 $VM_COUNT); do
+            local vm_name="${VM_PREFIX}-${i}"
+            if ! virsh list --state-running | grep -q "$vm_name"; then
+                all_running=false
+                break
             fi
-            echo "Waiting for VM $VM_NAME to start... (Attempt: $((retries + 1))/$MAX_RETRIES)"
-            sleep $INTERVAL
-            ((retries+=1))
         done
-        echo "VM $VM_NAME is running."
+        
+        if $all_running; then
+            success=true
+            break
+        fi
+        
+        log "Attempt $attempt/30: Waiting for VMs to start..."
+        sleep 10
     done
-    log "VM creation completed successfully!"
+
+    if $success; then
+        log "All VMs are running successfully!"
+        list_vms
+    else
+        log "ERROR" "Timeout waiting for VMs to start"
+        return 1
+    fi
 }
 
-function delete_vms() {
-    local prefix=${VM_PREFIX}
-    log "INFO" "Deleting VMs with prefix ${prefix}..."
-    local vms=$(virsh list --all | grep ${prefix} | awk '{print $2}')
-    for vm in ${vms}; do
-        if ! virsh destroy ${vm} 2>/dev/null; then
-            log "WARNING" "Failed to destroy VM ${vm}, continuing anyway"
-        fi
-        if ! virsh undefine ${vm} --remove-all-storage 2>/dev/null; then
-            log "WARNING" "Failed to undefine VM ${vm}, continuing anyway"
+function destroy_vms() {
+    log "Destroying VMs with prefix $VM_PREFIX..."
+    
+    for i in $(seq 1 $VM_COUNT); do
+        local vm_name="${VM_PREFIX}-${i}"
+        
+        if virsh list --all | grep -q "$vm_name"; then
+            log "Destroying VM $vm_name..."
+            
+            # Force stop if running
+            if virsh list --state-running | grep -q "$vm_name"; then
+                virsh destroy "$vm_name" || true
+            fi
+            
+            # Undefine the VM
+            virsh undefine "$vm_name" --remove-all-storage || true
+            
+            # Remove disk images manually if they still exist
+            rm -f "${DISK_PATH}/${vm_name}-disk1.qcow2"
+            rm -f "${DISK_PATH}/${vm_name}-disk2.qcow2"
+            
+            log "VM $vm_name destroyed."
+        else
+            log "VM $vm_name not found. Skipping."
         fi
     done
-    log "INFO" "VMs with prefix ${prefix} deleted successfully"
+    
+    log "All VMs destroyed."
+}
+
+function list_vms() {
+    log "Listing VMs with prefix $VM_PREFIX..."
+    virsh list --all | grep "$VM_PREFIX" || log "No VMs found with prefix $VM_PREFIX"
+}
+
+function update_api_vip() {
+    local api_vip="$1"
+    if [ -z "$api_vip" ]; then
+        log "ERROR" "API VIP not provided"
+        return 1
+    fi
+    
+    log "Updating API VIP to $api_vip..."
+    export API_VIP="$api_vip"
+    
+    # Update environment file if it exists
+    if [ -f "$(dirname "${BASH_SOURCE[0]}")/env.sh" ]; then
+        sed -i.bak "s/^API_VIP=.*/API_VIP=\"$api_vip\"/" "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+        log "Updated API_VIP in env.sh"
+    fi
 }
 
 # -----------------------------------------------------------------------------
-# Command dispatcher
+# Main command handler
 # -----------------------------------------------------------------------------
 function main() {
-    local command=$1
+    local command="$1"
     shift
-
+    
     case "$command" in
         create)
             create_vms
             ;;
-        delete)
-            delete_vms
+        destroy)
+            destroy_vms
+            ;;
+        list)
+            list_vms
+            ;;
+        update-api-vip)
+            update_api_vip "$1"
             ;;
         *)
-            log "Unknown command: $command"
-            log "Available commands: create, delete"
+            log "Usage: $0 {create|destroy|list|update-api-vip <ip>}"
             exit 1
             ;;
     esac
 }
 
-# If script is executed directly (not sourced), run the main function
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    if [ $# -lt 1 ]; then
-        log "Usage: $0 <command> [arguments...]"
-        log "Commands:"
-        log "  create - Create VMs for the cluster"
-        log "  delete - Delete VMs with the specified prefix"
-        exit 1
-    fi
-    
+# Execute main function if script is run directly
+if [ "${BASH_SOURCE[0]}" == "${0}" ]; then
     main "$@"
 fi
