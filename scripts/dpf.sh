@@ -18,42 +18,17 @@ ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"ocs-storagecluster-ceph-rbd"}
 # -----------------------------------------------------------------------------
 function deploy_nfd() {
     log [INFO] "Managing NFD deployment..."
-    
-    # Check if NFD should be disabled
-    if [ "$DISABLE_NFD" = "true" ]; then
-        log [INFO] "NFD deployment is disabled (DISABLE_NFD=true). Skipping..."
-        return 0
-    fi
 
-    # Check if NFD operator is already installed
-    if oc get deployment -n openshift-nfd nfd-operator &>/dev/null; then
-        log [INFO] "NFD operator already installed. Skipping deployment."
-        return 0
-    fi
-
-    log [INFO] "Deploying NFD operator directly from source..."
-
-    # Check if Go is installed
-    if ! command -v go &> /dev/null; then
-        log [INFO] "Error: Go is not installed but required for NFD operator deployment"
-        log [INFO] "Please install Go before continuing"
-        exit 1
-    fi
-
-    # Clone the NFD operator repository if not exists
-    if [ ! -d "cluster-nfd-operator" ]; then
-        log [INFO] "NFD operator repository not found. Cloning..."
-        git clone https://github.com/openshift/cluster-nfd-operator.git
-    fi
     get_kubeconfig
 
-    # Deploy the NFD operator
-    if ! make -C cluster-nfd-operator deploy IMAGE_TAG=$NFD_OPERATOR_IMAGE KUBECONFIG=$KUBECONFIG; then
-        log [ERROR] "Failed to deploy NFD operator"
+    # Wait for NFD operator to be ready
+    log [INFO] "Waiting for NFD operator to be ready..."
+    wait_for_pods "openshift-nfd" "app=nfd-operator" "status.phase=Running" "1/1" 60 10
+
+    if [ $retries -eq 0 ]; then
+        log [ERROR] "Timeout: NFD operator installation failed"
         return 1
     fi
-
-    log [INFO] "NFD operator deployment from source completed"
 
     # Create NFD instance with custom operand image
     log [INFO] "Creating NFD instance with custom operand image..."
