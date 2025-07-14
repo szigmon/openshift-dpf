@@ -17,3 +17,4 @@ spec:
       resources:
         memory: 6Gi
         nvidia.com/bf_sf: 3
+  
