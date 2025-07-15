@@ -68,8 +68,7 @@ DISK_SIZE2=${DISK_SIZE2:-"80"}
 VM_PREFIX=${VM_PREFIX:-"vm-dpf"}
 
 # MAC Address Configuration
-MAC_ASSIGNMENT_METHOD=${MAC_ASSIGNMENT_METHOD:-"none"}  # Options: "none", "machine-id", "custom-prefix"
-MAC_CUSTOM_PREFIX=${MAC_CUSTOM_PREFIX:-"C0:00"}  # Required when MAC_ASSIGNMENT_METHOD="custom-prefix"
+MAC_PREFIX=${MAC_PREFIX:-""}  # If set, use custom-prefix method, otherwise use machine-id
 
 # Paths
 DISK_PATH=${DISK_PATH:-"/var/lib/libvirt/images"}
