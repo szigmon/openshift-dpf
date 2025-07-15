@@ -34,6 +34,7 @@ SPECIAL_FILES=(
     "ovn-template.yaml"
     "ovn-configuration.yaml"
     "hbn-template.yaml"
+    "hbn-configuration.yaml"
     "dts-template.yaml"
     "blueman-template.yaml"
     "flannel-template.yaml"
@@ -122,6 +123,15 @@ function update_hbn_ovn_manifests() {
             "<DPU_HOST_CIDR>" "${DPU_HOST_CIDR}"
     fi
     
+    # Update hbn-configuration.yaml 
+    if [ -f "${POST_INSTALL_DIR}/hbn-configuration.yaml" ]; then
+        update_file_multi_replace \
+            "${POST_INSTALL_DIR}/hbn-configuration.yaml" \
+            "${GENERATED_POST_INSTALL_DIR}/hbn-configuration.yaml" \
+            "<HBN_HOSTNAME_NODE1>" "${HBN_HOSTNAME_NODE1}" \
+            "<HBN_HOSTNAME_NODE2>" "${HBN_HOSTNAME_NODE2}"
+    fi
+
     log [INFO] "HBN OVN manifests updated successfully"
 }
 
