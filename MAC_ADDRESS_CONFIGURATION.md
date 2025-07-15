@@ -4,19 +4,12 @@ This document explains the MAC address assignment options available when creatin
 
 ## Configuration Options
 
-The script supports three MAC address assignment methods controlled by the `MAC_ASSIGNMENT_METHOD` environment variable:
+The script supports two MAC address assignment methods controlled by the `MAC_PREFIX` environment variable:
 
-### 1. No Static MAC Assignment (Default)
+### 1. Machine-ID Based MAC Generation (Default)
 ```bash
-export MAC_ASSIGNMENT_METHOD="none"
-# or leave unset (default behavior)
-```
-
-**Behavior**: VMs are created with randomly generated MAC addresses by libvirt.
-
-### 2. Machine-ID Based MAC Generation
-```bash
-export MAC_ASSIGNMENT_METHOD="machine-id"
+# Leave MAC_PREFIX unset or set to empty
+export MAC_PREFIX=""
 ```
 
 **Behavior**: 
@@ -26,75 +19,58 @@ export MAC_ASSIGNMENT_METHOD="machine-id"
 - Format: `52:54:00:XX:XX:XX` where XX are derived from machine-id hash
 
 **Requirements**: 
-- Host must have `/etc/machine-id` or `/var/lib/dbus/machine-id` file
+- Host must have `/etc/machine-id` file
 
-### 3. Custom Prefix MAC Generation
+### 2. Custom Prefix MAC Generation
 ```bash
-export MAC_ASSIGNMENT_METHOD="custom-prefix"
-export MAC_CUSTOM_PREFIX="C0:00"  # 2-digit hex value or 4-digit with colon
+export MAC_PREFIX="C0:00"  # 2-digit hex value or 4-digit with colon
 ```
 
 **Behavior**:
 - Generates MAC addresses with a custom prefix
-- Supports two formats:
-  - 2-digit format: `52:54:00:XX:00:YY` where XX is your custom prefix and YY is the VM index
-  - 4-digit format: `52:54:00:XX:YY:ZZ` where XX:YY is your custom prefix and ZZ is the VM index
+- Format: `52:54:00:XX:YY:ZZ` where XX:YY is your custom prefix and ZZ is the VM index
 - Examples:
-  - With `MAC_CUSTOM_PREFIX="01"`:
-    - vm-dpf1: `52:54:00:01:00:01`
-    - vm-dpf2: `52:54:00:01:00:02`
-  - With `MAC_CUSTOM_PREFIX="C0:00"`:
+  - With `MAC_PREFIX="C0:00"`:
     - vm-dpf1: `52:54:00:C0:00:01`
     - vm-dpf2: `52:54:00:C0:00:02`
+  - With `MAC_PREFIX="A1:B2"`:
+    - vm-dpf1: `52:54:00:A1:B2:01`
+    - vm-dpf2: `52:54:00:A1:B2:02`
 
 **Requirements**:
-- `MAC_CUSTOM_PREFIX` must be set to either:
-  - 2-digit hexadecimal value (e.g., "01", "A1", "FF")
-  - 4-digit hexadecimal value with colon (e.g., "C0:00", "A1:B2")
+- `MAC_PREFIX` must be set to a 4-digit hexadecimal value with colon (e.g., "C0:00", "A1:B2", "FF:EE")
 
 ## Usage Examples
 
-### Example 1: Use default random MAC addresses
+### Example 1: Use machine-id based MAC addresses (default)
 ```bash
 # No environment variables needed (default behavior)
 ./scripts/vm.sh create
 ```
 
-### Example 2: Use machine-id based MAC addresses
+### Example 2: Use custom prefix MAC addresses
 ```bash
-export MAC_ASSIGNMENT_METHOD="machine-id"
+export MAC_PREFIX="C0:00"
 ./scripts/vm.sh create
 ```
 
-### Example 3: Use custom prefix MAC addresses
-```bash
-export MAC_ASSIGNMENT_METHOD="custom-prefix"
-export MAC_CUSTOM_PREFIX="C0:00"
-./scripts/vm.sh create
-```
-
-### Example 4: Using .env file
+### Example 3: Using .env file
 Add to your `.env` file:
 ```bash
-MAC_ASSIGNMENT_METHOD=custom-prefix
-MAC_CUSTOM_PREFIX=C0:00
+MAC_PREFIX=C0:00
 ```
 
 ## Validation
 
 The script includes validation for:
-- MAC address format (proper hex format with colons)
-- Custom prefix format (2-digit hex or 4-digit hex with colon)
+- Custom prefix format (4-digit hex with colon)
 - Machine-id file existence
-- Valid assignment method values
 
 ## Error Handling
 
 The script will exit with an error if:
-- Invalid `MAC_ASSIGNMENT_METHOD` is specified
-- `MAC_CUSTOM_PREFIX` is missing when using "custom-prefix" method
-- Machine-id file is not found when using "machine-id" method
-- Generated MAC address is invalid
+- Invalid `MAC_PREFIX` format is specified
+- `/etc/machine-id` file is not found when using default method
 
 ## Notes
 

@@ -58,40 +58,22 @@ function create_vms() {
 
     # --- MAC Address Generation Functions ---
     
-    # Function to validate MAC address format
-    validate_mac_address() {
-        local mac="$1"
-        if [[ ! "$mac" =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ ]]; then
-            return 1
-        fi
-        return 0
-    }
-
     # Function to generate a unique MAC address based on machine-id and VM name
     generate_mac_from_machine_id() {
         local vm_name="$1"
         
-        # Try to get machine-id from common locations
-        local machine_id=""
-        if [ -f "/etc/machine-id" ]; then
-            machine_id=$(cat /etc/machine-id)
-        elif [ -f "/var/lib/dbus/machine-id" ]; then
-            machine_id=$(cat /var/lib/dbus/machine-id)
-        else
-            log "ERROR" "Could not find machine-id file. Please ensure /etc/machine-id or /var/lib/dbus/machine-id exists."
+        # Get machine-id from /etc/machine-id
+        if [ ! -f "/etc/machine-id" ]; then
+            log "ERROR" "Could not find /etc/machine-id file."
             exit 1
         fi
-
+        
+        local machine_id=$(cat /etc/machine-id)
         local combined="${machine_id}-${vm_name}"
         local hash=$(echo "$combined" | sha256sum | cut -c1-10)
         
         # Use QEMU's standard locally administered MAC prefix (52:54:00)
         local mac="52:54:00:$(echo "$hash" | sed 's/\(..\)\(..\)\(..\).*/\1:\2:\3/')"
-        
-        if ! validate_mac_address "$mac"; then
-            log "ERROR" "Generated invalid MAC address: $mac"
-            exit 1
-        fi
         
         echo "$mac"
     }
@@ -101,28 +83,17 @@ function create_vms() {
         local vm_index="$1"
         local custom_prefix="$2"
         
-        # Validate custom prefix format (should be 2 hex digits or 4 hex digits with colon)
-        if [[ ! "$custom_prefix" =~ ^[0-9A-Fa-f]{2}$ ]] && [[ ! "$custom_prefix" =~ ^[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}$ ]]; then
-            log "ERROR" "Invalid MAC_CUSTOM_PREFIX format: $custom_prefix. Must be 2 hexadecimal digits (e.g., '01', 'A1') or 4 hex digits with colon (e.g., 'C0:00')"
+        # Validate custom prefix format (must be 4 hex digits with colon)
+        if [[ ! "$custom_prefix" =~ ^[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}$ ]]; then
+            log "ERROR" "Invalid MAC_PREFIX format: $custom_prefix. Must be 4 hex digits with colon (e.g., 'C0:00', 'A1:B2')"
             exit 1
         fi
         
         # Convert VM index to hex (01, 02, 03, etc.)
         local last_octet_hex=$(printf '%02x' "$vm_index")
         
-        # Handle both formats: "C0:00" and "C0"
-        if [[ "$custom_prefix" =~ : ]]; then
-            # Format: "C0:00" -> use as is
-            local mac="52:54:00:${custom_prefix}:${last_octet_hex}"
-        else
-            # Format: "C0" -> add ":00"
-            local mac="52:54:00:${custom_prefix}:00:${last_octet_hex}"
-        fi
-        
-        if ! validate_mac_address "$mac"; then
-            log "ERROR" "Generated invalid MAC address: $mac"
-            exit 1
-        fi
+        # Format: "C0:00" -> use as is
+        local mac="52:54:00:${custom_prefix}:${last_octet_hex}"
         
         echo "$mac"
     }
@@ -132,35 +103,18 @@ function create_vms() {
         VM_NAME="${VM_PREFIX}${i}"
         network_mac_arg=""
 
-        case "$MAC_ASSIGNMENT_METHOD" in
-            "machine-id")
-                # Option 2: Use the machine-id based MAC mechanism
-                UNIQUE_MAC=$(generate_mac_from_machine_id "$VM_NAME")
-                log "INFO" "Creating VM: $VM_NAME with machine-id based MAC: $UNIQUE_MAC"
-                network_mac_arg=",mac=${UNIQUE_MAC}"
-                ;;
-            "custom-prefix")
-                # Option 3: Use the custom prefix mechanism
-                if [ -z "$MAC_CUSTOM_PREFIX" ] || [ "$MAC_CUSTOM_PREFIX" = "none" ]; then
-                    log "ERROR" "MAC_ASSIGNMENT_METHOD is 'custom-prefix' but MAC_CUSTOM_PREFIX is not set or is 'none'."
-                    log "ERROR" "Please set MAC_CUSTOM_PREFIX to a 2-digit hex value (e.g., '01', 'A1') or 4 hex digits with colon (e.g., 'C0:00')"
-                    exit 1
-                fi
-                UNIQUE_MAC=$(generate_mac_with_custom_prefix "$i" "$MAC_CUSTOM_PREFIX")
-                log "INFO" "Creating VM: $VM_NAME with custom prefix MAC: $UNIQUE_MAC"
-                network_mac_arg=",mac=${UNIQUE_MAC}"
-                ;;
-            "none"|"")
-                # Option 1: Use the original code (no static MAC assigned)
-                log "INFO" "Creating VM: $VM_NAME with auto-generated MAC (no custom assignment method specified)."
-                # network_mac_arg remains empty
-                ;;
-            *)
-                log "ERROR" "Invalid MAC_ASSIGNMENT_METHOD: $MAC_ASSIGNMENT_METHOD"
-                log "ERROR" "Valid options are: 'none', 'machine-id', 'custom-prefix'"
-                exit 1
-                ;;
-        esac
+        # Determine MAC assignment method based on MAC_PREFIX
+        if [ -n "$MAC_PREFIX" ]; then
+            # Use custom prefix if MAC_PREFIX is specified
+            UNIQUE_MAC=$(generate_mac_with_custom_prefix "$i" "$MAC_PREFIX")
+            log "INFO" "Creating VM: $VM_NAME with custom prefix MAC: $UNIQUE_MAC"
+            network_mac_arg=",mac=${UNIQUE_MAC}"
+        else
+            # Use machine-id based MAC (default)
+            UNIQUE_MAC=$(generate_mac_from_machine_id "$VM_NAME")
+            log "INFO" "Creating VM: $VM_NAME with machine-id based MAC: $UNIQUE_MAC"
+            network_mac_arg=",mac=${UNIQUE_MAC}"
+        fi
 
         # Construct the full --network argument string
         network_full_arg="bridge=${BRIDGE_NAME},model=e1000e${network_mac_arg}"
