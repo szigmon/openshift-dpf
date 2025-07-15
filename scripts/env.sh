@@ -67,6 +67,10 @@ DISK_SIZE1=${DISK_SIZE1:-"120"}
 DISK_SIZE2=${DISK_SIZE2:-"80"}
 VM_PREFIX=${VM_PREFIX:-"vm-dpf"}
 
+# MAC Address Configuration
+MAC_ASSIGNMENT_METHOD=${MAC_ASSIGNMENT_METHOD:-"none"}  # Options: "none", "machine-id", "custom-prefix"
+MAC_CUSTOM_PREFIX=${MAC_CUSTOM_PREFIX:-"C0:00"}  # Required when MAC_ASSIGNMENT_METHOD="custom-prefix"
+
 # Paths
 DISK_PATH=${DISK_PATH:-"/var/lib/libvirt/images"}
 ISO_FOLDER=${ISO_FOLDER:-${DISK_PATH}}
