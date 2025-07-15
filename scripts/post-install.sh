@@ -34,6 +34,7 @@ SPECIAL_FILES=(
     "ovn-template.yaml"
     "ovn-configuration.yaml"
     "hbn-template.yaml"
+    "hbn-configuration.yaml"
     "dts-template.yaml"
     "blueman-template.yaml"
     "flannel-template.yaml"
