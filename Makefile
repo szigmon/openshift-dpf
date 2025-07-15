@@ -16,7 +16,7 @@ FLANNEL_CONFIG_SCRIPT := scripts/configure-flannel-nodes.sh
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
         redeploy-dpu configure-flannel-nodes enable-ovn-injector recreate-hosted-cluster delete-hosted-cluster \
-        approve-csr-hosted hosted-cluster-status
+        approve-csr-hosted hosted-cluster-status configure-hypershift-dpucluster
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
 
@@ -94,6 +94,9 @@ deploy-dpu-services: prepare-dpu-files
 
 deploy-hypershift:
 	@$(DPF_SCRIPT) deploy-hypershift
+
+configure-hypershift-dpucluster:
+	@$(DPF_SCRIPT) configure-hypershift
 
 create-ignition-template:
 	@$(DPF_SCRIPT) create-ignition-template
@@ -218,23 +221,23 @@ help:
 # Hosted Cluster Recreation Targets
 recreate-hosted-cluster:
 	@echo "Starting hosted cluster recreation process..."
-	@$(SCRIPTS_DIR)/recreate-hosted-cluster.sh
+	@scripts/recreate-hosted-cluster.sh
 
 delete-hosted-cluster:
 	@echo "Deleting hosted cluster ${HOSTED_CLUSTER_NAME}..."
 	@hypershift destroy cluster none --name="${HOSTED_CLUSTER_NAME}" --namespace="${CLUSTERS_NAMESPACE}" || \
-		oc delete hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME}
-	@oc delete namespace ${HOSTED_CONTROL_PLANE_NAMESPACE} --ignore-not-found=true
+		oc delete hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} --timeout=300s
+	@oc delete namespace ${HOSTED_CONTROL_PLANE_NAMESPACE} --ignore-not-found=true --timeout=300s
 	@echo "Cleaning up DPU resources..."
-	@oc delete dpudeployment --all -A --ignore-not-found=true
-	@oc delete dpu --all -A --ignore-not-found=true
-	@oc delete bfb --all -A --ignore-not-found=true
+	@oc delete dpudeployment --all -A --ignore-not-found=true --timeout=600s
+	@oc delete dpu --all -A --ignore-not-found=true --timeout=300s
+	@oc delete bfb --all -A --ignore-not-found=true --timeout=300s
 	@oc delete dpucluster ${HOSTED_CLUSTER_NAME} -n dpf-operator-system --ignore-not-found=true
 	@oc delete secret ${HOSTED_CLUSTER_NAME}-kubeconfig -n dpf-operator-system --ignore-not-found=true
 	@oc delete dpuservicetemplate hcp-template -n dpf-operator-system --ignore-not-found=true
 
 approve-csr-hosted:
-	@$(SCRIPTS_DIR)/approve-csr.sh ${HOSTED_CLUSTER_NAME}.kubeconfig
+	@scripts/approve-csr.sh ${HOSTED_CLUSTER_NAME}.kubeconfig
 
 hosted-cluster-status:
 	@echo "=== Management Cluster Status ==="

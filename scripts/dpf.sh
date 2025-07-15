@@ -361,12 +361,15 @@ function main() {
             create-ignition-template)
                 create_ignition_template
                 ;;
-            copy_hypershift_kubeconfig)
+            configure-hypershift)
+                configure_hypershift
+                ;;
+            copy-hypershift-kubeconfig)
                 copy_hypershift_kubeconfig
                 ;;
             *)
                 log [INFO] "Unknown command: $command"
-                log [INFO] "Available commands: deploy-nfd, apply-dpf, deploy-hypershift"
+                log [INFO] "Available commands: deploy-nfd, apply-dpf, deploy-hypershift, configure-hypershift, create-ignition-template, copy-hypershift-kubeconfig"
                 exit 1
                 ;;
         esac
