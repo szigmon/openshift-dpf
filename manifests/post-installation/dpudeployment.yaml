@@ -25,9 +25,6 @@ spec:
     doca-telemetry-service:
       serviceTemplate: doca-telemetry-service
       serviceConfiguration: doca-telemetry-service
-    doca-blueman-service:
-      serviceTemplate: doca-blueman-service
-      serviceConfiguration: doca-blueman-service
   serviceChains:
     switches:
       - ports:
