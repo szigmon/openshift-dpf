@@ -33,6 +33,7 @@ SPECIAL_FILES=(
     "sriov-policy.yaml"
     "ovn-template.yaml"
     "ovn-configuration.yaml"
+    "hbn-configuration.yaml"
     "hbn-template.yaml"
     "dts-template.yaml"
     "blueman-template.yaml"

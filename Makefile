@@ -15,7 +15,8 @@ FLANNEL_CONFIG_SCRIPT := scripts/configure-flannel-nodes.sh
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
-        redeploy-dpu configure-flannel-nodes enable-ovn-injector
+        redeploy-dpu configure-flannel-nodes enable-ovn-injector recreate-hosted-cluster delete-hosted-cluster \
+        approve-csr-hosted hosted-cluster-status
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
 
@@ -165,6 +166,12 @@ help:
 	@echo "  create-hypershift-cluster - Create a new Hypershift hosted cluster"
 	@echo "  configure-hypershift-dpucluster - Configure DPF to use Hypershift hosted cluster"
 	@echo ""
+	@echo "Hosted Cluster Recreation:"
+	@echo "  recreate-hosted-cluster - Delete and recreate the hosted cluster with DPUs"
+	@echo "  delete-hosted-cluster - Delete hosted cluster and all DPU resources"
+	@echo "  approve-csr-hosted - Auto-approve CSRs in the hosted cluster"
+	@echo "  hosted-cluster-status - Show status of hosted cluster and DPUs"
+	@echo ""
 	@echo "Configuration options:"
 	@echo "Cluster Configuration:"
 	@echo "  CLUSTER_NAME      - Set cluster name (default: $(CLUSTER_NAME))"
@@ -208,3 +215,33 @@ help:
 	@echo "Wait Configuration:"
 	@echo "  MAX_RETRIES      - Maximum number of retries for status checks (default: $(MAX_RETRIES))"
 	@echo "  SLEEP_TIME       - Sleep time in seconds between retries (default: $(SLEEP_TIME))" 
+# Hosted Cluster Recreation Targets
+recreate-hosted-cluster:
+	@echo "Starting hosted cluster recreation process..."
+	@$(SCRIPTS_DIR)/recreate-hosted-cluster.sh
+
+delete-hosted-cluster:
+	@echo "Deleting hosted cluster ${HOSTED_CLUSTER_NAME}..."
+	@hypershift destroy cluster none --name="${HOSTED_CLUSTER_NAME}" --namespace="${CLUSTERS_NAMESPACE}" || \
+		oc delete hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME}
+	@oc delete namespace ${HOSTED_CONTROL_PLANE_NAMESPACE} --ignore-not-found=true
+	@echo "Cleaning up DPU resources..."
+	@oc delete dpudeployment --all -A --ignore-not-found=true
+	@oc delete dpu --all -A --ignore-not-found=true
+	@oc delete bfb --all -A --ignore-not-found=true
+	@oc delete dpucluster ${HOSTED_CLUSTER_NAME} -n dpf-operator-system --ignore-not-found=true
+	@oc delete secret ${HOSTED_CLUSTER_NAME}-kubeconfig -n dpf-operator-system --ignore-not-found=true
+	@oc delete dpuservicetemplate hcp-template -n dpf-operator-system --ignore-not-found=true
+
+approve-csr-hosted:
+	@$(SCRIPTS_DIR)/approve-csr.sh ${HOSTED_CLUSTER_NAME}.kubeconfig
+
+hosted-cluster-status:
+	@echo "=== Management Cluster Status ==="
+	@oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} -o wide || echo "Hosted cluster not found"
+	@echo ""
+	@echo "=== DPU Resources ==="
+	@oc get dpu,dpudeployment,bfb -A
+	@echo ""
+	@echo "=== Hosted Cluster Nodes ==="
+	@KUBECONFIG=${HOSTED_CLUSTER_NAME}.kubeconfig oc get nodes 2>/dev/null || echo "Cannot access hosted cluster"
