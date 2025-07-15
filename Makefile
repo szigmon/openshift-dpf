@@ -204,6 +204,7 @@ help:
 	@echo "Post-installation Configuration:"
 	@echo "  BFB_URL          - URL for BFB file (default: http://10.8.2.236/bfb/rhcos_4.19.0-ec.4_installer_2025-04-23_07-48-42.bfb)"
 	@echo "  HBN_OVN_NETWORK  - Network for HBN OVN IPAM (default: 10.0.120.0/22)"
+	@echo "  HBN_HOSTNAME_NODE - HBN node hostname (HBN_HOSTNAME_NODE<NODE_ID>, default: $(HBN_HOSTNAME_NODE1),$(HBN_HOSTNAME_NODE2))
 	@echo ""
 	@echo "Wait Configuration:"
 	@echo "  MAX_RETRIES      - Maximum number of retries for status checks (default: $(MAX_RETRIES))"
