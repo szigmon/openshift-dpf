@@ -41,6 +41,10 @@ BFB_URL=${BFB_URL:-"http://10.8.2.236/bfb/rhcos_4.19.0-ec.4_installer_2025-04-23
 # HBN OVN Configuration
 HBN_OVN_NETWORK=${HBN_OVN_NETWORK:-"10.0.120.0/22"}
 
+# DPU Service Configuration
+HBN_HOSTNAME_NODE1=${HBN_HOSTNAME_NODE1:-"srv24-*"}
+HBN_HOSTNAME_NODE2=${HBN_HOSTNAME_NODE2:-"srv25-*"}
+
 # Cluster Configuration
 CLUSTER_NAME=${CLUSTER_NAME:-"doca"}
 BASE_DOMAIN=${BASE_DOMAIN:-"lab.nvidia.com"}
