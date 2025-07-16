@@ -51,7 +51,7 @@ log [INFO] "Waiting for OVN injector deployment to be ready..."
 wait_for_pods "ovn-kubernetes" "app.kubernetes.io/name=ovn-kubernetes-resource-injector" "status.phase=Running" "Running" 30 10
 
 # Verify NAD creation
-if oc get networkattachmentdefinition -n ovn-kubernetes dpf-ovn-kubernetes &>/dev/null; then
+if oc get net-attach-def -n ovn-kubernetes dpf-ovn-kubernetes &>/dev/null; then
     log [INFO] "NetworkAttachmentDefinition 'dpf-ovn-kubernetes' created successfully"
 else
     log [ERROR] "NetworkAttachmentDefinition 'dpf-ovn-kubernetes' was not created"
