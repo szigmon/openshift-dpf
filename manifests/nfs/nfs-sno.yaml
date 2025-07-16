@@ -59,7 +59,7 @@ spec:
         node-role.kubernetes.io/control-plane: ""
       containers:
         - name: nfs-server
-          image: itsthenetwork/nfs-server-alpine:latest
+          image: quay.io/itsoiref/nfs-server-alpine:latest
           env:
             - name: SHARED_DIRECTORY
               value: "/exports"

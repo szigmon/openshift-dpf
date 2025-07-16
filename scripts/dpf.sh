@@ -18,42 +18,24 @@ ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"ocs-storagecluster-ceph-rbd"}
 # -----------------------------------------------------------------------------
 function deploy_nfd() {
     log [INFO] "Managing NFD deployment..."
-    
-    # Check if NFD should be disabled
-    if [ "$DISABLE_NFD" = "true" ]; then
-        log [INFO] "NFD deployment is disabled (DISABLE_NFD=true). Skipping..."
-        return 0
-    fi
 
-    # Check if NFD operator is already installed
-    if oc get deployment -n openshift-nfd nfd-operator &>/dev/null; then
-        log [INFO] "NFD operator already installed. Skipping deployment."
-        return 0
-    fi
-
-    log [INFO] "Deploying NFD operator directly from source..."
-
-    # Check if Go is installed
-    if ! command -v go &> /dev/null; then
-        log [INFO] "Error: Go is not installed but required for NFD operator deployment"
-        log [INFO] "Please install Go before continuing"
-        exit 1
-    fi
-
-    # Clone the NFD operator repository if not exists
-    if [ ! -d "cluster-nfd-operator" ]; then
-        log [INFO] "NFD operator repository not found. Cloning..."
-        git clone https://github.com/openshift/cluster-nfd-operator.git
-    fi
     get_kubeconfig
 
-    # Deploy the NFD operator
-    if ! make -C cluster-nfd-operator deploy IMAGE_TAG=$NFD_OPERATOR_IMAGE KUBECONFIG=$KUBECONFIG; then
-        log [ERROR] "Failed to deploy NFD operator"
-        return 1
+    # Check if NFD subscription exists, if not apply it
+    if ! oc get subscription -n openshift-nfd nfd &>/dev/null; then
+        log [INFO] "NFD subscription not found. Applying NFD subscription..."
+        apply_manifest "$MANIFESTS_DIR/cluster-installation/nfd-subscription.yaml"
+        
+        # Verify operator is ready by checking CSV
+        log [INFO] "Verifying NFD operator installation..."
+        if ! retry 30 10 bash -c 'oc get csv -n openshift-nfd -o jsonpath="{.items[*].status.phase}" | grep -q "Succeeded"'; then
+            log [ERROR] "Timeout: NFD operator installation failed"
+            return 1
+        fi
+        log [INFO] "NFD operator installation verified successfully"
+    else
+        log [INFO] "NFD subscription already exists. Skipping deployment."
     fi
-
-    log [INFO] "NFD operator deployment from source completed"
 
     # Create NFD instance with custom operand image
     log [INFO] "Creating NFD instance with custom operand image..."
@@ -380,4 +362,4 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     fi
     
     main "$@"
-fi 
+fi
