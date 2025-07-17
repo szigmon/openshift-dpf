@@ -17,7 +17,7 @@ FLANNEL_CONFIG_SCRIPT := scripts/configure-flannel-nodes.sh
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
         redeploy-dpu configure-flannel-nodes enable-ovn-injector deploy-argocd
 
-all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services enable-ovn-injector
+all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-argocd deploy-dpf prepare-dpu-files deploy-dpu-services enable-ovn-injector
 
 verify-files:
 	@$(UTILS_SCRIPT) verify-files
