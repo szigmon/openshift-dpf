@@ -8,7 +8,7 @@ spec:
   helmChart:
     source:
       chart: dpu-networking
-      repoURL: https://helm.ngc.nvidia.com/nvidia/doca
+      repoURL: <DPF_HELM_REPO_URL>
       version: <DPF_VERSION>
     values:
       flannel:
