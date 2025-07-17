@@ -79,8 +79,19 @@ BRIDGE_NAME=${BRIDGE_NAME:-br0}
 SKIP_BRIDGE_CONFIG=${SKIP_BRIDGE_CONFIG:-"false"}
 
 # DPF Configuration
-DPF_VERSION="v25.4.0"
-DPF_HELM_REPO_URL=${DPF_HELM_REPO_URL:-"https://helm.ngc.nvidia.com/nvidia/doca/charts/dpf-operator"}
+DPF_VERSION="v25.7.0-beta.4"
+
+# Helm Chart URLs - OCI registry format for v25.7+
+DPF_HELM_REPO_URL=${DPF_HELM_REPO_URL:-"oci://ghcr.io/nvidia"}
+OVN_CHART_URL=${OVN_CHART_URL:-"oci://ghcr.io/nvidia"}
+
+# Container Images
+DPF_SYSTEM_IMAGE=${DPF_SYSTEM_IMAGE:-"ghcr.io/nvidia/dpf-system:v25.7.0-beta.4"}
+OVS_CNI_PLUGIN_IMAGE=${OVS_CNI_PLUGIN_IMAGE:-"ghcr.io/nvidia/ovs-cni-plugin:v25.7.0-beta.4"}
+OVN_KUBERNETES_IMAGE=${OVN_KUBERNETES_IMAGE:-"ghcr.io/nvidia/ovn-kubernetes:v25.7.0-beta.4"}
+HOSTDRIVER_IMAGE=${HOSTDRIVER_IMAGE:-"ghcr.io/nvidia/hostdriver:v25.7.0-beta.4"}
+NFD_OPERAND_IMAGE=${NFD_OPERAND_IMAGE:-"quay.io/yshnaidm/node-feature-discovery:dpf"}
+
 HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
 
 if [ "${VM_COUNT}" -lt 2 ]; then
@@ -93,6 +104,9 @@ fi
 NUM_VFS=${NUM_VFS:-"46"}
 
 # Feature Configuration
+
+# ArgoCD Configuration
+ARGOCD_CHART_VERSION=${ARGOCD_CHART_VERSION:-"7.8.2"}
 
 # Hypershift Configuration
 HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/hypershift/hypershift-operator:latest"}
