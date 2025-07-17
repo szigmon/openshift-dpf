@@ -245,7 +245,7 @@ function generate_ovn_manifests() {
     
     log [INFO] "Generating OVN manifests from helm template..."
     if ! helm template -n ovn-kubernetes ovn-kubernetes \
-        "$GENERATED_DIR/temp/ovn" \
+        "$GENERATED_DIR/temp/ovn-kubernetes-chart" \
         -f "$GENERATED_DIR/temp/ovn-values-resolved.yaml" \
         > "$GENERATED_DIR/ovn-manifests.yaml"; then
         log [ERROR] "Failed to generate OVN manifests"

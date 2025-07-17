@@ -39,7 +39,7 @@ sed -e "s|<TARGETCLUSTER_API_SERVER_HOST>|api.$CLUSTER_NAME.$BASE_DOMAIN|" \
 
 # Generate all manifests with injector enabled
 helm template -n ovn-kubernetes ovn-kubernetes \
-    "$GENERATED_DIR/ovn-injector/ovn" \
+    "$GENERATED_DIR/ovn-injector/ovn-kubernetes-chart" \
     -f "$GENERATED_DIR/ovn-injector/ovn-values-resolved.yaml" \
     | oc apply -f -
 
