@@ -57,4 +57,7 @@ V25.7-FINAL-SUMMARY.md
 
 # Claude directory
 .claude/
+
+# Verification scripts
+verify-v25.7.sh
 	
