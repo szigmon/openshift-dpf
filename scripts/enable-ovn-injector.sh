@@ -24,8 +24,8 @@ log [INFO] "Enabling OVN resource injector..."
 # Generate full manifest with injector enabled
 mkdir -p "$GENERATED_DIR/ovn-injector"
 
-helm pull oci://quay.io/szigmon/ovn \
-    --version "v25.4.0-custom-v2" \
+helm pull "${OVN_CHART_URL}/ovn-kubernetes-chart" \
+    --version "${DPF_VERSION}" \
     --untar -d "$GENERATED_DIR/ovn-injector"
 
 # Replace template variables in values file

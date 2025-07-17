@@ -110,7 +110,8 @@ function update_hbn_ovn_manifests() {
         update_file_multi_replace \
             "${POST_INSTALL_DIR}/ovn-template.yaml" \
             "${GENERATED_POST_INSTALL_DIR}/ovn-template.yaml" \
-            "<DPF_VERSION>" "${DPF_VERSION}"
+            "<DPF_VERSION>" "${DPF_VERSION}" \
+            "<OVN_CHART_URL>" "${OVN_CHART_URL}"
     fi
     
     # Update ovn-configuration.yaml for DPUDeployment
@@ -171,16 +172,26 @@ function update_service_templates() {
         return 1
     fi
     
-    # Update all service templates with DPF_VERSION if they exist
+    # Update all service templates with DPF_VERSION and URLs if they exist
     local templates=("hbn-template.yaml" "dts-template.yaml" "blueman-template.yaml" "flannel-template.yaml")
     
     for template in "${templates[@]}"; do
         if [ -f "${POST_INSTALL_DIR}/${template}" ]; then
-            update_file_multi_replace \
-                "${POST_INSTALL_DIR}/${template}" \
-                "${GENERATED_POST_INSTALL_DIR}/${template}" \
-                "<DPF_VERSION>" "${DPF_VERSION}"
-            log [INFO] "Updated ${template} with <DPF_VERSION>=${DPF_VERSION}"
+            # Check if template needs URL replacements
+            if [[ "${template}" == "flannel-template.yaml" ]]; then
+                update_file_multi_replace \
+                    "${POST_INSTALL_DIR}/${template}" \
+                    "${GENERATED_POST_INSTALL_DIR}/${template}" \
+                    "<DPF_VERSION>" "${DPF_VERSION}" \
+                    "<DPF_HELM_REPO_URL>" "${DPF_HELM_REPO_URL}"
+                log [INFO] "Updated ${template} with <DPF_VERSION>=${DPF_VERSION} and <DPF_HELM_REPO_URL>=${DPF_HELM_REPO_URL}"
+            else
+                update_file_multi_replace \
+                    "${POST_INSTALL_DIR}/${template}" \
+                    "${GENERATED_POST_INSTALL_DIR}/${template}" \
+                    "<DPF_VERSION>" "${DPF_VERSION}"
+                log [INFO] "Updated ${template} with <DPF_VERSION>=${DPF_VERSION}"
+            fi
         fi
     done
     

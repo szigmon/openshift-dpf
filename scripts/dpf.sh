@@ -296,12 +296,21 @@ function apply_dpf() {
         return 1
     }
     
-    # Construct the full chart URL with version
-    CHART_URL="${DPF_HELM_REPO_URL}-${DPF_VERSION}.tgz"
+    # Determine chart URL and args based on format
+    if [[ "$DPF_HELM_REPO_URL" == oci://* ]]; then
+        # OCI registry format (v25.7+)
+        CHART_URL="${DPF_HELM_REPO_URL}/dpf-operator"
+        HELM_ARGS="--version ${DPF_VERSION}"
+    else
+        # Legacy NGC format (v25.4 and older)
+        CHART_URL="${DPF_HELM_REPO_URL}-${DPF_VERSION}.tgz"
+        HELM_ARGS=""
+    fi
     
     # Install without --wait for immediate feedback
     if helm upgrade --install dpf-operator \
         "${CHART_URL}" \
+        ${HELM_ARGS} \
         --namespace dpf-operator-system \
         --create-namespace \
         --values "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"; then

@@ -225,12 +225,12 @@ function generate_ovn_manifests() {
     mkdir -p "$GENERATED_DIR/temp"
     local API_SERVER="api.$CLUSTER_NAME.$BASE_DOMAIN:6443"
     
-    # Pull and template OVN chart v2 (no sed needed with custom chart)
-    log [INFO] "Pulling OVN chart v25.4.0-custom-v2..."
-    if ! helm pull oci://quay.io/szigmon/ovn \
-        --version "v25.4.0-custom-v2" \
+    # Pull and template OVN chart
+    log [INFO] "Pulling OVN chart ${DPF_VERSION}..."
+    if ! helm pull "${OVN_CHART_URL}/ovn-kubernetes-chart" \
+        --version "${DPF_VERSION}" \
         --untar -d "$GENERATED_DIR/temp"; then
-        log [ERROR] "Failed to pull OVN chart v25.4.0-custom-v2"
+        log [ERROR] "Failed to pull OVN chart ${DPF_VERSION}"
         return 1
     fi
     
