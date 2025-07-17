@@ -85,11 +85,7 @@ DPF_VERSION="v25.7.0-beta.4"
 DPF_HELM_REPO_URL=${DPF_HELM_REPO_URL:-"oci://ghcr.io/nvidia"}
 OVN_CHART_URL=${OVN_CHART_URL:-"oci://ghcr.io/nvidia"}
 
-# Container Images
-DPF_SYSTEM_IMAGE=${DPF_SYSTEM_IMAGE:-"ghcr.io/nvidia/dpf-system:v25.7.0-beta.4"}
-OVS_CNI_PLUGIN_IMAGE=${OVS_CNI_PLUGIN_IMAGE:-"ghcr.io/nvidia/ovs-cni-plugin:v25.7.0-beta.4"}
-OVN_KUBERNETES_IMAGE=${OVN_KUBERNETES_IMAGE:-"ghcr.io/nvidia/ovn-kubernetes:v25.7.0-beta.4"}
-HOSTDRIVER_IMAGE=${HOSTDRIVER_IMAGE:-"ghcr.io/nvidia/hostdriver:v25.7.0-beta.4"}
+# NFD Image (kept for backward compatibility)
 NFD_OPERAND_IMAGE=${NFD_OPERAND_IMAGE:-"quay.io/yshnaidm/node-feature-discovery:dpf"}
 
 HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
