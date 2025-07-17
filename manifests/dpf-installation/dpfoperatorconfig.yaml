@@ -22,8 +22,6 @@ spec:
     kubernetesAPIServerPort: 6443
     dpuCNIBinPath: /var/lib/cni/bin/
     dpuCNIPath: /run/multus/cni/net.d/
-  ovsHelper:
-    disable: true
   provisioningController:
     bfCFGTemplateConfigMap: custom-bfb.cfg
     bfbPVCName: bfb-pvc
