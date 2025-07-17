@@ -31,7 +31,7 @@ helm repo add argoproj ${ARGOCD_REPO} || true
 helm repo update
 
 # Use external values file
-ARGOCD_VALUES_FILE="${SCRIPT_DIR}/../manifests/cluster-installation/argocd-values.yaml"
+ARGOCD_VALUES_FILE="${SCRIPT_DIR}/../manifests/dpf-installation/argocd-values.yaml"
 
 # Verify values file exists
 if [ ! -f "$ARGOCD_VALUES_FILE" ]; then
@@ -53,7 +53,7 @@ helm upgrade --install argo-cd argoproj/argo-cd \
 
 # Apply SCC permissions for ArgoCD
 log [INFO] "Applying OpenShift SCCs for ArgoCD service accounts..."
-kubectl apply -f ${SCRIPT_DIR}/../manifests/cluster-installation/argocd-scc.yaml
+kubectl apply -f ${SCRIPT_DIR}/../manifests/dpf-installation/argocd-scc.yaml
 
 # Restart Redis deployment to pick up the new SCC
 log [INFO] "Restarting Redis deployment to apply SCC..."
