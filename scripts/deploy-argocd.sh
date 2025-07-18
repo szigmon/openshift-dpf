@@ -22,8 +22,13 @@ ARGOCD_REPO="https://argoproj.github.io/argo-helm"
 # Deploy ArgoCD
 log [INFO] "Deploying ArgoCD for DPF v25.7..."
 
-# Get kubeconfig
-get_kubeconfig
+# Ensure KUBECONFIG is set
+if [ -z "${KUBECONFIG}" ]; then
+    log [ERROR] "KUBECONFIG is not set. Please run 'make kubeconfig' first."
+    exit 1
+fi
+
+log [INFO] "Using KUBECONFIG: ${KUBECONFIG}"
 
 # Add ArgoCD helm repository
 log [INFO] "Adding ArgoCD helm repository..."
