@@ -51,7 +51,8 @@ Notable changes:
 - DPFOperatorConfigSpec.OVSHelper is no longer available. This component is no longer deployed by the DPF Operator.
 - DPFOperatorConfigSpec.FlannelConfiguration.PodCIDR can now be set.
 - DPUClusterSpec.Version can no longer be set. This is now a status field.
-- 
+
+DPUCluster expects secret to contain a key `super-admin.conf`. Previously this key was `admin.conf`.
 
 Below is a full set of API changes in the `operator`, `dpuservice` and `provisioning` API groups:
 
