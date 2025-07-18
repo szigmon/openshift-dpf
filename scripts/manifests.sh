@@ -146,9 +146,9 @@ prepare_dpf_manifests() {
     # Copy and process manifests
     log "INFO" "Processing manifests from ${MANIFESTS_DIR} to ${GENERATED_DIR}"
     
-    # Copy all manifests except NFD and ArgoCD values file
+    # Copy all manifests except NFD and Helm values files
     find "$MANIFESTS_DIR/dpf-installation" -maxdepth 1 -type f -name "*.yaml" \
-        | grep -v "argocd-values.yaml" \
+        | grep -v -- "-values.yaml" \
         | xargs -I {} cp {} "$GENERATED_DIR/"
 
     # Copy cert-manager manifest (required for DPF deployment)
