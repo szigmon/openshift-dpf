@@ -263,9 +263,13 @@ function deploy_argocd() {
     fi
     
     # Check if ArgoCD is already installed
-    if oc get deployment -n dpf-operator-system argo-cd-argocd-server &>/dev/null; then
-        log [INFO] "ArgoCD is already installed. Skipping deployment."
-        return 0
+    # First check if namespace exists to avoid false positives
+    if oc get namespace dpf-operator-system &>/dev/null; then
+        # Check if the helm release exists
+        if helm list -n dpf-operator-system | grep -q "^argo-cd"; then
+            log [INFO] "ArgoCD helm release already exists. Skipping deployment."
+            return 0
+        fi
     fi
     
     # Ensure helm is installed
@@ -307,9 +311,13 @@ function deploy_maintenance_operator() {
     fi
     
     # Check if Maintenance Operator is already installed
-    if oc get deployment -n dpf-operator-system -l app.kubernetes.io/name=maintenance-operator &>/dev/null; then
-        log [INFO] "Maintenance Operator is already installed. Skipping deployment."
-        return 0
+    # First check if namespace exists to avoid false positives
+    if oc get namespace dpf-operator-system &>/dev/null; then
+        # Check if the helm release exists
+        if helm list -n dpf-operator-system | grep -q "^maintenance-operator"; then
+            log [INFO] "Maintenance Operator helm release already exists. Skipping deployment."
+            return 0
+        fi
     fi
     
     # Ensure helm is installed
