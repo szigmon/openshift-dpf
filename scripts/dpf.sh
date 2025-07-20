@@ -263,13 +263,10 @@ function deploy_argocd() {
     fi
     
     # Check if ArgoCD is already installed
-    # First check if namespace exists to avoid false positives
-    if oc get namespace dpf-operator-system &>/dev/null; then
-        # Check if the helm release exists
-        if helm list -n dpf-operator-system | grep -q "^argo-cd"; then
-            log [INFO] "ArgoCD helm release already exists. Skipping deployment."
-            return 0
-        fi
+    # Check if the helm release exists and is deployed
+    if helm list -n dpf-operator-system 2>/dev/null | grep -q "^argo-cd.*deployed"; then
+        log [INFO] "ArgoCD is already installed. Skipping deployment."
+        return 0
     fi
     
     # Ensure helm is installed
@@ -311,13 +308,10 @@ function deploy_maintenance_operator() {
     fi
     
     # Check if Maintenance Operator is already installed
-    # First check if namespace exists to avoid false positives
-    if oc get namespace dpf-operator-system &>/dev/null; then
-        # Check if the helm release exists
-        if helm list -n dpf-operator-system | grep -q "^maintenance-operator"; then
-            log [INFO] "Maintenance Operator helm release already exists. Skipping deployment."
-            return 0
-        fi
+    # Check if the helm release exists and is deployed
+    if helm list -n dpf-operator-system 2>/dev/null | grep -q "^maintenance-operator.*deployed"; then
+        log [INFO] "Maintenance Operator is already installed. Skipping deployment."
+        return 0
     fi
     
     # Ensure helm is installed
