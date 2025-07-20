@@ -16,7 +16,7 @@ set -e
 set -o pipefail
 
 # Source environment variables
-source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+source "$(dirname "$0")/env.sh"
 
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
@@ -188,7 +188,7 @@ function get_kubeconfig() {
     
     if [ -z "${kubeconfig_path}" ]; then
         log "INFO" "KUBECONFIG not set in environment, checking env.sh..."
-        source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+        source "$(dirname "$0")/env.sh"
         kubeconfig_path="${KUBECONFIG:-}"
     fi
 

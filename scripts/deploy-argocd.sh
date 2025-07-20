@@ -14,7 +14,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/utils.sh"
 source "${SCRIPT_DIR}/env.sh"
-source "${SCRIPT_DIR}/cluster.sh"
 
 # Configuration
 ARGOCD_NAMESPACE="dpf-operator-system"
@@ -23,8 +22,8 @@ ARGOCD_REPO="https://argoproj.github.io/argo-helm"
 # Deploy ArgoCD
 log [INFO] "Deploying ArgoCD for DPF v25.7..."
 
-# Get kubeconfig
-get_kubeconfig
+# Get kubeconfig by calling the cluster script
+"${SCRIPT_DIR}/cluster.sh" get-kubeconfig
 
 # Add ArgoCD helm repository
 log [INFO] "Adding ArgoCD helm repository..."
