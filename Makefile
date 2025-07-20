@@ -15,9 +15,9 @@ FLANNEL_CONFIG_SCRIPT := scripts/configure-flannel-nodes.sh
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
-        redeploy-dpu configure-flannel-nodes enable-ovn-injector deploy-argocd deploy-maintenance-operator deploy-dpf-prerequisites
+        redeploy-dpu configure-flannel-nodes enable-ovn-injector deploy-argocd deploy-maintenance-operator
 
-all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-argocd deploy-maintenance-operator deploy-dpf prepare-dpu-files deploy-dpu-services enable-ovn-injector
+all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services enable-ovn-injector
 
 verify-files:
 	@$(UTILS_SCRIPT) verify-files
@@ -88,9 +88,6 @@ deploy-argocd: install-helm
 deploy-maintenance-operator: install-helm
 	@$(DPF_SCRIPT) deploy-maintenance-operator
 
-deploy-dpf-prerequisites: install-helm
-	@$(DPF_SCRIPT) deploy-prerequisites
-
 deploy-dpf: prepare-dpf-manifests
 	@$(DPF_SCRIPT) apply-dpf
 
@@ -160,10 +157,9 @@ help:
 	@echo "  kubeconfig       - Download cluster kubeconfig if not exists"
 	@echo ""
 	@echo "DPF Installation:"
-	@echo "  deploy-argocd     - Deploy ArgoCD (prerequisite for DPF operator)"
-	@echo "  deploy-maintenance-operator - Deploy Maintenance Operator (prerequisite for DPF operator)"
-	@echo "  deploy-dpf-prerequisites - Deploy all DPF prerequisites (ArgoCD and Maintenance Operator)"
-	@echo "  deploy-dpf        - Deploy DPF operator with required configurations (includes prerequisites for v25.7+)"
+	@echo "  deploy-argocd     - Deploy ArgoCD (standalone)"
+	@echo "  deploy-maintenance-operator - Deploy Maintenance Operator (standalone)"
+	@echo "  deploy-dpf        - Deploy DPF operator (automatically deploys prerequisites for v25.7+)"
 	@echo "  prepare-dpf-manifests - Prepare DPF installation manifests"
 	@echo "  update-etc-hosts - Update /etc/hosts with cluster entries"
 	@echo "  deploy-nfd       - Deploy NFD operator directly from source"
