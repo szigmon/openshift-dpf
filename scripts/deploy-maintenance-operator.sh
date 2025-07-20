@@ -7,6 +7,8 @@
 #
 # Note: This is a required prerequisite for DPF v25.7 as specified in:
 # doca-platform/docs/public/user-guides/prerequisites/helm-prerequisites.md
+#
+# Helm 3 automatically installs CRDs from the chart's crds/ directory during installation
 
 set -euo pipefail
 
@@ -26,25 +28,7 @@ log [INFO] "Deploying Maintenance Operator for DPF v25.7..."
 # Get kubeconfig by calling the cluster script
 "${SCRIPT_DIR}/cluster.sh" get-kubeconfig
 
-# Apply CRDs first
-log [INFO] "Applying Maintenance Operator CRDs..."
-TMP_DIR="$(mktemp -d)"
-trap 'rm -rf "$TMP_DIR"' EXIT
-
-# Pull and extract the chart
-log [INFO] "Pulling chart ${MAINTENANCE_CHART} version ${MAINTENANCE_VERSION}..."
-helm pull --destination "$TMP_DIR" --untar "$MAINTENANCE_CHART" --version "$MAINTENANCE_VERSION"
-
-# Find the extracted chart directory
-CHART_DIR=$(find "$TMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1)
-
-# Apply CRDs if they exist
-if [[ -d "$CHART_DIR/crds" ]]; then
-    log [INFO] "Applying CRDs from $CHART_DIR/crds"
-    kubectl apply -f "$CHART_DIR/crds" --server-side
-else
-    log [WARN] "No CRDs directory found in chart."
-fi
+# Note: Helm 3 automatically installs CRDs from the chart's crds/ directory
 
 # Use external values file
 MAINTENANCE_VALUES_FILE="${SCRIPT_DIR}/../manifests/dpf-installation/maintenance-operator-values.yaml"

@@ -325,29 +325,6 @@ function deploy_maintenance_operator_prerequisite() {
     local MAINTENANCE_CHART="oci://ghcr.io/mellanox/maintenance-operator-chart"
     local MAINTENANCE_VERSION="0.2.0"
     
-    # Apply CRDs first
-    log [INFO] "Applying Maintenance Operator CRDs..."
-    local TMP_DIR="$(mktemp -d)"
-    trap 'rm -rf "$TMP_DIR"' RETURN
-    
-    # Pull and extract the chart
-    log [INFO] "Pulling chart ${MAINTENANCE_CHART} version ${MAINTENANCE_VERSION}..."
-    if ! helm pull --destination "$TMP_DIR" --untar "$MAINTENANCE_CHART" --version "$MAINTENANCE_VERSION"; then
-        log [ERROR] "Failed to pull Maintenance Operator chart"
-        return 1
-    fi
-    
-    # Find the extracted chart directory
-    local CHART_DIR=$(find "$TMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1)
-    
-    # Apply CRDs if they exist
-    if [[ -d "$CHART_DIR/crds" ]]; then
-        log [INFO] "Applying CRDs from $CHART_DIR/crds"
-        kubectl apply -f "$CHART_DIR/crds" --server-side
-    else
-        log [WARN] "No CRDs directory found in chart."
-    fi
-    
     # Use external values file
     local MAINTENANCE_VALUES_FILE="${MANIFESTS_DIR}/dpf-installation/maintenance-operator-values.yaml"
     
@@ -359,7 +336,7 @@ function deploy_maintenance_operator_prerequisite() {
     
     log [INFO] "Using Maintenance Operator values from: $MAINTENANCE_VALUES_FILE"
     
-    # Install Maintenance Operator
+    # Install Maintenance Operator - Helm will automatically install CRDs from the chart
     log [INFO] "Installing Maintenance Operator chart version ${MAINTENANCE_VERSION}..."
     if ! helm upgrade --install maintenance-operator ${MAINTENANCE_CHART} \
         --namespace ${MAINTENANCE_NAMESPACE} \
