@@ -14,6 +14,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/utils.sh"
 source "${SCRIPT_DIR}/env.sh"
+source "${SCRIPT_DIR}/cluster.sh"
 
 # Configuration
 ARGOCD_NAMESPACE="dpf-operator-system"
@@ -22,13 +23,8 @@ ARGOCD_REPO="https://argoproj.github.io/argo-helm"
 # Deploy ArgoCD
 log [INFO] "Deploying ArgoCD for DPF v25.7..."
 
-# Ensure KUBECONFIG is set
-if [ -z "${KUBECONFIG}" ]; then
-    log [ERROR] "KUBECONFIG is not set. Please run 'make kubeconfig' first."
-    exit 1
-fi
-
-log [INFO] "Using KUBECONFIG: ${KUBECONFIG}"
+# Get kubeconfig
+get_kubeconfig
 
 # Add ArgoCD helm repository
 log [INFO] "Adding ArgoCD helm repository..."
