@@ -3,7 +3,7 @@
 # Deploy ArgoCD directly using helm for DPF v25.7
 # This is a simplified alternative to using helmfile
 #
-# Values are externalized to: manifests/cluster-installation/argocd-values.yaml
+# Values are externalized to: manifests/helm-charts-values/argocd-values.yaml
 #
 # Note: ArgoCD Redis requires special SCC permissions on OpenShift to run as user 999
 # This script grants existing OpenShift SCCs (anyuid and privileged) to ArgoCD service accounts
@@ -30,14 +30,8 @@ log [INFO] "Adding ArgoCD helm repository..."
 helm repo add argoproj ${ARGOCD_REPO} || true
 helm repo update
 
-# Use external values file
-ARGOCD_VALUES_FILE="${SCRIPT_DIR}/../manifests/dpf-installation/argocd-values.yaml"
-
-# Verify values file exists
-if [ ! -f "$ARGOCD_VALUES_FILE" ]; then
-    log [ERROR] "ArgoCD values file not found: $ARGOCD_VALUES_FILE"
-    exit 1
-fi
+# Use external values file from helm-charts-values directory
+ARGOCD_VALUES_FILE="${SCRIPT_DIR}/../manifests/helm-charts-values/argocd-values.yaml"
 
 log [INFO] "Using ArgoCD values from: $ARGOCD_VALUES_FILE"
 

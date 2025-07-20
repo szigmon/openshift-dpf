@@ -3,7 +3,7 @@
 # Deploy Maintenance Operator for DPF v25.7
 # This operator manages node maintenance operations and ensures graceful handling of node updates
 #
-# Values are externalized to: manifests/dpf-installation/maintenance-operator-values.yaml
+# Values are externalized to: manifests/helm-charts-values/maintenance-operator-values.yaml
 #
 # Note: This is a required prerequisite for DPF v25.7 as specified in:
 # doca-platform/docs/public/user-guides/prerequisites/helm-prerequisites.md
@@ -30,14 +30,8 @@ log [INFO] "Deploying Maintenance Operator for DPF v25.7..."
 
 # Note: Helm 3 automatically installs CRDs from the chart's crds/ directory
 
-# Use external values file
-MAINTENANCE_VALUES_FILE="${SCRIPT_DIR}/../manifests/dpf-installation/maintenance-operator-values.yaml"
-
-# Verify values file exists
-if [ ! -f "$MAINTENANCE_VALUES_FILE" ]; then
-    log [ERROR] "Maintenance Operator values file not found: $MAINTENANCE_VALUES_FILE"
-    exit 1
-fi
+# Use external values file from helm-charts-values directory
+MAINTENANCE_VALUES_FILE="${SCRIPT_DIR}/../manifests/helm-charts-values/maintenance-operator-values.yaml"
 
 log [INFO] "Using Maintenance Operator values from: $MAINTENANCE_VALUES_FILE"
 

@@ -274,7 +274,7 @@ function deploy_argocd() {
         --namespace dpf-operator-system \
         --create-namespace \
         --version ${ARGOCD_CHART_VERSION} \
-        --values "${MANIFESTS_DIR}/dpf-installation/argocd-values.yaml" \
+        --values "${HELM_CHARTS_DIR}/argocd-values.yaml" \
         --wait
     
     # Apply SCC permissions for ArgoCD
@@ -305,7 +305,7 @@ function deploy_maintenance_operator() {
         --namespace dpf-operator-system \
         --create-namespace \
         --version 0.2.0 \
-        --values "${MANIFESTS_DIR}/dpf-installation/maintenance-operator-values.yaml" \
+        --values "${HELM_CHARTS_DIR}/maintenance-operator-values.yaml" \
         --wait
     
     log [INFO] "Maintenance Operator deployment complete!"
