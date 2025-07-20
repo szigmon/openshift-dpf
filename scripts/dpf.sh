@@ -265,8 +265,16 @@ function deploy_argocd() {
     # Check if ArgoCD is already installed
     # Check if the helm release exists and is deployed
     if helm list -n dpf-operator-system 2>/dev/null | grep -q "^argo-cd.*deployed"; then
-        log [INFO] "ArgoCD is already installed. Skipping deployment."
-        return 0
+        log [INFO] "ArgoCD Helm release exists. Checking if it's actually running..."
+        
+        # Additional check: verify ArgoCD is actually running
+        if kubectl get deployment -n dpf-operator-system argo-cd-argocd-server 2>/dev/null | grep -q "1/1"; then
+            log [INFO] "ArgoCD is already installed and running. Skipping deployment."
+            return 0
+        else
+            log [INFO] "ArgoCD Helm release exists but not running. Reinstalling..."
+            helm uninstall argo-cd -n dpf-operator-system 2>/dev/null || true
+        fi
     fi
     
     # Ensure helm is installed
@@ -310,8 +318,16 @@ function deploy_maintenance_operator() {
     # Check if Maintenance Operator is already installed
     # Check if the helm release exists and is deployed
     if helm list -n dpf-operator-system 2>/dev/null | grep -q "^maintenance-operator.*deployed"; then
-        log [INFO] "Maintenance Operator is already installed. Skipping deployment."
-        return 0
+        log [INFO] "Maintenance Operator Helm release exists. Checking if it's actually running..."
+        
+        # Additional check: verify the operator is actually running
+        if kubectl get deployment -n dpf-operator-system maintenance-operator-controller-manager 2>/dev/null | grep -q "1/1"; then
+            log [INFO] "Maintenance Operator is already installed and running. Skipping deployment."
+            return 0
+        else
+            log [INFO] "Maintenance Operator Helm release exists but not running. Reinstalling..."
+            helm uninstall maintenance-operator -n dpf-operator-system 2>/dev/null || true
+        fi
     fi
     
     # Ensure helm is installed
@@ -336,12 +352,10 @@ function apply_dpf() {
     
     get_kubeconfig
     
-    # Deploy ArgoCD and Maintenance Operator for DPF v25.7+
-    if [[ "$DPF_VERSION" =~ ^v25\.[7-9] ]] || [[ "$DPF_VERSION" =~ ^v2[6-9] ]]; then
-        log [INFO] "DPF version $DPF_VERSION requires ArgoCD and Maintenance Operator"
-        deploy_argocd
-        deploy_maintenance_operator
-    fi
+    # Deploy ArgoCD and Maintenance Operator (required for all DPF versions)
+    log [INFO] "Deploying ArgoCD and Maintenance Operator..."
+    deploy_argocd
+    deploy_maintenance_operator
     
     deploy_nfd
     
