@@ -3,13 +3,25 @@
 # Exit on error
 set -e
 
+# Prevent double sourcing
+if [ -n "${ENV_SH_SOURCED:-}" ]; then
+    return 0
+fi
+export ENV_SH_SOURCED=1
+
 # Function to load environment variables from .env file
 load_env() {
-    local env_file=".env"
+    # Find the .env file relative to the script location
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local env_file="${script_dir}/../.env"
     
     # Check if .env file exists
     if [ ! -f "$env_file" ]; then
-        echo "Error: .env file not found"
+        # If running from Makefile, .env is already loaded
+        if [ -n "${MAKEFILE:-}" ] || [ -n "${MAKELEVEL:-}" ]; then
+            return 0
+        fi
+        echo "Error: .env file not found at $env_file"
         exit 1
     fi
 
@@ -26,8 +38,10 @@ load_env() {
     done < "$env_file"
 }
 
-# Load environment variables from .env file
-load_env
+# Load environment variables from .env file (skip if already in Make context)
+if [ -z "${MAKELEVEL:-}" ]; then
+    load_env
+fi
 # Directory Configuration
 MANIFESTS_DIR=${MANIFESTS_DIR:-"manifests"}
 GENERATED_DIR=${GENERATED_DIR:-"$MANIFESTS_DIR/generated"}
