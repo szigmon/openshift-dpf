@@ -254,6 +254,14 @@ function apply_remaining() {
 function deploy_argocd() {
     log [INFO] "Deploying ArgoCD..."
     
+    # Ensure cluster is accessible before deploying ArgoCD
+    log [INFO] "Checking cluster readiness..."
+    if ! oc cluster-info &>/dev/null; then
+        log [ERROR] "Cluster is not accessible. Please ensure the cluster is ready before deploying ArgoCD."
+        log [ERROR] "Run 'make wait-for-ready' to wait for cluster readiness."
+        return 1
+    fi
+    
     # Check if ArgoCD is already installed
     if oc get deployment -n dpf-operator-system argo-cd-argocd-server &>/dev/null; then
         log [INFO] "ArgoCD is already installed. Skipping deployment."
@@ -289,6 +297,14 @@ function deploy_argocd() {
 
 function deploy_maintenance_operator() {
     log [INFO] "Deploying Maintenance Operator..."
+    
+    # Ensure cluster is accessible before deploying Maintenance Operator
+    log [INFO] "Checking cluster readiness..."
+    if ! oc cluster-info &>/dev/null; then
+        log [ERROR] "Cluster is not accessible. Please ensure the cluster is ready before deploying Maintenance Operator."
+        log [ERROR] "Run 'make wait-for-ready' to wait for cluster readiness."
+        return 1
+    fi
     
     # Check if Maintenance Operator is already installed
     if oc get deployment -n dpf-operator-system -l app.kubernetes.io/name=maintenance-operator &>/dev/null; then
