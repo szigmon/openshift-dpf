@@ -251,12 +251,170 @@ function apply_remaining() {
     done
 }
 
+function deploy_argocd_prerequisite() {
+    log [INFO] "Checking ArgoCD prerequisite for DPF v25.7..."
+    
+    # Check if ArgoCD is already installed
+    if kubectl get deployment -n dpf-operator-system argo-cd-argocd-server &>/dev/null; then
+        log [INFO] "ArgoCD is already installed in dpf-operator-system namespace"
+        return 0
+    fi
+    
+    log [INFO] "Deploying ArgoCD for DPF v25.7..."
+    
+    # Configuration
+    local ARGOCD_NAMESPACE="dpf-operator-system"
+    local ARGOCD_REPO="https://argoproj.github.io/argo-helm"
+    
+    # Add ArgoCD helm repository
+    log [INFO] "Adding ArgoCD helm repository..."
+    helm repo add argoproj ${ARGOCD_REPO} || true
+    helm repo update
+    
+    # Use external values file
+    local ARGOCD_VALUES_FILE="${MANIFESTS_DIR}/dpf-installation/argocd-values.yaml"
+    
+    # Verify values file exists
+    if [ ! -f "$ARGOCD_VALUES_FILE" ]; then
+        log [ERROR] "ArgoCD values file not found: $ARGOCD_VALUES_FILE"
+        return 1
+    fi
+    
+    log [INFO] "Using ArgoCD values from: $ARGOCD_VALUES_FILE"
+    
+    # Install ArgoCD
+    log [INFO] "Installing ArgoCD chart version ${ARGOCD_CHART_VERSION}..."
+    if ! helm upgrade --install argo-cd argoproj/argo-cd \
+        --namespace ${ARGOCD_NAMESPACE} \
+        --create-namespace \
+        --version ${ARGOCD_CHART_VERSION} \
+        --values ${ARGOCD_VALUES_FILE} \
+        --wait; then
+        log [ERROR] "Failed to install ArgoCD"
+        return 1
+    fi
+    
+    # Apply SCC permissions for ArgoCD
+    log [INFO] "Applying OpenShift SCCs for ArgoCD service accounts..."
+    apply_manifest "${MANIFESTS_DIR}/dpf-installation/argocd-scc.yaml"
+    
+    # Restart Redis deployment to pick up the new SCC
+    log [INFO] "Restarting Redis deployment to apply SCC..."
+    kubectl rollout restart deployment/argo-cd-argocd-redis -n ${ARGOCD_NAMESPACE} || true
+    
+    # Wait for Redis to be ready
+    log [INFO] "Waiting for Redis to be ready..."
+    kubectl wait --for=condition=available --timeout=300s deployment/argo-cd-argocd-redis -n ${ARGOCD_NAMESPACE} || true
+    
+    log [INFO] "ArgoCD deployment complete!"
+}
+
+function deploy_maintenance_operator_prerequisite() {
+    log [INFO] "Checking Maintenance Operator prerequisite for DPF v25.7..."
+    
+    # Check if Maintenance Operator is already installed
+    if kubectl get deployment -n dpf-operator-system -l app.kubernetes.io/name=maintenance-operator &>/dev/null; then
+        log [INFO] "Maintenance Operator is already installed in dpf-operator-system namespace"
+        return 0
+    fi
+    
+    log [INFO] "Deploying Maintenance Operator for DPF v25.7..."
+    
+    # Configuration
+    local MAINTENANCE_NAMESPACE="dpf-operator-system"
+    local MAINTENANCE_CHART="oci://ghcr.io/mellanox/maintenance-operator-chart"
+    local MAINTENANCE_VERSION="0.2.0"
+    
+    # Apply CRDs first
+    log [INFO] "Applying Maintenance Operator CRDs..."
+    local TMP_DIR="$(mktemp -d)"
+    trap 'rm -rf "$TMP_DIR"' RETURN
+    
+    # Pull and extract the chart
+    log [INFO] "Pulling chart ${MAINTENANCE_CHART} version ${MAINTENANCE_VERSION}..."
+    if ! helm pull --destination "$TMP_DIR" --untar "$MAINTENANCE_CHART" --version "$MAINTENANCE_VERSION"; then
+        log [ERROR] "Failed to pull Maintenance Operator chart"
+        return 1
+    fi
+    
+    # Find the extracted chart directory
+    local CHART_DIR=$(find "$TMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1)
+    
+    # Apply CRDs if they exist
+    if [[ -d "$CHART_DIR/crds" ]]; then
+        log [INFO] "Applying CRDs from $CHART_DIR/crds"
+        kubectl apply -f "$CHART_DIR/crds" --server-side
+    else
+        log [WARN] "No CRDs directory found in chart."
+    fi
+    
+    # Use external values file
+    local MAINTENANCE_VALUES_FILE="${MANIFESTS_DIR}/dpf-installation/maintenance-operator-values.yaml"
+    
+    # Verify values file exists
+    if [ ! -f "$MAINTENANCE_VALUES_FILE" ]; then
+        log [ERROR] "Maintenance Operator values file not found: $MAINTENANCE_VALUES_FILE"
+        return 1
+    fi
+    
+    log [INFO] "Using Maintenance Operator values from: $MAINTENANCE_VALUES_FILE"
+    
+    # Install Maintenance Operator
+    log [INFO] "Installing Maintenance Operator chart version ${MAINTENANCE_VERSION}..."
+    if ! helm upgrade --install maintenance-operator ${MAINTENANCE_CHART} \
+        --namespace ${MAINTENANCE_NAMESPACE} \
+        --create-namespace \
+        --version ${MAINTENANCE_VERSION} \
+        --values ${MAINTENANCE_VALUES_FILE} \
+        --wait; then
+        log [ERROR] "Failed to install Maintenance Operator"
+        return 1
+    fi
+    
+    # Verify deployment
+    log [INFO] "Verifying Maintenance Operator deployment..."
+    kubectl wait --for=condition=available --timeout=300s deployment -l app.kubernetes.io/name=maintenance-operator -n ${MAINTENANCE_NAMESPACE} || true
+    
+    log [INFO] "Maintenance Operator deployment complete!"
+}
+
+function deploy_dpf_prerequisites() {
+    log [INFO] "Deploying DPF prerequisites..."
+    
+    # For DPF v25.7+, we need to deploy prerequisites separately
+    if [[ "$DPF_VERSION" =~ ^v25\.[7-9] ]] || [[ "$DPF_VERSION" =~ ^v2[6-9] ]] || [[ "$DPF_VERSION" =~ ^v[3-9] ]]; then
+        log [INFO] "DPF version $DPF_VERSION requires separate prerequisite deployment"
+        
+        # Ensure helm is installed
+        ensure_helm_installed
+        
+        # Deploy ArgoCD
+        if ! deploy_argocd_prerequisite; then
+            log [ERROR] "Failed to deploy ArgoCD prerequisite"
+            return 1
+        fi
+        
+        # Deploy Maintenance Operator
+        if ! deploy_maintenance_operator_prerequisite; then
+            log [ERROR] "Failed to deploy Maintenance Operator prerequisite"
+            return 1
+        fi
+        
+        log [INFO] "All DPF prerequisites deployed successfully"
+    else
+        log [INFO] "DPF version $DPF_VERSION includes prerequisites in the chart"
+    fi
+}
+
 function apply_dpf() {
     log "INFO" "Starting DPF deployment sequence..."
     log "INFO" "Provided kubeconfig ${KUBECONFIG}"
     log "INFO" "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
     
     get_kubeconfig
+    
+    # Deploy prerequisites for DPF v25.7+
+    deploy_dpf_prerequisites
     
     deploy_nfd
     
@@ -343,6 +501,15 @@ function main() {
             deploy-nfd)
                 deploy_nfd
                 ;;
+            deploy-argocd)
+                deploy_argocd_prerequisite
+                ;;
+            deploy-maintenance-operator)
+                deploy_maintenance_operator_prerequisite
+                ;;
+            deploy-prerequisites)
+                deploy_dpf_prerequisites
+                ;;
             apply-dpf)
                 apply_dpf
                 ;;
@@ -357,7 +524,7 @@ function main() {
                 ;;
             *)
                 log [INFO] "Unknown command: $command"
-                log [INFO] "Available commands: deploy-nfd, apply-dpf, deploy-hypershift"
+                log [INFO] "Available commands: deploy-nfd, deploy-argocd, deploy-maintenance-operator, deploy-prerequisites, apply-dpf, deploy-hypershift"
                 exit 1
                 ;;
         esac

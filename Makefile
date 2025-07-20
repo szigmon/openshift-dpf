@@ -15,7 +15,7 @@ FLANNEL_CONFIG_SCRIPT := scripts/configure-flannel-nodes.sh
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
-        redeploy-dpu configure-flannel-nodes enable-ovn-injector deploy-argocd deploy-maintenance-operator
+        redeploy-dpu configure-flannel-nodes enable-ovn-injector deploy-argocd deploy-maintenance-operator deploy-dpf-prerequisites
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-argocd deploy-maintenance-operator deploy-dpf prepare-dpu-files deploy-dpu-services enable-ovn-injector
 
@@ -83,10 +83,13 @@ upgrade-dpf: install-helm
 	@scripts/dpf-upgrade.sh interactive
 
 deploy-argocd: install-helm
-	@scripts/deploy-argocd.sh
+	@$(DPF_SCRIPT) deploy-argocd
 
 deploy-maintenance-operator: install-helm
-	@scripts/deploy-maintenance-operator.sh
+	@$(DPF_SCRIPT) deploy-maintenance-operator
+
+deploy-dpf-prerequisites: install-helm
+	@$(DPF_SCRIPT) deploy-prerequisites
 
 deploy-dpf: prepare-dpf-manifests
 	@$(DPF_SCRIPT) apply-dpf
@@ -159,7 +162,8 @@ help:
 	@echo "DPF Installation:"
 	@echo "  deploy-argocd     - Deploy ArgoCD (prerequisite for DPF operator)"
 	@echo "  deploy-maintenance-operator - Deploy Maintenance Operator (prerequisite for DPF operator)"
-	@echo "  deploy-dpf        - Deploy DPF operator with required configurations"
+	@echo "  deploy-dpf-prerequisites - Deploy all DPF prerequisites (ArgoCD and Maintenance Operator)"
+	@echo "  deploy-dpf        - Deploy DPF operator with required configurations (includes prerequisites for v25.7+)"
 	@echo "  prepare-dpf-manifests - Prepare DPF installation manifests"
 	@echo "  update-etc-hosts - Update /etc/hosts with cluster entries"
 	@echo "  deploy-nfd       - Deploy NFD operator directly from source"
