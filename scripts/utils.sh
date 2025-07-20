@@ -62,8 +62,8 @@ function verify_files() {
         exit 1
     fi
 
-    if [ ! -f "${MANIFESTS_DIR}/cluster-installation/ovn-values.yaml" ]; then
-        log "ERROR" "${MANIFESTS_DIR}/cluster-installation/ovn-values.yaml not found"
+    if [ ! -f "${HELM_CHARTS_DIR}/ovn-values.yaml" ]; then
+        log "ERROR" "${HELM_CHARTS_DIR}/ovn-values.yaml not found"
         exit 1
     fi
 

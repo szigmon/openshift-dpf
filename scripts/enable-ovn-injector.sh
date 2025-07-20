@@ -35,7 +35,7 @@ sed -e "s|<TARGETCLUSTER_API_SERVER_HOST>|api.$CLUSTER_NAME.$BASE_DOMAIN|" \
     -e "s|<SERVICE_CIDR>|$SERVICE_CIDR|" \
     -e "s|<DPU_P0_VF1>|$DPU_OVN_VF|" \
     -e "s|<DPU_P0>|$DPU_INTERFACE|" \
-    "$MANIFESTS_DIR/cluster-installation/ovn-values-with-injector.yaml" > "$GENERATED_DIR/ovn-injector/ovn-values-resolved.yaml"
+    "$HELM_CHARTS_DIR/ovn-values-with-injector.yaml" > "$GENERATED_DIR/ovn-injector/ovn-values-resolved.yaml"
 
 # Generate all manifests with injector enabled
 helm template -n ovn-kubernetes ovn-kubernetes \

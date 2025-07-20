@@ -263,7 +263,7 @@ function generate_ovn_manifests() {
         -e "s|<SERVICE_CIDR>|$SERVICE_CIDR|" \
         -e "s|<DPU_P0_VF1>|${DPU_OVN_VF:-ens7f0v1}|" \
         -e "s|<DPU_P0>|$DPU_INTERFACE|" \
-        "$MANIFESTS_DIR/cluster-installation/ovn-values.yaml" > "$GENERATED_DIR/temp/ovn-values-resolved.yaml"
+        "$HELM_CHARTS_DIR/ovn-values.yaml" > "$GENERATED_DIR/temp/ovn-values-resolved.yaml"
     
     log [INFO] "Generating OVN manifests from helm template..."
     if ! helm template -n ovn-kubernetes ovn-kubernetes \
