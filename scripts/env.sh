@@ -93,7 +93,7 @@ BRIDGE_NAME=${BRIDGE_NAME:-br0}
 SKIP_BRIDGE_CONFIG=${SKIP_BRIDGE_CONFIG:-"false"}
 
 # DPF Configuration
-DPF_VERSION="v25.7.0-beta.4"
+DPF_VERSION=${DPF_VERSION:-"v25.7.0-beta.4"}
 
 # Helm Chart URLs - OCI registry format for v25.7+
 DPF_HELM_REPO_URL=${DPF_HELM_REPO_URL:-"oci://ghcr.io/nvidia"}
