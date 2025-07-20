@@ -76,6 +76,10 @@ function prepare_cluster_manifests() {
     
     # Copy all manifests
     log [INFO] "Copying static manifests..."
+    
+    # Clean up any existing ArgoCD files that might have been left from previous runs
+    find "$GENERATED_DIR" -maxdepth 1 -type f -name "*argocd*" -delete 2>/dev/null || true
+    
     find "$MANIFESTS_DIR/cluster-installation" -maxdepth 1 -type f -name "*.yaml" -o -name "*.yml" \
         | grep -v "ovn-values.yaml" \
         | grep -v "ovn-values-with-injector.yaml" \
@@ -94,6 +98,13 @@ function prepare_cluster_manifests() {
     # Always copy Cert-Manager manifest (required for DPF operator)
     log [INFO] "Copying Cert-Manager manifest (required for DPF operator)..."
     cp "$MANIFESTS_DIR/cluster-installation/openshift-cert-manager.yaml" "$GENERATED_DIR/"
+
+    # Verify no ArgoCD files are in the generated directory before proceeding
+    if find "$GENERATED_DIR" -maxdepth 1 -type f -name "*argocd*" | grep -q .; then
+        log "ERROR" "ArgoCD files found in generated directory during cluster installation. These should not be processed."
+        find "$GENERATED_DIR" -maxdepth 1 -type f -name "*argocd*" -delete
+        log "INFO" "Removed ArgoCD files from generated directory"
+    fi
 
     generate_ovn_manifests
     enable_storage
@@ -146,9 +157,12 @@ prepare_dpf_manifests() {
     # Copy and process manifests
     log "INFO" "Processing manifests from ${MANIFESTS_DIR} to ${GENERATED_DIR}"
     
-    # Copy all manifests except NFD and Helm values files
+    # Clean up any existing ArgoCD files that might have been left from previous runs
+    find "$GENERATED_DIR" -maxdepth 1 -type f -name "*argocd*" -delete 2>/dev/null || true
+    
+    # Copy all manifests except NFD and ArgoCD files (values and SCC files are not Kubernetes manifests)
     find "$MANIFESTS_DIR/dpf-installation" -maxdepth 1 -type f -name "*.yaml" \
-        | grep -v -- "-values.yaml" \
+        | grep -v "argocd" \
         | xargs -I {} cp {} "$GENERATED_DIR/"
 
     # Copy cert-manager manifest (required for DPF deployment)
@@ -206,6 +220,13 @@ prepare_dpf_manifests() {
         "$GENERATED_DIR/dpfoperatorconfig.yaml" \
         "<CLUSTER_NAME>" "$CLUSTER_NAME" \
         "<BASE_DOMAIN>" "$BASE_DOMAIN"
+    
+    # Final verification: ensure no ArgoCD files are in the generated directory
+    if find "$GENERATED_DIR" -maxdepth 1 -type f -name "*argocd*" | grep -q .; then
+        log "ERROR" "ArgoCD files found in generated directory. These should not be processed during cluster installation."
+        find "$GENERATED_DIR" -maxdepth 1 -type f -name "*argocd*" -delete
+        log "INFO" "Removed ArgoCD files from generated directory"
+    fi
 }
 
 function generate_ovn_manifests() {
