@@ -1,6 +1,9 @@
 # Include environment variables
 include .env
 
+# Export variables to child processes
+export
+
 # Script paths
 CLUSTER_SCRIPT := scripts/cluster.sh
 MANIFESTS_SCRIPT := scripts/manifests.sh
