@@ -173,45 +173,40 @@ function update_service_templates() {
         return 1
     fi
     
-    # Update all service templates with DPF_VERSION and URLs if they exist
+    # Update all service templates with DPF_VERSION if they exist
     local templates=("hbn-template.yaml" "dts-template.yaml" "blueman-template.yaml" "flannel-template.yaml")
     
     for template in "${templates[@]}"; do
         if [ -f "${POST_INSTALL_DIR}/${template}" ]; then
-            # Check if template needs URL replacements
+            # Flannel template needs both DPF_VERSION and DPF_HELM_REPO_URL
             if [[ "${template}" == "flannel-template.yaml" ]]; then
                 update_file_multi_replace \
                     "${POST_INSTALL_DIR}/${template}" \
                     "${GENERATED_POST_INSTALL_DIR}/${template}" \
                     "<DPF_VERSION>" "${DPF_VERSION}" \
                     "<DPF_HELM_REPO_URL>" "${DPF_HELM_REPO_URL}"
-                log [INFO] "Updated ${template} with <DPF_VERSION>=${DPF_VERSION} and <DPF_HELM_REPO_URL>=${DPF_HELM_REPO_URL}"
+                log [INFO] "Updated ${template} with DPF_VERSION and DPF_HELM_REPO_URL"
             else
                 update_file_multi_replace \
                     "${POST_INSTALL_DIR}/${template}" \
                     "${GENERATED_POST_INSTALL_DIR}/${template}" \
                     "<DPF_VERSION>" "${DPF_VERSION}"
-                log [INFO] "Updated ${template} with <DPF_VERSION>=${DPF_VERSION}"
+                log [INFO] "Updated ${template} with DPF_VERSION"
             fi
         fi
     done
     
-    log [INFO] "Service template versions updated successfully"
-}
-
-# Function to update IPAM controller manifest  
-function update_ipam_controller_manifest() {
-    log [INFO] "Updating IPAM controller manifest..."
-    
+    # Update IPAM controller manifest
     if [ -f "${POST_INSTALL_DIR}/dpu-node-ipam-controller.yaml" ]; then
         update_file_multi_replace \
             "${POST_INSTALL_DIR}/dpu-node-ipam-controller.yaml" \
             "${GENERATED_POST_INSTALL_DIR}/dpu-node-ipam-controller.yaml" \
             "<HOSTED_CONTROL_PLANE_NAMESPACE>" "${HOSTED_CONTROL_PLANE_NAMESPACE}" \
             "<HOSTED_CLUSTER_NAME>" "${HOSTED_CLUSTER_NAME}"
+        log [INFO] "Updated dpu-node-ipam-controller.yaml with namespace and cluster name"
     fi
     
-    log [INFO] "IPAM controller manifest updated successfully"
+    log [INFO] "Service template versions updated successfully"
 }
 
 # Function to prepare post-installation manifests
@@ -229,7 +224,6 @@ function prepare_post_installation() {
     update_hbn_ovn_manifests
     update_vf_configuration
     update_service_templates
-    update_ipam_controller_manifest
     
     # Copy remaining manifests
     for file in "${POST_INSTALL_DIR}"/*.yaml; do
@@ -321,9 +315,6 @@ function apply_post_installation() {
         log [WARN] "dpudeployment.yaml not found in ${GENERATED_POST_INSTALL_DIR}"
     fi
     
-    # Deploy flannel IPAM controller after all other manifests
-    configure_flannel_nodes
-    
     log [INFO] "Post-installation manifest application completed successfully"
 }
 
@@ -345,39 +336,6 @@ function redeploy() {
 
     apply_post_installation
 
-}
-
-# Function to configure flannel nodes using IPAM controller
-function configure_flannel_nodes() {
-    log [INFO] "Configuring Flannel IPAM controller..."
-    
-    # Debug: show namespace we're checking
-    log [INFO] "Checking for IPAM controller in namespace: ${HOSTED_CONTROL_PLANE_NAMESPACE}"
-    
-    # Check if already deployed
-    if oc get deployment -n ${HOSTED_CONTROL_PLANE_NAMESPACE} dpu-cluster-node-ipam-controller-manager &>/dev/null; then
-        log [INFO] "Flannel IPAM Controller already deployed"
-        return 0
-    fi
-    
-    # Apply the already-processed IPAM controller manifest from generated directory
-    local ipam_manifest="${GENERATED_POST_INSTALL_DIR}/dpu-node-ipam-controller.yaml"
-    
-    if [ ! -f "${ipam_manifest}" ]; then
-        log [ERROR] "Generated IPAM controller manifest not found: ${ipam_manifest}"
-        log [ERROR] "Please run 'make prepare-dpu-files' first"
-        return 1
-    fi
-    
-    log [INFO] "Applying IPAM controller manifest: ${ipam_manifest}"
-    
-    # Apply the manifest (variables already substituted during prepare)
-    if oc apply -f "${ipam_manifest}"; then
-        log [INFO] "Flannel IPAM Controller deployed successfully - it will automatically assign podCIDRs to nodes"
-    else
-        log [ERROR] "Failed to deploy Flannel IPAM Controller"
-        return 1
-    fi
 }
 
 # If script is executed directly (not sourced), run the appropriate function

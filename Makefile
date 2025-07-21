@@ -121,8 +121,8 @@ create-ignition-template:
 redeploy-dpu:
 	@$(POST_INSTALL_SCRIPT) redeploy
 
-configure-flannel:
-	@scripts/configure-flannel.sh
+configure-flannel: deploy-dpu-services
+	@echo "✅ Flannel IPAM controller is deployed as part of DPU services"
 
 enable-ovn-injector: install-helm
 	@scripts/enable-ovn-injector.sh
