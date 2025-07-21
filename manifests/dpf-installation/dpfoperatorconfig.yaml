@@ -13,6 +13,9 @@ spec:
     disable: true
   multus:
     disable: false
+    # TODO: Update to official v25.7 chart once paths are verified
+    # The custom chart was needed for lib64 path support, but v25.7 official chart
+    # now supports this via dpuOpenvSwitchSystemSharedLib64Path override
     helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.0
   networking:
     controlPlaneMTU: 1500
@@ -22,14 +25,11 @@ spec:
     kubernetesAPIServerPort: 6443
     dpuCNIBinPath: /var/lib/cni/bin/
     dpuCNIPath: /run/multus/cni/net.d/
-  ovsHelper:
-    disable: true
+    # Configure lib64 path for RHCOS systems
+    dpuOpenvSwitchSystemSharedLib64Path: /lib64
   provisioningController:
     bfCFGTemplateConfigMap: custom-bfb.cfg
     bfbPVCName: bfb-pvc
     dmsTimeout: 1800
-  sfcController:
-    helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.0
-  # Static cluster manager enabled for Hypershift hosted cluster integration
   staticClusterManager:
     disable: false
