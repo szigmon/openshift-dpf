@@ -76,6 +76,10 @@ function prepare_cluster_manifests() {
     
     # Copy all manifests
     log [INFO] "Copying static manifests..."
+    
+    # Clean up any existing Helm values files that might have been left from previous runs
+    find "$GENERATED_DIR" -maxdepth 1 -type f -name "*-values.yaml" -delete 2>/dev/null || true
+    
     find "$MANIFESTS_DIR/cluster-installation" -maxdepth 1 -type f -name "*.yaml" -o -name "*.yml" \
         | grep -v "ovn-values.yaml" \
         | grep -v "ovn-values-with-injector.yaml" \
@@ -94,6 +98,13 @@ function prepare_cluster_manifests() {
     # Always copy Cert-Manager manifest (required for DPF operator)
     log [INFO] "Copying Cert-Manager manifest (required for DPF operator)..."
     cp "$MANIFESTS_DIR/cluster-installation/openshift-cert-manager.yaml" "$GENERATED_DIR/"
+
+    # Verify no Helm values files are in the generated directory before proceeding
+    if find "$GENERATED_DIR" -maxdepth 1 -type f -name "*-values.yaml" | grep -q .; then
+        log "ERROR" "Helm values files found in generated directory during cluster installation. These should not be processed."
+        find "$GENERATED_DIR" -maxdepth 1 -type f -name "*-values.yaml" -delete
+        log "INFO" "Removed Helm values files from generated directory"
+    fi
 
     generate_ovn_manifests
     enable_storage
@@ -146,8 +157,12 @@ prepare_dpf_manifests() {
     # Copy and process manifests
     log "INFO" "Processing manifests from ${MANIFESTS_DIR} to ${GENERATED_DIR}"
     
-    # Copy all manifests except NFD
+    # Clean up any existing Helm values files that might have been left from previous runs
+    find "$GENERATED_DIR" -maxdepth 1 -type f -name "*-values.yaml" -delete 2>/dev/null || true
+    
+    # Copy all manifests except NFD and Helm values files
     find "$MANIFESTS_DIR/dpf-installation" -maxdepth 1 -type f -name "*.yaml" \
+        | grep -v -- "-values.yaml" \
         | xargs -I {} cp {} "$GENERATED_DIR/"
 
     # Copy cert-manager manifest (required for DPF deployment)
@@ -205,6 +220,13 @@ prepare_dpf_manifests() {
         "$GENERATED_DIR/dpfoperatorconfig.yaml" \
         "<CLUSTER_NAME>" "$CLUSTER_NAME" \
         "<BASE_DOMAIN>" "$BASE_DOMAIN"
+    
+    # Final verification: ensure no Helm values files are in the generated directory
+    if find "$GENERATED_DIR" -maxdepth 1 -type f -name "*-values.yaml" | grep -q .; then
+        log "ERROR" "Helm values files found in generated directory. These should not be processed during cluster installation."
+        find "$GENERATED_DIR" -maxdepth 1 -type f -name "*-values.yaml" -delete
+        log "INFO" "Removed Helm values files from generated directory"
+    fi
 }
 
 function generate_ovn_manifests() {
@@ -225,12 +247,12 @@ function generate_ovn_manifests() {
     mkdir -p "$GENERATED_DIR/temp"
     local API_SERVER="api.$CLUSTER_NAME.$BASE_DOMAIN:6443"
     
-    # Pull and template OVN chart v2 (no sed needed with custom chart)
-    log [INFO] "Pulling OVN chart v25.4.0-custom-v2..."
-    if ! helm pull oci://quay.io/szigmon/ovn \
-        --version "v25.4.0-custom-v2" \
+    # Pull and template OVN chart
+    log [INFO] "Pulling OVN chart ${DPF_VERSION}..."
+    if ! helm pull "${OVN_CHART_URL}/ovn-kubernetes-chart" \
+        --version "${DPF_VERSION}" \
         --untar -d "$GENERATED_DIR/temp"; then
-        log [ERROR] "Failed to pull OVN chart v25.4.0-custom-v2"
+        log [ERROR] "Failed to pull OVN chart ${DPF_VERSION}"
         return 1
     fi
     
@@ -241,11 +263,11 @@ function generate_ovn_manifests() {
         -e "s|<SERVICE_CIDR>|$SERVICE_CIDR|" \
         -e "s|<DPU_P0_VF1>|${DPU_OVN_VF:-ens7f0v1}|" \
         -e "s|<DPU_P0>|$DPU_INTERFACE|" \
-        "$MANIFESTS_DIR/cluster-installation/ovn-values.yaml" > "$GENERATED_DIR/temp/ovn-values-resolved.yaml"
+        "$HELM_CHARTS_DIR/ovn-values.yaml" > "$GENERATED_DIR/temp/ovn-values-resolved.yaml"
     
     log [INFO] "Generating OVN manifests from helm template..."
     if ! helm template -n ovn-kubernetes ovn-kubernetes \
-        "$GENERATED_DIR/temp/ovn" \
+        "$GENERATED_DIR/temp/ovn-kubernetes-chart" \
         -f "$GENERATED_DIR/temp/ovn-values-resolved.yaml" \
         > "$GENERATED_DIR/ovn-manifests.yaml"; then
         log [ERROR] "Failed to generate OVN manifests"
