@@ -100,7 +100,7 @@ DPF_HELM_REPO_URL=${DPF_HELM_REPO_URL:-"oci://ghcr.io/nvidia"}
 OVN_CHART_URL=${OVN_CHART_URL:-"oci://ghcr.io/nvidia"}
 
 # NFD Image (kept for backward compatibility)
-NFD_OPERAND_IMAGE=${NFD_OPERAND_IMAGE:-"quay.io/yshnaidm/node-feature-discovery:dpf"}
+NFD_OPERAND_IMAGE=${NFD_OPERAND_IMAGE:-"quay.io/itsoiref/nfd:latest"}
 
 HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
 
