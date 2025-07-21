@@ -200,7 +200,7 @@ spec:
         - --nad-name=dpf-ovn-kubernetes
         command:
         - /ovnkubernetesresourceinjector
-        image: ghcr.io/nvidia/ovn-kubernetes:v24.10.0-rc.6
+        image: ghcr.io/nvidia/ovn-kubernetes:v25.7.0-beta.4
         livenessProbe:
           httpGet:
             path: /healthz
