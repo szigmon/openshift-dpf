@@ -1,6 +1,9 @@
 # Include environment variables
 include .env
 
+# Export variables to child processes
+export
+
 # Script paths
 CLUSTER_SCRIPT := scripts/cluster.sh
 MANIFESTS_SCRIPT := scripts/manifests.sh
@@ -9,15 +12,27 @@ DPF_SCRIPT := scripts/dpf.sh
 VM_SCRIPT := scripts/vm.sh
 UTILS_SCRIPT := scripts/utils.sh
 POST_INSTALL_SCRIPT := scripts/post-install.sh
-FLANNEL_CONFIG_SCRIPT := scripts/configure-flannel-nodes.sh
 
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
-        redeploy-dpu configure-flannel-nodes enable-ovn-injector
+        redeploy-dpu enable-ovn-injector deploy-argocd deploy-maintenance-operator configure-flannel
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services enable-ovn-injector
+	@echo ""
+	@echo "================================================================================"
+	@echo "✅ DPF Installation Complete!"
+	@echo "================================================================================"
+	@echo ""
+	@echo "Next steps to add worker nodes with DPUs:"
+	@echo "1. Access Assisted Installer UI and download discovery ISO"
+	@echo "2. Boot worker nodes with the discovery ISO"
+	@echo "3. Approve pending certificate signing requests"
+	@echo "4. Wait for nodes to join the cluster"
+	@echo "5. Monitor DPU deployment progress"
+	@echo ""
+	@echo "================================================================================"
 
 verify-files:
 	@$(UTILS_SCRIPT) verify-files
@@ -82,6 +97,12 @@ prepare-dpf-manifests:
 upgrade-dpf: install-helm
 	@scripts/dpf-upgrade.sh interactive
 
+deploy-argocd: install-helm
+	@$(DPF_SCRIPT) deploy-argocd
+
+deploy-maintenance-operator: install-helm
+	@$(DPF_SCRIPT) deploy-maintenance-operator
+
 deploy-dpf: prepare-dpf-manifests
 	@$(DPF_SCRIPT) apply-dpf
 
@@ -100,8 +121,8 @@ create-ignition-template:
 redeploy-dpu:
 	@$(POST_INSTALL_SCRIPT) redeploy
 
-configure-flannel-nodes:
-	@$(FLANNEL_CONFIG_SCRIPT)
+configure-flannel:
+	@scripts/configure-flannel.sh
 
 enable-ovn-injector: install-helm
 	@scripts/enable-ovn-injector.sh
@@ -151,14 +172,16 @@ help:
 	@echo "  kubeconfig       - Download cluster kubeconfig if not exists"
 	@echo ""
 	@echo "DPF Installation:"
-	@echo "  deploy-dpf        - Deploy DPF operator with required configurations"
+	@echo "  deploy-argocd     - Deploy ArgoCD (standalone)"
+	@echo "  deploy-maintenance-operator - Deploy Maintenance Operator (standalone)"
+	@echo "  deploy-dpf        - Deploy DPF operator (automatically deploys prerequisites for v25.7+)"
 	@echo "  prepare-dpf-manifests - Prepare DPF installation manifests"
 	@echo "  update-etc-hosts - Update /etc/hosts with cluster entries"
 	@echo "  deploy-nfd       - Deploy NFD operator directly from source"
 	@echo "  upgrade-dpf       - Interactive DPF operator upgrade (user-friendly wrapper for prepare-dpf-manifests)"
 	@echo "  prepare-dpu-files - Prepare post-installation manifests with custom values"
 	@echo "  deploy-dpu-services - Deploy DPU services to the cluster"
-	@echo "  configure-flannel-nodes - Configure flannel podCIDR for worker nodes (run after adding workers)"
+	@echo "  configure-flannel - Deploy flannel IPAM controller for automatic podCIDR assignment"
 	@echo ""
 	@echo "Hypershift Management:"
 	@echo "  install-hypershift - Install Hypershift binary and operator"
@@ -175,6 +198,7 @@ help:
 	@echo "Feature Configuration:"
 	@echo "  DISABLE_NFD       - Skip NFD deployment (default: $(DISABLE_NFD))"
 	@echo "  NFD_OPERAND_IMAGE - NFD operand image (default: $(NFD_OPERAND_IMAGE))"
+	@echo "  ARGOCD_CHART_VERSION - ArgoCD helm chart version (default: $(ARGOCD_CHART_VERSION))"
 	@echo ""
 	@echo "Hypershift Configuration:"
 	@echo "  HYPERSHIFT_IMAGE  - Hypershift operator image (default: $(HYPERSHIFT_IMAGE))"
