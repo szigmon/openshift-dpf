@@ -63,15 +63,26 @@ function is_valid_ip() {
 function check_cluster_installed() {
     log "INFO" "Checking if cluster ${CLUSTER_NAME} is installed..."
     
-    # Check if cluster exists and get its status
-    local cluster_status=""
-    if aicli info cluster ${CLUSTER_NAME} >/dev/null 2>&1; then
-        cluster_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v 2>/dev/null || echo "unknown")
-        if [ "$cluster_status" = "installed" ]; then
-            log "INFO" "Cluster ${CLUSTER_NAME} is already installed"
-            return 0
+    # When multiple clusters exist with same name, we need to check if ANY has status "installed"
+    # This handles the case where day2 cluster exists alongside the main cluster
+    local installed_found=false
+    
+    # Get all clusters with this name and check their status
+    while IFS= read -r cluster_id; do
+        if [ -n "$cluster_id" ]; then
+            local status=$(aicli info cluster "$cluster_id" -f status -v 2>/dev/null || echo "unknown")
+            if [ "$status" = "installed" ]; then
+                log "INFO" "Found installed cluster ${CLUSTER_NAME} (ID: $cluster_id)"
+                installed_found=true
+                break
+            fi
         fi
+    done < <(aicli list clusters | grep "^| *${CLUSTER_NAME} *|" | awk -F'|' '{print $3}' | tr -d ' ')
+    
+    if [ "$installed_found" = "true" ]; then
+        return 0
     fi
+    
     return 1
 }
 
@@ -163,9 +174,8 @@ function wait_for_cluster_status() {
 function start_cluster_installation() {
     log "INFO" "Starting installation for cluster ${CLUSTER_NAME}..."
 
-    # Check current status
-    current_status=$(aicli info cluster "$CLUSTER_NAME" -f status -v)
-    if [ "$current_status" == "installed" ]; then
+    # Reuse check_cluster_installed to handle multiple clusters with same name
+    if check_cluster_installed; then
         log "INFO" "Cluster ${CLUSTER_NAME} is already installed. Fetching kubeconfig..."
         get_kubeconfig
         return 0
