@@ -217,10 +217,10 @@ function copy_hypershift_kubeconfig() {
     
     # Create or update secret in dpf-operator-system namespace
     if ! oc create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig -n dpf-operator-system \
-         --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque 2>/dev/null; then
+         --from-file=super-admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque 2>/dev/null; then
         log [INFO] "Secret already exists, updating..."
         if ! oc -n dpf-operator-system create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig \
-             --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque --dry-run=client -o yaml | oc apply -f -; then
+             --from-file=super-admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque --dry-run=client -o yaml | oc apply -f -; then
             log [ERROR] "Failed to update kubeconfig secret"
             return 1
         fi
@@ -251,12 +251,95 @@ function apply_remaining() {
     done
 }
 
+function deploy_argocd() {
+    log [INFO] "Deploying ArgoCD..."
+    
+    # Ensure cluster is accessible before deploying ArgoCD
+    log [INFO] "Checking cluster readiness..."
+    if ! oc cluster-info &>/dev/null; then
+        log [ERROR] "Cluster is not accessible. Please ensure the cluster is ready before deploying ArgoCD."
+        log [ERROR] "Run 'make wait-for-ready' to wait for cluster readiness."
+        return 1
+    fi
+    
+    # Check if ArgoCD is already installed
+    if check_helm_release_exists "dpf-operator-system" "argo-cd"; then
+        log [INFO] "Skipping ArgoCD deployment."
+        return 0
+    fi
+    
+    # Ensure helm is installed
+    ensure_helm_installed
+    
+    # Add ArgoCD helm repository
+    log [INFO] "Adding ArgoCD helm repository..."
+    helm repo add argoproj https://argoproj.github.io/argo-helm || true
+    helm repo update
+    
+    # Install ArgoCD
+    log [INFO] "Installing ArgoCD chart version ${ARGOCD_CHART_VERSION}..."
+    helm upgrade --install argo-cd argoproj/argo-cd \
+        --namespace dpf-operator-system \
+        --create-namespace \
+        --version ${ARGOCD_CHART_VERSION} \
+        --values "${HELM_CHARTS_DIR}/argocd-values.yaml" \
+        --wait
+    
+    # Apply SCC permissions for ArgoCD
+    log [INFO] "Applying OpenShift SCCs for ArgoCD..."
+    apply_manifest "${MANIFESTS_DIR}/dpf-installation/argocd-scc.yaml"
+    
+    # Restart Redis to pick up SCC
+    oc rollout restart deployment/argo-cd-argocd-redis -n dpf-operator-system || true
+    
+    log [INFO] "ArgoCD deployment complete!"
+}
+
+function deploy_maintenance_operator() {
+    log [INFO] "Deploying Maintenance Operator..."
+    
+    # Ensure cluster is accessible before deploying Maintenance Operator
+    log [INFO] "Checking cluster readiness..."
+    if ! oc cluster-info &>/dev/null; then
+        log [ERROR] "Cluster is not accessible. Please ensure the cluster is ready before deploying Maintenance Operator."
+        log [ERROR] "Run 'make wait-for-ready' to wait for cluster readiness."
+        return 1
+    fi
+    
+    # Check if Maintenance Operator is already installed
+    if check_helm_release_exists "dpf-operator-system" "maintenance-operator"; then
+        log [INFO] "Skipping Maintenance Operator deployment."
+        return 0
+    fi
+    
+    # Ensure helm is installed
+    ensure_helm_installed
+    
+    # Install Maintenance Operator
+    log [INFO] "Installing Maintenance Operator chart..."
+    helm upgrade --install maintenance-operator oci://ghcr.io/mellanox/maintenance-operator-chart \
+        --namespace dpf-operator-system \
+        --create-namespace \
+        --version ${MAINTENANCE_OPERATOR_VERSION} \
+        --values "${HELM_CHARTS_DIR}/maintenance-operator-values.yaml" \
+        --wait
+    
+    log [INFO] "Maintenance Operator deployment complete!"
+}
+
 function apply_dpf() {
     log "INFO" "Starting DPF deployment sequence..."
     log "INFO" "Provided kubeconfig ${KUBECONFIG}"
     log "INFO" "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
     
     get_kubeconfig
+    
+    # Deploy ArgoCD and Maintenance Operator for DPF v25.7+
+    if [[ "$DPF_VERSION" =~ ^v25\.[7-9] ]] || [[ "$DPF_VERSION" =~ ^v2[6-9] ]]; then
+        log [INFO] "DPF version $DPF_VERSION requires ArgoCD and Maintenance Operator"
+        deploy_argocd
+        deploy_maintenance_operator
+    fi
     
     deploy_nfd
     
@@ -296,12 +379,21 @@ function apply_dpf() {
         return 1
     }
     
-    # Construct the full chart URL with version
-    CHART_URL="${DPF_HELM_REPO_URL}-${DPF_VERSION}.tgz"
+    # Determine chart URL and args based on format
+    if [[ "$DPF_HELM_REPO_URL" == oci://* ]]; then
+        # OCI registry format (v25.7+)
+        CHART_URL="${DPF_HELM_REPO_URL}/dpf-operator"
+        HELM_ARGS="--version ${DPF_VERSION}"
+    else
+        # Legacy NGC format (v25.4 and older)
+        CHART_URL="${DPF_HELM_REPO_URL}-${DPF_VERSION}.tgz"
+        HELM_ARGS=""
+    fi
     
     # Install without --wait for immediate feedback
     if helm upgrade --install dpf-operator \
         "${CHART_URL}" \
+        ${HELM_ARGS} \
         --namespace dpf-operator-system \
         --create-namespace \
         --values "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"; then
@@ -334,6 +426,12 @@ function main() {
             deploy-nfd)
                 deploy_nfd
                 ;;
+            deploy-argocd)
+                deploy_argocd
+                ;;
+            deploy-maintenance-operator)
+                deploy_maintenance_operator
+                ;;
             apply-dpf)
                 apply_dpf
                 ;;
@@ -348,7 +446,7 @@ function main() {
                 ;;
             *)
                 log [INFO] "Unknown command: $command"
-                log [INFO] "Available commands: deploy-nfd, apply-dpf, deploy-hypershift"
+                log [INFO] "Available commands: deploy-nfd, deploy-argocd, deploy-maintenance-operator, apply-dpf, deploy-hypershift"
                 exit 1
                 ;;
         esac
