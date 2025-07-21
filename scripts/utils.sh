@@ -62,8 +62,8 @@ function verify_files() {
         exit 1
     fi
 
-    if [ ! -f "${MANIFESTS_DIR}/cluster-installation/ovn-values.yaml" ]; then
-        log "ERROR" "${MANIFESTS_DIR}/cluster-installation/ovn-values.yaml not found"
+    if [ ! -f "${HELM_CHARTS_DIR}/ovn-values.yaml" ]; then
+        log "ERROR" "${HELM_CHARTS_DIR}/ovn-values.yaml not found"
         exit 1
     fi
 
@@ -163,6 +163,16 @@ function check_secret_exists() {
     local secret=$2
     if oc get secret -n "$namespace" "$secret" &>/dev/null; then
         log [INFO] "Secret $secret already exists in namespace $namespace"
+        return 0
+    fi
+    return 1
+}
+
+function check_helm_release_exists() {
+    local namespace=$1
+    local release_name=$2
+    if helm list -n "$namespace" 2>/dev/null | grep -q "^${release_name}[[:space:]].*deployed"; then
+        log "INFO" "Helm release $release_name already exists in namespace $namespace"
         return 0
     fi
     return 1
