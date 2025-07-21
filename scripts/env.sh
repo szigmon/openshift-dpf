@@ -3,13 +3,25 @@
 # Exit on error
 set -e
 
+# Prevent double sourcing
+if [ -n "${ENV_SH_SOURCED:-}" ]; then
+    return 0
+fi
+export ENV_SH_SOURCED=1
+
 # Function to load environment variables from .env file
 load_env() {
-    local env_file=".env"
+    # Find the .env file relative to the script location
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local env_file="${script_dir}/../.env"
     
     # Check if .env file exists
     if [ ! -f "$env_file" ]; then
-        echo "Error: .env file not found"
+        # If running from Makefile, .env is already loaded
+        if [ -n "${MAKEFILE:-}" ] || [ -n "${MAKELEVEL:-}" ]; then
+            return 0
+        fi
+        echo "Error: .env file not found at $env_file"
         exit 1
     fi
 
@@ -26,8 +38,10 @@ load_env() {
     done < "$env_file"
 }
 
-# Load environment variables from .env file
-load_env
+# Load environment variables from .env file (skip if already in Make context)
+if [ -z "${MAKELEVEL:-}" ]; then
+    load_env
+fi
 # Directory Configuration
 MANIFESTS_DIR=${MANIFESTS_DIR:-"manifests"}
 GENERATED_DIR=${GENERATED_DIR:-"$MANIFESTS_DIR/generated"}
@@ -79,8 +93,15 @@ BRIDGE_NAME=${BRIDGE_NAME:-br0}
 SKIP_BRIDGE_CONFIG=${SKIP_BRIDGE_CONFIG:-"false"}
 
 # DPF Configuration
-DPF_VERSION="v25.4.0"
-DPF_HELM_REPO_URL=${DPF_HELM_REPO_URL:-"https://helm.ngc.nvidia.com/nvidia/doca/charts/dpf-operator"}
+DPF_VERSION=${DPF_VERSION:-"v25.7.0-beta.4"}
+
+# Helm Chart URLs - OCI registry format for v25.7+
+DPF_HELM_REPO_URL=${DPF_HELM_REPO_URL:-"oci://ghcr.io/nvidia"}
+OVN_CHART_URL=${OVN_CHART_URL:-"oci://ghcr.io/nvidia"}
+
+# NFD Image (kept for backward compatibility)
+NFD_OPERAND_IMAGE=${NFD_OPERAND_IMAGE:-"quay.io/yshnaidm/node-feature-discovery:dpf"}
+
 HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
 
 if [ "${VM_COUNT}" -lt 2 ]; then
@@ -93,6 +114,12 @@ fi
 NUM_VFS=${NUM_VFS:-"46"}
 
 # Feature Configuration
+
+# ArgoCD Configuration
+ARGOCD_CHART_VERSION=${ARGOCD_CHART_VERSION:-"7.8.2"}
+
+# Maintenance Operator Configuration
+MAINTENANCE_OPERATOR_VERSION=${MAINTENANCE_OPERATOR_VERSION:-"0.2.0"}
 
 # Hypershift Configuration
 HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/hypershift/hypershift-operator:latest"}
