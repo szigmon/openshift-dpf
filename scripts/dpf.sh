@@ -155,6 +155,10 @@ function deploy_hypershift() {
               --release-image="${OCP_RELEASE_IMAGE}" \
               --ssh-key="${SSH_KEY}" \
               --pull-secret="${OPENSHIFT_PULL_SECRET}" \
+              --network-type=Other \
+              --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
+              --node-selector='node-role.kubernetes.io/master=""' \
+              --node-upgrade-type=Replace \
               --disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning \
               --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsJul16v1
         else
