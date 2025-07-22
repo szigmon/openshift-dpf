@@ -254,14 +254,6 @@ function apply_remaining() {
 function deploy_argocd() {
     log [INFO] "Deploying ArgoCD..."
     
-    # Ensure cluster is accessible before deploying ArgoCD
-    log [INFO] "Checking cluster readiness..."
-    if ! oc cluster-info &>/dev/null; then
-        log [ERROR] "Cluster is not accessible. Please ensure the cluster is ready before deploying ArgoCD."
-        log [ERROR] "Run 'make wait-for-ready' to wait for cluster readiness."
-        return 1
-    fi
-    
     # Check if ArgoCD is already installed
     if check_helm_release_exists "dpf-operator-system" "argo-cd"; then
         log [INFO] "Skipping ArgoCD deployment."
@@ -298,14 +290,6 @@ function deploy_argocd() {
 function deploy_maintenance_operator() {
     log [INFO] "Deploying Maintenance Operator..."
     
-    # Ensure cluster is accessible before deploying Maintenance Operator
-    log [INFO] "Checking cluster readiness..."
-    if ! oc cluster-info &>/dev/null; then
-        log [ERROR] "Cluster is not accessible. Please ensure the cluster is ready before deploying Maintenance Operator."
-        log [ERROR] "Run 'make wait-for-ready' to wait for cluster readiness."
-        return 1
-    fi
-    
     # Check if Maintenance Operator is already installed
     if check_helm_release_exists "dpf-operator-system" "maintenance-operator"; then
         log [INFO] "Skipping Maintenance Operator deployment."
@@ -333,6 +317,16 @@ function apply_dpf() {
     log "INFO" "NFD deployment is $([ "${DISABLE_NFD}" = "true" ] && echo "disabled" || echo "enabled")"
     
     get_kubeconfig
+    
+    # Verify cluster is accessible before any deployments
+    log "INFO" "Verifying cluster accessibility..."
+    if ! oc cluster-info &>/dev/null; then
+        log "ERROR" "Cluster is not accessible. Cannot proceed with DPF deployment."
+        log "ERROR" "Please ensure the cluster is running and accessible."
+        log "ERROR" "For SNO: Check if cluster VMs are running with: virsh list --all"
+        return 1
+    fi
+    log "INFO" "Cluster is accessible, proceeding with DPF deployment..."
     
     # Deploy ArgoCD and Maintenance Operator for DPF v25.7+
     if [[ "$DPF_VERSION" =~ ^v25\.[7-9] ]] || [[ "$DPF_VERSION" =~ ^v2[6-9] ]]; then
