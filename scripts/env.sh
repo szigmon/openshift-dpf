@@ -122,7 +122,13 @@ ARGOCD_CHART_VERSION=${ARGOCD_CHART_VERSION:-"7.8.2"}
 MAINTENANCE_OPERATOR_VERSION=${MAINTENANCE_OPERATOR_VERSION:-"0.2.0"}
 
 # Hypershift Configuration
-HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/hypershift/hypershift-operator:latest"}
+DISABLE_HCP_CAPS=${DISABLE_HCP_CAPS:-"false"}
+# Use custom hypershift image when disabling capabilities
+if [ "${DISABLE_HCP_CAPS}" = "true" ]; then
+    HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/lhadad/hypershift:allCapsJul16v1"}
+else
+    HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/hypershift/hypershift-operator:latest"}
+fi
 HOSTED_CLUSTER_NAME=${HOSTED_CLUSTER_NAME:-"doca"}
 CLUSTERS_NAMESPACE=${CLUSTERS_NAMESPACE:-"clusters"}
 OCP_RELEASE_IMAGE=${OCP_RELEASE_IMAGE:-"quay.io/openshift-release-dev/ocp-release:4.14.0-ec.4-x86_64"}
