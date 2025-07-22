@@ -127,6 +127,11 @@ function deploy_hosted_cluster() {
 }
 
 function deploy_hypershift() {
+    # Log if capability disabling is enabled
+    if [ "${DISABLE_HCP_CAPS}" = "true" ]; then
+        log [INFO] "HCP capability disabling is enabled. Using custom hypershift image: ${HYPERSHIFT_IMAGE}"
+    fi
+    
     # Check if Hypershift operator is already installed
     if oc get deployment -n hypershift hypershift-operator &>/dev/null; then
         log [INFO] "Hypershift operator already installed. Skipping deployment."
@@ -142,17 +147,29 @@ function deploy_hypershift() {
         wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
         log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
-        # --network-type=Other \
-        hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
-          --base-domain="${BASE_DOMAIN}" \
-          --release-image="${OCP_RELEASE_IMAGE}" \
-          --ssh-key="${SSH_KEY}" \
-          --network-type=Other \
-          --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
-          --node-selector='node-role.kubernetes.io/master=""' \
-          --node-upgrade-type=Replace \
-          --disable-cluster-capabilities=ImageRegistry \
-          --pull-secret="${OPENSHIFT_PULL_SECRET}"
+        
+        if [ "${DISABLE_HCP_CAPS}" = "true" ]; then
+            log [INFO] "Creating hosted cluster with disabled capabilities..."
+            hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
+              --base-domain="${BASE_DOMAIN}" \
+              --release-image="${OCP_RELEASE_IMAGE}" \
+              --ssh-key="${SSH_KEY}" \
+              --pull-secret="${OPENSHIFT_PULL_SECRET}" \
+              --disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning \
+              --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsJul16v1
+        else
+            # --network-type=Other \
+            hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
+              --base-domain="${BASE_DOMAIN}" \
+              --release-image="${OCP_RELEASE_IMAGE}" \
+              --ssh-key="${SSH_KEY}" \
+              --network-type=Other \
+              --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
+              --node-selector='node-role.kubernetes.io/master=""' \
+              --node-upgrade-type=Replace \
+              --disable-cluster-capabilities=ImageRegistry \
+              --pull-secret="${OPENSHIFT_PULL_SECRET}"
+        fi
     fi
 
     log [INFO] "Checking hosted control plane pods..."
