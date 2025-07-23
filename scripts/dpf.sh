@@ -160,7 +160,7 @@ function deploy_hypershift() {
               --node-selector='node-role.kubernetes.io/master=""' \
               --node-upgrade-type=Replace \
               --disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning \
-              --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsJul16v1
+              --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsMultusDisabledV1
         else
             # --network-type=Other \
             hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
@@ -174,6 +174,30 @@ function deploy_hypershift() {
               --disable-cluster-capabilities=ImageRegistry \
               --pull-secret="${OPENSHIFT_PULL_SECRET}"
         fi
+    fi
+
+    # Add annotation for disabled capabilities
+    # This is a temporary workaround until HyperShift has official support for disabled capabilities
+    if [ "${DISABLE_HCP_CAPS}" = "true" ]; then
+        log [INFO] "Adding image override annotation for disabled capabilities (temporary workaround)..."
+        local max_retries=10
+        local retry_count=0
+        while [ $retry_count -lt $max_retries ]; do
+            if oc annotate hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} \
+               hypershift.openshift.io/image-overrides=cluster-network-operator=quay.io/lhadad/cluster-network-operator:ingressFixForArm \
+               --overwrite; then
+                log [INFO] "Successfully added image override annotation"
+                break
+            else
+                retry_count=$((retry_count + 1))
+                if [ $retry_count -lt $max_retries ]; then
+                    log [WARN] "Failed to annotate hosted cluster (attempt $retry_count/$max_retries), retrying in 5s..."
+                    sleep 5
+                else
+                    log [ERROR] "Failed to annotate hosted cluster after $max_retries attempts"
+                fi
+            fi
+        done
     fi
 
     log [INFO] "Checking hosted control plane pods..."
