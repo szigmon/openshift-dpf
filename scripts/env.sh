@@ -125,7 +125,7 @@ MAINTENANCE_OPERATOR_VERSION=${MAINTENANCE_OPERATOR_VERSION:-"0.2.0"}
 DISABLE_HCP_CAPS=${DISABLE_HCP_CAPS:-"false"}
 # Use custom hypershift image when disabling capabilities
 if [ "${DISABLE_HCP_CAPS}" = "true" ]; then
-    HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/lhadad/hypershift:allCapsJul16v1"}
+    HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/lhadad/hypershift:allCapsMultusDisabledV1"}
 else
     HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/hypershift/hypershift-operator:latest"}
 fi
