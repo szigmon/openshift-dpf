@@ -39,6 +39,8 @@ SPECIAL_FILES=(
     "blueman-template.yaml"
     "flannel-template.yaml"
     "dpu-node-ipam-controller.yaml"
+    "dpudeployment.yaml"
+    "flannel-configuration.yaml"
 )
 
 # Function to check if a file is in the special files list
@@ -178,6 +180,12 @@ function update_service_templates() {
     
     for template in "${templates[@]}"; do
         if [ -f "${POST_INSTALL_DIR}/${template}" ]; then
+            # Skip flannel template when DISABLE_HCP_CAPS is true
+            if [ "${DISABLE_HCP_CAPS}" = "true" ] && [[ "${template}" == "flannel-template.yaml" ]]; then
+                log [INFO] "Skipping flannel template in disabled caps mode"
+                continue
+            fi
+            
             # Flannel template needs both DPF_VERSION and DPF_HELM_REPO_URL
             if [[ "${template}" == "flannel-template.yaml" ]]; then
                 update_file_multi_replace \
@@ -186,6 +194,24 @@ function update_service_templates() {
                     "<DPF_VERSION>" "${DPF_VERSION}" \
                     "<DPF_HELM_REPO_URL>" "${DPF_HELM_REPO_URL}"
                 log [INFO] "Updated ${template} with DPF_VERSION and DPF_HELM_REPO_URL"
+            # HBN template needs helm repo URL, version, and image configuration
+            elif [[ "${template}" == "hbn-template.yaml" ]]; then
+                update_file_multi_replace \
+                    "${POST_INSTALL_DIR}/${template}" \
+                    "${GENERATED_POST_INSTALL_DIR}/${template}" \
+                    "<HBN_HELM_REPO_URL>" "${HBN_HELM_REPO_URL}" \
+                    "<HBN_HELM_CHART_VERSION>" "${HBN_HELM_CHART_VERSION}" \
+                    "<HBN_IMAGE_REPO>" "${HBN_IMAGE_REPO}" \
+                    "<HBN_IMAGE_TAG>" "${HBN_IMAGE_TAG}"
+                log [INFO] "Updated ${template} with HBN helm and image configuration"
+            # DTS template needs helm repo URL and version
+            elif [[ "${template}" == "dts-template.yaml" ]]; then
+                update_file_multi_replace \
+                    "${POST_INSTALL_DIR}/${template}" \
+                    "${GENERATED_POST_INSTALL_DIR}/${template}" \
+                    "<DTS_HELM_REPO_URL>" "${DTS_HELM_REPO_URL}" \
+                    "<DTS_HELM_CHART_VERSION>" "${DTS_HELM_CHART_VERSION}"
+                log [INFO] "Updated ${template} with DTS helm configuration"
             else
                 update_file_multi_replace \
                     "${POST_INSTALL_DIR}/${template}" \
@@ -225,12 +251,31 @@ function prepare_post_installation() {
     update_vf_configuration
     update_service_templates
     
+    # Handle DPUDeployment based on DISABLE_HCP_CAPS
+    if [ "${DISABLE_HCP_CAPS}" = "true" ]; then
+        log [INFO] "Using disabled capabilities DPUDeployment (without flannel)"
+        if [ -f "${POST_INSTALL_DIR}/dpudeployment-disabled-caps.yaml" ]; then
+            cp "${POST_INSTALL_DIR}/dpudeployment-disabled-caps.yaml" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
+        else
+            log [ERROR] "dpudeployment-disabled-caps.yaml not found"
+        fi
+    else
+        if [ -f "${POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
+            cp "${POST_INSTALL_DIR}/dpudeployment.yaml" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
+        fi
+    fi
+    
     # Copy remaining manifests
     for file in "${POST_INSTALL_DIR}"/*.yaml; do
         if [ -f "$file" ]; then
             local filename=$(basename "$file")
             # Skip files we've already processed
             if ! is_special_file "${filename}"; then
+                # Skip flannel files when DISABLE_HCP_CAPS is true
+                if [ "${DISABLE_HCP_CAPS}" = "true" ] && [[ "${filename}" == "flannel"* ]]; then
+                    log [INFO] "Skipping flannel manifest in disabled caps mode: ${filename}"
+                    continue
+                fi
                 log [INFO] "Copying manifest: ${filename}"
                 cp "$file" "${GENERATED_POST_INSTALL_DIR}/${filename}"
             fi
