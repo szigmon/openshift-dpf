@@ -199,8 +199,12 @@ prepare_dpf_manifests() {
         log "ERROR" "Failed to extract NGC API key from pull secret"
         return 1
     fi
-    local escaped_api_key=$(escape_sed_replacement "$NGC_API_KEY")
-    sed -i "s|<PASSWORD>|$escaped_api_key|g" "$GENERATED_DIR/ngc-secrets.yaml"
+    
+    # Process ngc-secrets.yaml using process_template function
+    process_template \
+        "$MANIFESTS_DIR/dpf-installation/ngc-secrets.yaml" \
+        "$GENERATED_DIR/ngc-secrets.yaml" \
+        "<NGC_API_KEY>" "$NGC_API_KEY"
 
     # Update pull secret
     # Encode pull secret (Linux/GNU base64)
@@ -214,12 +218,21 @@ prepare_dpf_manifests() {
 
     prepare_nfs
     
-    # Process dpfoperatorconfig.yaml - replace cluster-specific values
-    process_template \
-        "$MANIFESTS_DIR/dpf-installation/dpfoperatorconfig.yaml" \
-        "$GENERATED_DIR/dpfoperatorconfig.yaml" \
-        "<CLUSTER_NAME>" "$CLUSTER_NAME" \
-        "<BASE_DOMAIN>" "$BASE_DOMAIN"
+    # Process dpfoperatorconfig.yaml - use disabled-caps version if DISABLE_HCP_CAPS is true
+    if [ "${DISABLE_HCP_CAPS}" = "true" ]; then
+        log "INFO" "Using disabled capabilities DPFOperatorConfig"
+        process_template \
+            "$MANIFESTS_DIR/dpf-installation/dpfoperatorconfig-disabled-caps.yaml" \
+            "$GENERATED_DIR/dpfoperatorconfig.yaml" \
+            "<CLUSTER_NAME>" "$CLUSTER_NAME" \
+            "<BASE_DOMAIN>" "$BASE_DOMAIN"
+    else
+        process_template \
+            "$MANIFESTS_DIR/dpf-installation/dpfoperatorconfig.yaml" \
+            "$GENERATED_DIR/dpfoperatorconfig.yaml" \
+            "<CLUSTER_NAME>" "$CLUSTER_NAME" \
+            "<BASE_DOMAIN>" "$BASE_DOMAIN"
+    fi
     
     # Final verification: ensure no Helm values files are in the generated directory
     if find "$GENERATED_DIR" -maxdepth 1 -type f -name "*-values.yaml" | grep -q .; then
