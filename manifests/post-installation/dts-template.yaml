@@ -11,8 +11,8 @@ spec:
     storage: 1Gi
   helmChart:
     source:
-      repoURL: https://helm.ngc.nvidia.com/nvidia/doca
+      repoURL: <DTS_HELM_REPO_URL>
       chart: doca-telemetry
-      version: "1.0.8"
+      version: <DTS_HELM_CHART_VERSION>
     values:
       hostVolumePrefix: "/var/lib"
