@@ -59,6 +59,16 @@ HBN_OVN_NETWORK=${HBN_OVN_NETWORK:-"10.0.120.0/22"}
 HBN_HOSTNAME_NODE1=${HBN_HOSTNAME_NODE1:-"srv24-*"}
 HBN_HOSTNAME_NODE2=${HBN_HOSTNAME_NODE2:-"srv25-*"}
 
+# HBN Service Template Configuration
+HBN_HELM_REPO_URL=${HBN_HELM_REPO_URL:-"https://helm.ngc.nvidia.com/nvstaging/doca"}
+HBN_HELM_CHART_VERSION=${HBN_HELM_CHART_VERSION:-"1.0.3-beta"}
+HBN_IMAGE_REPO=${HBN_IMAGE_REPO:-"nvcr.io/nvstaging/doca/doca_hbn"}
+HBN_IMAGE_TAG=${HBN_IMAGE_TAG:-"3.dev.47-doca3.1.0"}
+
+# DTS Service Template Configuration
+DTS_HELM_REPO_URL=${DTS_HELM_REPO_URL:-"https://helm.ngc.nvidia.com/nvidia/doca"}
+DTS_HELM_CHART_VERSION=${DTS_HELM_CHART_VERSION:-"1.0.8"}
+
 # Cluster Configuration
 CLUSTER_NAME=${CLUSTER_NAME:-"doca"}
 BASE_DOMAIN=${BASE_DOMAIN:-"lab.nvidia.com"}
