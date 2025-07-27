@@ -37,13 +37,11 @@ function deploy_nfd() {
         log [INFO] "NFD subscription already exists. Skipping deployment."
     fi
 
-    # Create NFD instance with custom operand image
-    log [INFO] "Creating NFD instance with custom operand image..."
+    log [INFO] "Creating NFD instance..."
     mkdir -p "$GENERATED_DIR"
     cp "$MANIFESTS_DIR/dpf-installation/nfd-cr-template.yaml" "$GENERATED_DIR/nfd-cr-template.yaml"
     echo
     sed -i "s|api.<CLUSTER_FQDN>|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr-template.yaml"
-    sed -i "s|image: quay.io/yshnaidm/node-feature-discovery:dpf|image: $NFD_OPERAND_IMAGE|g" "$GENERATED_DIR/nfd-cr-template.yaml"
 
     # Apply the NFD CR
     KUBECONFIG=$KUBECONFIG oc apply -f "$GENERATED_DIR/nfd-cr-template.yaml"

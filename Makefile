@@ -197,7 +197,7 @@ help:
 	@echo ""
 	@echo "Feature Configuration:"
 	@echo "  DISABLE_NFD       - Skip NFD deployment (default: $(DISABLE_NFD))"
-	@echo "  NFD_OPERAND_IMAGE - NFD operand image (default: $(NFD_OPERAND_IMAGE))"
+	@echo "  NFD_OPERAND_IMAGE - (deprecated - no longer used)"
 	@echo "  ARGOCD_CHART_VERSION - ArgoCD helm chart version (default: $(ARGOCD_CHART_VERSION))"
 	@echo ""
 	@echo "Hypershift Configuration:"
