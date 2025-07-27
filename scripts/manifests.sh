@@ -218,21 +218,12 @@ prepare_dpf_manifests() {
 
     prepare_nfs
     
-    # Process dpfoperatorconfig.yaml - use disabled-caps version if ENABLE_HCP_MULTUS is true
-    if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
-        log "INFO" "Using HCP multus enabled DPFOperatorConfig"
-        process_template \
-            "$MANIFESTS_DIR/dpf-installation/dpfoperatorconfig-disabled-caps.yaml" \
-            "$GENERATED_DIR/dpfoperatorconfig.yaml" \
-            "<CLUSTER_NAME>" "$CLUSTER_NAME" \
-            "<BASE_DOMAIN>" "$BASE_DOMAIN"
-    else
-        process_template \
-            "$MANIFESTS_DIR/dpf-installation/dpfoperatorconfig.yaml" \
-            "$GENERATED_DIR/dpfoperatorconfig.yaml" \
-            "<CLUSTER_NAME>" "$CLUSTER_NAME" \
-            "<BASE_DOMAIN>" "$BASE_DOMAIN"
-    fi
+    # Process dpfoperatorconfig.yaml
+    process_template \
+        "$MANIFESTS_DIR/dpf-installation/dpfoperatorconfig.yaml" \
+        "$GENERATED_DIR/dpfoperatorconfig.yaml" \
+        "<CLUSTER_NAME>" "$CLUSTER_NAME" \
+        "<BASE_DOMAIN>" "$BASE_DOMAIN"
     
     # Final verification: ensure no Helm values files are in the generated directory
     if find "$GENERATED_DIR" -maxdepth 1 -type f -name "*-values.yaml" | grep -q .; then
