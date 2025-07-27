@@ -127,9 +127,8 @@ function deploy_hosted_cluster() {
 }
 
 function deploy_hypershift() {
-    # Log if capability disabling is enabled
-    if [ "${DISABLE_HCP_CAPS}" = "true" ]; then
-        log [INFO] "HCP capability disabling is enabled. Using custom hypershift image: ${HYPERSHIFT_IMAGE}"
+    if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
+        log [INFO] "HCP Multus enabled mode is active. Using custom hypershift image: ${HYPERSHIFT_IMAGE}"
     fi
     
     # Check if Hypershift operator is already installed
@@ -148,8 +147,21 @@ function deploy_hypershift() {
         log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
         
-        if [ "${DISABLE_HCP_CAPS}" = "true" ]; then
-            log [INFO] "Creating hosted cluster with disabled capabilities..."
+        if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
+            log [INFO] "Creating hosted cluster with HCP multus enabled (multi-network enabled)..."
+            hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
+              --base-domain="${BASE_DOMAIN}" \
+              --release-image="${OCP_RELEASE_IMAGE}" \
+              --ssh-key="${SSH_KEY}" \
+              --pull-secret="${OPENSHIFT_PULL_SECRET}" \
+              --disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning \
+              --network-type=Other \
+              --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
+              --node-selector='node-role.kubernetes.io/master=""' \
+              --node-upgrade-type=Replace \
+              --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsMultusDisabledV1
+        else
+            log [INFO] "Creating hosted cluster with multi-network disabled..."
             hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
               --base-domain="${BASE_DOMAIN}" \
               --release-image="${OCP_RELEASE_IMAGE}" \
@@ -162,44 +174,28 @@ function deploy_hypershift() {
               --node-selector='node-role.kubernetes.io/master=""' \
               --node-upgrade-type=Replace \
               --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsMultusDisabledV1
-        else
-            # --network-type=Other \
-            hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
-              --base-domain="${BASE_DOMAIN}" \
-              --release-image="${OCP_RELEASE_IMAGE}" \
-              --ssh-key="${SSH_KEY}" \
-              --network-type=Other \
-              --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
-              --node-selector='node-role.kubernetes.io/master=""' \
-              --node-upgrade-type=Replace \
-              --disable-cluster-capabilities=ImageRegistry \
-              --pull-secret="${OPENSHIFT_PULL_SECRET}"
         fi
     fi
 
-    # Add annotation for disabled capabilities
-    # This is a temporary workaround until HyperShift has official support for disabled capabilities
-    if [ "${DISABLE_HCP_CAPS}" = "true" ]; then
-        log [INFO] "Adding image override annotation for disabled capabilities (temporary workaround)..."
-        local max_retries=10
-        local retry_count=0
-        while [ $retry_count -lt $max_retries ]; do
-            if oc annotate hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} \
-               hypershift.openshift.io/image-overrides=cluster-network-operator=quay.io/lhadad/cluster-network-operator:ingressFixForArm \
-               --overwrite; then
-                log [INFO] "Successfully added image override annotation"
-                break
+    log [INFO] "Adding CNO image override annotation..."
+    local max_retries=10
+    local retry_count=0
+    while [ $retry_count -lt $max_retries ]; do
+        if oc annotate hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} \
+           hypershift.openshift.io/image-overrides=cluster-network-operator=quay.io/lhadad/cluster-network-operator:ingressJul24v1 \
+           --overwrite; then
+            log [INFO] "Successfully added CNO image override annotation"
+            break
+        else
+            retry_count=$((retry_count + 1))
+            if [ $retry_count -lt $max_retries ]; then
+                log [WARN] "Failed to annotate hosted cluster (attempt $retry_count/$max_retries), retrying in 5s..."
+                sleep 5
             else
-                retry_count=$((retry_count + 1))
-                if [ $retry_count -lt $max_retries ]; then
-                    log [WARN] "Failed to annotate hosted cluster (attempt $retry_count/$max_retries), retrying in 5s..."
-                    sleep 5
-                else
-                    log [ERROR] "Failed to annotate hosted cluster after $max_retries attempts"
-                fi
+                log [ERROR] "Failed to annotate hosted cluster after $max_retries attempts"
             fi
-        done
-    fi
+        fi
+    done
 
     log [INFO] "Checking hosted control plane pods..."
     oc -n ${HOSTED_CONTROL_PLANE_NAMESPACE} get pods

@@ -132,10 +132,9 @@ ARGOCD_CHART_VERSION=${ARGOCD_CHART_VERSION:-"7.8.2"}
 MAINTENANCE_OPERATOR_VERSION=${MAINTENANCE_OPERATOR_VERSION:-"0.2.0"}
 
 # Hypershift Configuration
-DISABLE_HCP_CAPS=${DISABLE_HCP_CAPS:-"false"}
-# Use custom hypershift image when disabling capabilities
-if [ "${DISABLE_HCP_CAPS}" = "true" ]; then
-    HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/lhadad/hypershift:allCapsMultusDisabledV1"}
+ENABLE_HCP_MULTUS=${ENABLE_HCP_MULTUS:-"false"}
+if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
+    HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/lhadad/hypershift:7jan24-v1"}
 else
     HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/hypershift/hypershift-operator:latest"}
 fi

@@ -37,10 +37,8 @@ SPECIAL_FILES=(
     "hbn-configuration.yaml"
     "dts-template.yaml"
     "blueman-template.yaml"
-    "flannel-template.yaml"
     "dpu-node-ipam-controller.yaml"
     "dpudeployment.yaml"
-    "flannel-configuration.yaml"
 )
 
 # Function to check if a file is in the special files list
@@ -176,18 +174,11 @@ function update_service_templates() {
     fi
     
     # Update all service templates with DPF_VERSION if they exist
-    local templates=("hbn-template.yaml" "dts-template.yaml" "blueman-template.yaml" "flannel-template.yaml")
+    local templates=("hbn-template.yaml" "dts-template.yaml" "blueman-template.yaml")
     
     for template in "${templates[@]}"; do
         if [ -f "${POST_INSTALL_DIR}/${template}" ]; then
-            # Skip flannel template when DISABLE_HCP_CAPS is true
-            if [ "${DISABLE_HCP_CAPS}" = "true" ] && [[ "${template}" == "flannel-template.yaml" ]]; then
-                log [INFO] "Skipping flannel template in disabled caps mode"
-                continue
-            fi
-            
-            # Flannel template needs both DPF_VERSION and DPF_HELM_REPO_URL
-            if [[ "${template}" == "flannel-template.yaml" ]]; then
+            if [[ "${template}" == "hbn-template.yaml" ]]; then
                 update_file_multi_replace \
                     "${POST_INSTALL_DIR}/${template}" \
                     "${GENERATED_POST_INSTALL_DIR}/${template}" \
@@ -251,9 +242,9 @@ function prepare_post_installation() {
     update_vf_configuration
     update_service_templates
     
-    # Handle DPUDeployment based on DISABLE_HCP_CAPS
-    if [ "${DISABLE_HCP_CAPS}" = "true" ]; then
-        log [INFO] "Using disabled capabilities DPUDeployment (without flannel)"
+    # Handle DPUDeployment based on ENABLE_HCP_MULTUS
+    if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
+        log [INFO] "Using HCP multus enabled DPUDeployment"
         if [ -f "${POST_INSTALL_DIR}/dpudeployment-disabled-caps.yaml" ]; then
             cp "${POST_INSTALL_DIR}/dpudeployment-disabled-caps.yaml" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
         else
@@ -271,11 +262,6 @@ function prepare_post_installation() {
             local filename=$(basename "$file")
             # Skip files we've already processed
             if ! is_special_file "${filename}"; then
-                # Skip flannel files when DISABLE_HCP_CAPS is true
-                if [ "${DISABLE_HCP_CAPS}" = "true" ] && [[ "${filename}" == "flannel"* ]]; then
-                    log [INFO] "Skipping flannel manifest in disabled caps mode: ${filename}"
-                    continue
-                fi
                 log [INFO] "Copying manifest: ${filename}"
                 cp "$file" "${GENERATED_POST_INSTALL_DIR}/${filename}"
             fi
