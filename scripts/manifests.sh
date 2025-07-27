@@ -218,9 +218,9 @@ prepare_dpf_manifests() {
 
     prepare_nfs
     
-    # Process dpfoperatorconfig.yaml - use disabled-caps version if DISABLE_HCP_CAPS is true
-    if [ "${DISABLE_HCP_CAPS}" = "true" ]; then
-        log "INFO" "Using disabled capabilities DPFOperatorConfig"
+    # Process dpfoperatorconfig.yaml - use disabled-caps version if ENABLE_HCP_MULTUS is true
+    if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
+        log "INFO" "Using HCP multus enabled DPFOperatorConfig"
         process_template \
             "$MANIFESTS_DIR/dpf-installation/dpfoperatorconfig-disabled-caps.yaml" \
             "$GENERATED_DIR/dpfoperatorconfig.yaml" \
