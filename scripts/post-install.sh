@@ -242,18 +242,9 @@ function prepare_post_installation() {
     update_vf_configuration
     update_service_templates
     
-    # Handle DPUDeployment based on ENABLE_HCP_MULTUS
-    if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
-        log [INFO] "Using HCP multus enabled DPUDeployment"
-        if [ -f "${POST_INSTALL_DIR}/dpudeployment-disabled-caps.yaml" ]; then
-            cp "${POST_INSTALL_DIR}/dpudeployment-disabled-caps.yaml" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
-        else
-            log [ERROR] "dpudeployment-disabled-caps.yaml not found"
-        fi
-    else
-        if [ -f "${POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
-            cp "${POST_INSTALL_DIR}/dpudeployment.yaml" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
-        fi
+    # Copy DPUDeployment
+    if [ -f "${POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
+        cp "${POST_INSTALL_DIR}/dpudeployment.yaml" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
     fi
     
     # Copy remaining manifests
