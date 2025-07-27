@@ -4,14 +4,12 @@ metadata:
   name: nfd
   namespace: openshift-nfd
 spec:
-  operand:
-    image: quay.io/yshnaidm/node-feature-discovery:dpf
-    workerEnvs:
+  workerConfig:
+    envs:
       - name: KUBERNETES_SERVICE_HOST
         value: api.<CLUSTER_FQDN>
       - name: KUBERNETES_SERVICE_PORT
         value: "6443"
-  workerConfig:
     configData: |
       sources:
         pci:
