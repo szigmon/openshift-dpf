@@ -16,9 +16,6 @@ spec:
     # The custom chart was needed for lib64 path support, but v25.7 official chart
     # now supports this via dpuOpenvSwitchSystemSharedLib64Path override
     helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.0
-  networking:
-    controlPlaneMTU: 1500
-    highSpeedMTU: 1500
   overrides:
     kubernetesAPIServerVIP: api.<CLUSTER_NAME>.<BASE_DOMAIN>
     kubernetesAPIServerPort: 6443
