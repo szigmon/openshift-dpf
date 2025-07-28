@@ -26,5 +26,6 @@ spec:
   provisioningController:
     bfCFGTemplateConfigMap: custom-bfb.cfg
     bfbPVCName: bfb-pvc
+    dmsTimeout: 900
   staticClusterManager:
     disable: false
