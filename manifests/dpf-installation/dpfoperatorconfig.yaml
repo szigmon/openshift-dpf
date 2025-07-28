@@ -4,7 +4,6 @@ metadata:
   name: dpfoperatorconfig
   namespace: dpf-operator-system
 spec:
-  flannelSkipCNIConfigInstallation: false
   imagePullSecrets:
     - dpf-pull-secret
   # Kamaji is permanently disabled - only Hypershift is supported
@@ -23,6 +22,8 @@ spec:
     dpuCNIPath: /run/multus/cni/net.d/
     # Configure lib64 path for RHCOS systems
     dpuOpenvSwitchSystemSharedLib64Path: /lib64
+    # When using OpenShift Multus (default), Flannel needs to install CNI config
+    flannelSkipCNIConfigInstallation: false
   provisioningController:
     bfCFGTemplateConfigMap: custom-bfb.cfg
     bfbPVCName: bfb-pvc
