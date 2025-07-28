@@ -49,22 +49,6 @@ function deploy_nfd() {
     log [INFO] "NFD deployment completed successfully!"
 }
 
-function apply_crds() {
-    log [INFO] "Applying CRDs..."
-    # Use nullglob to handle the case where no CRD files exist (expected in v25.7)
-    shopt -s nullglob
-    local crd_files=("$GENERATED_DIR"/*-crd.yaml)
-    shopt -u nullglob
-    
-    if [ ${#crd_files[@]} -eq 0 ]; then
-        log [INFO] "No CRD files found (expected for DPF v25.7 - CRDs are in Helm chart)"
-        return 0
-    fi
-    
-    for file in "${crd_files[@]}"; do
-        apply_manifest "$file"
-    done
-}
 
 function apply_scc() {
     local scc_file="$GENERATED_DIR/scc.yaml"
@@ -388,7 +372,6 @@ function apply_dpf() {
     deploy_nfd
     
     apply_namespaces
-    # apply_crds - Not needed for DPF v25.7 (CRDs are in Helm chart)
     deploy_cert_manager
     
     # Install/upgrade DPF Operator using helm (idempotent operation)
