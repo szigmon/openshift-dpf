@@ -178,15 +178,8 @@ function update_service_templates() {
     
     for template in "${templates[@]}"; do
         if [ -f "${POST_INSTALL_DIR}/${template}" ]; then
-            if [[ "${template}" == "hbn-template.yaml" ]]; then
-                update_file_multi_replace \
-                    "${POST_INSTALL_DIR}/${template}" \
-                    "${GENERATED_POST_INSTALL_DIR}/${template}" \
-                    "<DPF_VERSION>" "${DPF_VERSION}" \
-                    "<DPF_HELM_REPO_URL>" "${DPF_HELM_REPO_URL}"
-                log [INFO] "Updated ${template} with DPF_VERSION and DPF_HELM_REPO_URL"
             # HBN template needs helm repo URL, version, and image configuration
-            elif [[ "${template}" == "hbn-template.yaml" ]]; then
+            if [[ "${template}" == "hbn-template.yaml" ]]; then
                 update_file_multi_replace \
                     "${POST_INSTALL_DIR}/${template}" \
                     "${GENERATED_POST_INSTALL_DIR}/${template}" \
