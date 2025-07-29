@@ -9,8 +9,8 @@ spec:
   # Kamaji is permanently disabled - only Hypershift is supported
   kamajiClusterManager:
     disable: true
+  # Trimmed multus chart for deploying system NADs only
   multus:
-    disable: false
     # TODO: Update to official v25.7 chart once paths are verified
     # The custom chart was needed for lib64 path support, but v25.7 official chart
     # now supports this via dpuOpenvSwitchSystemSharedLib64Path override
