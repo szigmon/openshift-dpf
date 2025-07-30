@@ -62,40 +62,57 @@ function backup_resources() {
 function remove_hostedcluster() {
     log [INFO] "Removing HostedCluster and associated resources..."
     
-    # Delete HostedCluster (this will trigger cleanup of control plane)
-    if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
-        print_warning "Deleting HostedCluster ${HOSTED_CLUSTER_NAME}..."
-        oc delete hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} --wait=false
-        
-        # Wait for HostedCluster to be deleted
-        log [INFO] "Waiting for HostedCluster deletion to complete..."
-        local retries=60
-        while [ $retries -gt 0 ]; do
-            if ! oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
-                print_success "HostedCluster deleted"
-                break
-            fi
-            echo -n "."
-            sleep 10
-            ((retries--))
-        done
-        
-        if [ $retries -eq 0 ]; then
-            print_error "HostedCluster deletion timed out"
-            return 1
+    # Check if hypershift CLI is available
+    if command -v hypershift &> /dev/null; then
+        # Use hypershift destroy for clean removal
+        if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
+            print_warning "Destroying HostedCluster ${HOSTED_CLUSTER_NAME} using hypershift CLI..."
+            hypershift destroy cluster \
+                --name ${HOSTED_CLUSTER_NAME} \
+                --namespace ${CLUSTERS_NAMESPACE} \
+                --destroy-cloud-resources
+            
+            print_success "HostedCluster destroyed successfully"
         fi
-    fi
-    
-    # Delete NodePools if any exist
-    if oc get nodepools -n ${CLUSTERS_NAMESPACE} &>/dev/null; then
-        log [INFO] "Deleting NodePools..."
-        oc delete nodepools -n ${CLUSTERS_NAMESPACE} --all
-    fi
-    
-    # Delete control plane namespace
-    if oc get namespace ${HOSTED_CONTROL_PLANE_NAMESPACE} &>/dev/null; then
-        log [INFO] "Deleting control plane namespace ${HOSTED_CONTROL_PLANE_NAMESPACE}..."
-        oc delete namespace ${HOSTED_CONTROL_PLANE_NAMESPACE} --wait=false
+    else
+        # Fallback to manual deletion if hypershift CLI not available
+        print_warning "hypershift CLI not found, using manual deletion (this may take longer)..."
+        
+        # Delete HostedCluster (this will trigger cleanup of control plane)
+        if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
+            print_warning "Deleting HostedCluster ${HOSTED_CLUSTER_NAME}..."
+            oc delete hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} --wait=false
+            
+            # Wait for HostedCluster to be deleted
+            log [INFO] "Waiting for HostedCluster deletion to complete..."
+            local retries=60
+            while [ $retries -gt 0 ]; do
+                if ! oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
+                    print_success "HostedCluster deleted"
+                    break
+                fi
+                echo -n "."
+                sleep 10
+                ((retries--))
+            done
+            
+            if [ $retries -eq 0 ]; then
+                print_error "HostedCluster deletion timed out"
+                return 1
+            fi
+        fi
+        
+        # Delete NodePools if any exist
+        if oc get nodepools -n ${CLUSTERS_NAMESPACE} &>/dev/null; then
+            log [INFO] "Deleting NodePools..."
+            oc delete nodepools -n ${CLUSTERS_NAMESPACE} --all
+        fi
+        
+        # Delete control plane namespace
+        if oc get namespace ${HOSTED_CONTROL_PLANE_NAMESPACE} &>/dev/null; then
+            log [INFO] "Deleting control plane namespace ${HOSTED_CONTROL_PLANE_NAMESPACE}..."
+            oc delete namespace ${HOSTED_CONTROL_PLANE_NAMESPACE} --wait=false
+        fi
     fi
 }
 
