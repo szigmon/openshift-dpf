@@ -115,6 +115,15 @@ deploy-dpu-services: prepare-dpu-files
 deploy-hypershift:
 	@$(DPF_SCRIPT) deploy-hypershift
 
+deploy-hosted-cluster:
+	@$(DPF_SCRIPT) deploy-hosted-cluster
+
+test-mce-ready:
+	@./test-mce-readiness.sh
+
+migrate-to-mce:
+	@./scripts/migrate-to-mce.sh
+
 create-ignition-template:
 	@$(DPF_SCRIPT) create-ignition-template
 
