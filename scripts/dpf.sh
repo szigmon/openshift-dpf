@@ -186,25 +186,8 @@ function deploy_hypershift() {
         fi
     fi
 
-    log [INFO] "Adding CNO image override annotation..."
-    local max_retries=10
-    local retry_count=0
-    while [ $retry_count -lt $max_retries ]; do
-        if oc annotate hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} \
-           hypershift.openshift.io/image-overrides=cluster-network-operator=quay.io/lhadad/cluster-network-operator:ingressJul24v1 \
-           --overwrite; then
-            log [INFO] "Successfully added CNO image override annotation"
-            break
-        else
-            retry_count=$((retry_count + 1))
-            if [ $retry_count -lt $max_retries ]; then
-                log [WARN] "Failed to annotate hosted cluster (attempt $retry_count/$max_retries), retrying in 5s..."
-                sleep 5
-            else
-                log [ERROR] "Failed to annotate hosted cluster after $max_retries attempts"
-            fi
-        fi
-    done
+    # CNO image override annotation is already in the HostedCluster template
+    log [INFO] "CNO image override annotation already set in HostedCluster manifest"
 
     log [INFO] "Checking hosted control plane pods..."
     oc -n ${HOSTED_CONTROL_PLANE_NAMESPACE} get pods
@@ -238,13 +221,15 @@ function configure_hypershift() {
           log [INFO] "Generating kubeconfig file for ${HOSTED_CLUSTER_NAME}..."
           local max_attempts=5
           local delay=10
-          # Use retry to generate a valid kubeconfig file
+          # Extract kubeconfig from the secret
           retry "$max_attempts" "$delay" bash -c '
-              ns="$1"; name="$2"
-              hypershift create kubeconfig --namespace "$ns" --name "$name" > "$name.kubeconfig" && \
-              grep -q "apiVersion: v1" "$name.kubeconfig" && \
-              grep -q "kind: Config" "$name.kubeconfig"
-          ' _ "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}"
+              if oc get secret -n "${CLUSTERS_NAMESPACE}" "${HOSTED_CLUSTER_NAME}-admin-kubeconfig" -o jsonpath="{.data.kubeconfig}" | base64 -d > ${HOSTED_CLUSTER_NAME}.kubeconfig; then
+                  grep -q "apiVersion: v1" "${HOSTED_CLUSTER_NAME}.kubeconfig" && \
+                  grep -q "kind: Config" "${HOSTED_CLUSTER_NAME}.kubeconfig"
+              else
+                  return 1
+              fi
+          '
 
     fi
 
