@@ -20,9 +20,13 @@ echo ""
 # Check existing HyperShift installation
 echo -e "${YELLOW}1. Checking existing HyperShift installation...${NC}"
 if oc get deployment -n hypershift hypershift-operator &>/dev/null; then
-    echo -e "${GREEN}[✓]${NC} HyperShift operator is installed"
+    echo -e "${GREEN}[✓]${NC} HyperShift operator is installed (standard deployment name)"
     echo "    Operator pods:"
     oc get pods -n hypershift | grep -E "NAME|hypershift-operator" || true
+elif oc get deployment -n hypershift operator &>/dev/null; then
+    echo -e "${GREEN}[✓]${NC} HyperShift operator is installed (deployment name: operator)"
+    echo "    Operator pods:"
+    oc get pods -n hypershift | grep -E "NAME|operator" || true
 elif oc get namespace hypershift &>/dev/null; then
     echo -e "${YELLOW}[!]${NC} HyperShift namespace exists but operator deployment not found"
     echo "    Checking for other deployments:"

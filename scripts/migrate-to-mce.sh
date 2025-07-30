@@ -51,6 +51,8 @@ function backup_resources() {
     # Backup HyperShift operator configuration
     if oc get deployment -n hypershift hypershift-operator &>/dev/null; then
         oc get deployment -n hypershift hypershift-operator -o yaml > "$backup_dir/hypershift-operator-deployment.yaml"
+    elif oc get deployment -n hypershift operator &>/dev/null; then
+        oc get deployment -n hypershift operator -o yaml > "$backup_dir/hypershift-operator-deployment.yaml"
     fi
     
     log [INFO] "Backup completed in directory: $backup_dir"
@@ -100,9 +102,11 @@ function remove_hostedcluster() {
 function remove_hypershift_operator() {
     log [INFO] "Removing HyperShift operator..."
     
-    # Delete HyperShift deployment
+    # Delete HyperShift deployment (check both possible names)
     if oc get deployment -n hypershift hypershift-operator &>/dev/null; then
-        oc delete deployment -n hypershift hypershift-operator
+        oc delete deployment -n hypershift hypershift-operator --wait=false || true
+    elif oc get deployment -n hypershift operator &>/dev/null; then
+        oc delete deployment -n hypershift operator --wait=false || true
     fi
     
     # Delete HyperShift namespace
@@ -150,7 +154,7 @@ function verify_mce_ready() {
     fi
     
     # Check if HyperShift operator is running (deployed by MCE)
-    if ! oc get deployment -n hypershift hypershift-operator &>/dev/null; then
+    if ! oc get deployment -n hypershift hypershift-operator &>/dev/null && ! oc get deployment -n hypershift operator &>/dev/null; then
         return 1
     fi
     
