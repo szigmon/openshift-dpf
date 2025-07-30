@@ -23,8 +23,20 @@ if oc get deployment -n hypershift hypershift-operator &>/dev/null; then
     echo -e "${GREEN}[✓]${NC} HyperShift operator is installed"
     echo "    Operator pods:"
     oc get pods -n hypershift | grep -E "NAME|hypershift-operator" || true
+elif oc get namespace hypershift &>/dev/null; then
+    echo -e "${YELLOW}[!]${NC} HyperShift namespace exists but operator deployment not found"
+    echo "    Checking for other deployments:"
+    oc get deployments -n hypershift 2>/dev/null || echo "    No deployments found"
 else
     echo -e "${RED}[✗]${NC} HyperShift operator not found"
+fi
+
+# Check if MCE is already managing HyperShift
+echo -e "\n${YELLOW}1a. Checking if MCE is managing HyperShift...${NC}"
+if oc get mce -n multicluster-engine multiclusterengine -o jsonpath='{.spec.overrides.components[?(@.name=="hypershift")].enabled}' 2>/dev/null | grep -q "true"; then
+    echo -e "${GREEN}[✓]${NC} MCE is already managing HyperShift"
+else
+    echo -e "${YELLOW}[!]${NC} MCE is not managing HyperShift"
 fi
 
 # Check existing HostedCluster
@@ -72,10 +84,27 @@ else
     echo -e "${RED}[✗]${NC} OpenShift pull secret file not found: ${OPENSHIFT_PULL_SECRET}"
 fi
 
-if [ -f "${SSH_KEY}.pub" ]; then
-    echo -e "${GREEN}[✓]${NC} SSH public key file exists"
+# Expand tilde in SSH_KEY path
+SSH_KEY_EXPANDED="${SSH_KEY/#\~/$HOME}"
+
+# Check if SSH_KEY already has .pub extension
+if [[ "${SSH_KEY_EXPANDED}" =~ \.pub$ ]]; then
+    # SSH_KEY already points to public key
+    if [ -f "${SSH_KEY_EXPANDED}" ]; then
+        echo -e "${GREEN}[✓]${NC} SSH public key file exists: ${SSH_KEY_EXPANDED}"
+    else
+        echo -e "${RED}[✗]${NC} SSH public key file not found: ${SSH_KEY_EXPANDED}"
+    fi
 else
-    echo -e "${RED}[✗]${NC} SSH public key file not found: ${SSH_KEY}.pub"
+    # SSH_KEY points to private key, check for .pub version
+    if [ -f "${SSH_KEY_EXPANDED}.pub" ]; then
+        echo -e "${GREEN}[✓]${NC} SSH public key file exists: ${SSH_KEY_EXPANDED}.pub"
+    elif [ -f "${SSH_KEY_EXPANDED}" ]; then
+        echo -e "${GREEN}[✓]${NC} SSH private key file exists: ${SSH_KEY_EXPANDED}"
+        echo -e "${YELLOW}[!]${NC} Note: Public key expected at ${SSH_KEY_EXPANDED}.pub"
+    else
+        echo -e "${RED}[✗]${NC} SSH key file not found: ${SSH_KEY_EXPANDED}"
+    fi
 fi
 
 # Check API VIP connectivity

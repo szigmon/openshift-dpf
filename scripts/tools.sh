@@ -31,8 +31,19 @@ function install_helm() {
 }
 
 function install_hypershift() {
-    log "INFO" "Installing Hypershift binary and operator..."
-
+    log "WARN" "Direct HyperShift installation is deprecated in favor of MCE (MultiCluster Engine)"
+    log "INFO" "HyperShift is now managed through MCE operator"
+    log "INFO" ""
+    log "INFO" "To install HyperShift:"
+    log "INFO" "1. Run 'make deploy-dpf' which will automatically install MCE"
+    log "INFO" "2. MCE will manage HyperShift installation and lifecycle"
+    log "INFO" ""
+    log "INFO" "For existing clusters with HyperShift already installed:"
+    log "INFO" "1. Run 'make test-mce-ready' to check readiness for migration"
+    log "INFO" "2. Run 'make migrate-to-mce' to migrate to MCE-managed HyperShift"
+    log "INFO" ""
+    log "INFO" "If you still need to install the hypershift CLI binary:"
+    
     # Create a temporary container and copy the hypershift binary
     CONTAINER_COMMAND=${CONTAINER_COMMAND:-podman}
     $CONTAINER_COMMAND cp $($CONTAINER_COMMAND create --name hypershift --rm --pull always $HYPERSHIFT_IMAGE):/usr/bin/hypershift /tmp/hypershift
@@ -41,15 +52,9 @@ function install_hypershift() {
     # Install the hypershift binary
     sudo install -m 0755 -o root -g root /tmp/hypershift /usr/local/bin/hypershift
     rm -f /tmp/hypershift
-
-    # Install the Hypershift operator
-    KUBECONFIG=$KUBECONFIG hypershift install --hypershift-image $HYPERSHIFT_IMAGE
-
-    # Check the Hypershift operator status
-    log "INFO" "Checking Hypershift operator status..."
-    KUBECONFIG=$KUBECONFIG oc -n hypershift get pods
-
-    log "INFO" "Hypershift installation completed successfully!"
+    
+    log "INFO" "HyperShift CLI binary installed to /usr/local/bin/hypershift"
+    log "WARN" "Note: The operator should be installed via MCE, not directly"
 }
 
 function install_oc() {

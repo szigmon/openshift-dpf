@@ -168,8 +168,15 @@ function deploy_hypershift() {
             -n ${CLUSTERS_NAMESPACE} || true
         
         # Create SSH key secret
+        # Handle both cases: SSH_KEY might or might not include .pub
+        local ssh_pub_key="${SSH_KEY}"
+        # Expand tilde if present
+        ssh_pub_key="${ssh_pub_key/#\~/$HOME}"
+        if [[ ! "${ssh_pub_key}" =~ \.pub$ ]]; then
+            ssh_pub_key="${ssh_pub_key}.pub"
+        fi
         oc create secret generic ${HOSTED_CLUSTER_NAME}-ssh-key \
-            --from-file=id_rsa.pub=${SSH_KEY}.pub \
+            --from-file=id_rsa.pub=${ssh_pub_key} \
             -n ${CLUSTERS_NAMESPACE} || true
         
         # Create ETCD encryption key
