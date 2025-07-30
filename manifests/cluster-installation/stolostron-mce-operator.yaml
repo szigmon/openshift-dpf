@@ -18,7 +18,7 @@ metadata:
   name: multicluster-engine
   namespace: multicluster-engine
 spec:
-  channel: "stable-0.5"
+  channel: "community-0.7"
   name: stolostron-engine
   source: community-operators
   sourceNamespace: openshift-marketplace
