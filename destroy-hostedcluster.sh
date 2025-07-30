@@ -28,10 +28,9 @@ if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/n
     fi
     
     echo "Destroying HostedCluster..."
-    hypershift destroy cluster \
+    hypershift destroy cluster none \
         --name ${HOSTED_CLUSTER_NAME} \
-        --namespace ${CLUSTERS_NAMESPACE} \
-        --destroy-cloud-resources
+        --namespace ${CLUSTERS_NAMESPACE}
     
     echo "HostedCluster destroyed successfully!"
 else

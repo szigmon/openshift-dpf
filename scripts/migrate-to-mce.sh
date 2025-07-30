@@ -67,10 +67,9 @@ function remove_hostedcluster() {
         # Use hypershift destroy for clean removal
         if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
             print_warning "Destroying HostedCluster ${HOSTED_CLUSTER_NAME} using hypershift CLI..."
-            hypershift destroy cluster \
+            hypershift destroy cluster none \
                 --name ${HOSTED_CLUSTER_NAME} \
-                --namespace ${CLUSTERS_NAMESPACE} \
-                --destroy-cloud-resources
+                --namespace ${CLUSTERS_NAMESPACE}
             
             print_success "HostedCluster destroyed successfully"
         fi
