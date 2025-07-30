@@ -128,17 +128,21 @@ function remove_hypershift_operator() {
     # Delete HyperShift namespace
     if oc get namespace hypershift &>/dev/null; then
         log [INFO] "Deleting hypershift namespace..."
-        oc delete namespace hypershift --wait=false
+        oc delete namespace hypershift --wait=false --grace-period=0 || true
         
-        # Wait for namespace deletion
-        local retries=30
+        # Wait for namespace deletion (but don't fail if stuck)
+        local retries=10
         while [ $retries -gt 0 ]; do
-            if ! oc get namespace hypershift &>/dev/null; then
+            local ns_status=$(oc get namespace hypershift -o jsonpath='{.status.phase}' 2>/dev/null || echo "NotFound")
+            if [ "$ns_status" = "NotFound" ]; then
                 print_success "HyperShift namespace deleted"
+                break
+            elif [ "$ns_status" = "Terminating" ] && [ $retries -eq 1 ]; then
+                print_warning "HyperShift namespace stuck in Terminating state, continuing anyway..."
                 break
             fi
             echo -n "."
-            sleep 5
+            sleep 3
             ((retries--))
         done
     fi
