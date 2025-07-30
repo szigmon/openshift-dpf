@@ -1,0 +1,83 @@
+apiVersion: hypershift.openshift.io/v1beta1
+kind: HostedCluster
+metadata:
+  annotations:
+    hypershift.openshift.io/control-plane-operator-image: quay.io/lhadad/controlplaneoperator:allCapsMultusDisabledV1
+    hypershift.openshift.io/image-overrides: cluster-network-operator=quay.io/lhadad/cluster-network-operator:ingressJul24v1
+    <DISABLE_MULTI_NETWORK_ANNOTATION>
+  name: <HOSTED_CLUSTER_NAME>
+  namespace: <CLUSTERS_NAMESPACE>
+spec:
+  autoscaling:
+    scaling: ScaleUpAndScaleDown
+  capabilities:
+    disabled:
+    - ImageRegistry
+    - Insights
+    - Console
+    - openshift-samples
+    - Ingress
+    - NodeTuning
+  configuration: {}
+  controllerAvailabilityPolicy: SingleReplica
+  dns:
+    baseDomain: <BASE_DOMAIN>
+  etcd:
+    managed:
+      storage:
+        persistentVolume:
+          size: 8Gi
+          storageClassName: <ETCD_STORAGE_CLASS>
+        type: PersistentVolume
+    managementType: Managed
+  fips: false
+  infrastructureAvailabilityPolicy: SingleReplica
+  issuerURL: https://kubernetes.default.svc
+  networking:
+    clusterNetwork:
+    - cidr: <POD_CIDR>
+    networkType: Other
+    serviceNetwork:
+    - cidr: <SERVICE_CIDR>
+  nodeSelector:
+    node-role.kubernetes.io/master: ""
+  olmCatalogPlacement: management
+  platform:
+    type: None
+  pullSecret:
+    name: <HOSTED_CLUSTER_NAME>-pull-secret
+  release:
+    image: <OCP_RELEASE_IMAGE>
+  secretEncryption:
+    aescbc:
+      activeKey:
+        name: <HOSTED_CLUSTER_NAME>-etcd-encryption-key
+    type: aescbc
+  services:
+  - service: APIServer
+    servicePublishingStrategy:
+      nodePort:
+        address: <API_VIP>
+      type: NodePort
+  - service: Ignition
+    servicePublishingStrategy:
+      nodePort:
+        address: <API_VIP>
+      type: NodePort
+  - service: Konnectivity
+    servicePublishingStrategy:
+      nodePort:
+        address: <API_VIP>
+      type: NodePort
+  - service: OAuthServer
+    servicePublishingStrategy:
+      nodePort:
+        address: <API_VIP>
+      type: NodePort
+  - service: OIDC
+    servicePublishingStrategy:
+      nodePort:
+        address: <API_VIP>
+      type: NodePort
+  sshKey:
+    name: <HOSTED_CLUSTER_NAME>-ssh-key

@@ -119,53 +119,70 @@ function deploy_hosted_cluster() {
 }
 
 function deploy_hypershift() {
-    if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
-        log [INFO] "HCP Multus enabled mode is active. Using custom hypershift image: ${HYPERSHIFT_IMAGE}"
+    log [INFO] "Deploying HyperShift using MCE approach..."
+    
+    # Install MCE operator if not present
+    if ! oc get subscription -n multicluster-engine multicluster-engine &>/dev/null; then
+        log [INFO] "Installing MultiCluster Engine operator..."
+        oc apply -f manifests/cluster-installation/mce-operator.yaml
+        
+        # Wait for MCE to be ready
+        log [INFO] "Waiting for MCE operator to be ready..."
+        local retries=30
+        while [ $retries -gt 0 ]; do
+            if oc get csv -n multicluster-engine | grep -q "multiclusterengine.*Succeeded"; then
+                log [INFO] "MCE operator is ready"
+                break
+            fi
+            sleep 10
+            ((retries--))
+        done
+        
+        if [ $retries -eq 0 ]; then
+            log [ERROR] "MCE operator installation timed out"
+            return 1
+        fi
     fi
     
-    # Check if Hypershift operator is already installed
-    if oc get deployment -n hypershift hypershift-operator &>/dev/null; then
-        log [INFO] "Hypershift operator already installed. Skipping deployment."
-    else
-        log [INFO] "Installing latest hypershift operator"
-        install_hypershift
-    fi
+    # Enable HyperShift in MCE
+    log [INFO] "Enabling HyperShift in MCE..."
+    oc apply -f manifests/cluster-installation/mce-hypershift-config.yaml
+    
+    # Wait for HyperShift to be enabled
+    wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
 
     log [INFO] "Checking if Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists..."
     if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
         log [INFO] "Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists. Skipping creation."
     else
-        wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
-        log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
-        oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
+        log [INFO] "Creating HostedCluster via declarative approach..."
+        oc create ns "${CLUSTERS_NAMESPACE}" || true
         
-        if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
-            log [INFO] "Creating hosted cluster with HCP multus enabled (multi-network enabled)..."
-            hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
-              --base-domain="${BASE_DOMAIN}" \
-              --release-image="${OCP_RELEASE_IMAGE}" \
-              --ssh-key="${SSH_KEY}" \
-              --pull-secret="${OPENSHIFT_PULL_SECRET}" \
-              --disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning \
-              --network-type=Other \
-              --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
-              --node-selector='node-role.kubernetes.io/master=""' \
-              --node-upgrade-type=Replace \
-              --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsMultusDisabledV1
+        # First create the required secrets
+        log [INFO] "Creating required secrets for HostedCluster..."
+        
+        # Create pull secret
+        oc create secret generic ${HOSTED_CLUSTER_NAME}-pull-secret \
+            --from-file=.dockerconfigjson=${OPENSHIFT_PULL_SECRET} \
+            --type=kubernetes.io/dockerconfigjson \
+            -n ${CLUSTERS_NAMESPACE} || true
+        
+        # Create SSH key secret
+        oc create secret generic ${HOSTED_CLUSTER_NAME}-ssh-key \
+            --from-file=id_rsa.pub=${SSH_KEY}.pub \
+            -n ${CLUSTERS_NAMESPACE} || true
+        
+        # Create ETCD encryption key
+        oc create secret generic ${HOSTED_CLUSTER_NAME}-etcd-encryption-key \
+            --from-literal=key=$(openssl rand -base64 32) \
+            -n ${CLUSTERS_NAMESPACE} || true
+        
+        # Apply the processed hostedcluster.yaml from generated directory
+        if [[ -f "manifests/generated/hostedcluster.yaml" ]]; then
+            oc apply -f manifests/generated/hostedcluster.yaml
         else
-            log [INFO] "Creating hosted cluster with multi-network disabled..."
-            hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
-              --base-domain="${BASE_DOMAIN}" \
-              --release-image="${OCP_RELEASE_IMAGE}" \
-              --ssh-key="${SSH_KEY}" \
-              --pull-secret="${OPENSHIFT_PULL_SECRET}" \
-              --disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning \
-              --disable-multi-network \
-              --network-type=Other \
-              --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
-              --node-selector='node-role.kubernetes.io/master=""' \
-              --node-upgrade-type=Replace \
-              --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsMultusDisabledV1
+            log [ERROR] "Generated hostedcluster.yaml not found. Run 'make prepare-manifests' first"
+            return 1
         fi
     fi
 

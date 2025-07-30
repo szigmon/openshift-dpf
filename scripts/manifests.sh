@@ -95,6 +95,31 @@ function prepare_cluster_manifests() {
         aicli update installconfig "$CLUSTER_NAME" -P network_type=NVIDIA-OVN
     fi
 
+    # Process HostedCluster manifest
+    if [[ -f "$MANIFESTS_DIR/cluster-installation/hostedcluster.yaml" ]]; then
+        log [INFO] "Processing HostedCluster manifest..."
+        
+        # Determine multus annotation
+        local disable_multi_network_annotation=""
+        if [ "${ENABLE_HCP_MULTUS}" != "true" ]; then
+            disable_multi_network_annotation='hypershift.openshift.io/disable-multi-network: "true"'
+        fi
+        
+        # Copy and process the template
+        cp "$MANIFESTS_DIR/cluster-installation/hostedcluster.yaml" "$GENERATED_DIR/hostedcluster.yaml"
+        
+        # Replace all variables using sed
+        sed -i "s|<HOSTED_CLUSTER_NAME>|${HOSTED_CLUSTER_NAME}|g" "$GENERATED_DIR/hostedcluster.yaml"
+        sed -i "s|<CLUSTERS_NAMESPACE>|${CLUSTERS_NAMESPACE}|g" "$GENERATED_DIR/hostedcluster.yaml"
+        sed -i "s|<BASE_DOMAIN>|${BASE_DOMAIN}|g" "$GENERATED_DIR/hostedcluster.yaml"
+        sed -i "s|<POD_CIDR>|${POD_CIDR}|g" "$GENERATED_DIR/hostedcluster.yaml"
+        sed -i "s|<SERVICE_CIDR>|${SERVICE_CIDR}|g" "$GENERATED_DIR/hostedcluster.yaml"
+        sed -i "s|<API_VIP>|${API_VIP}|g" "$GENERATED_DIR/hostedcluster.yaml"
+        sed -i "s|<OCP_RELEASE_IMAGE>|${OCP_RELEASE_IMAGE}|g" "$GENERATED_DIR/hostedcluster.yaml"
+        sed -i "s|<ETCD_STORAGE_CLASS>|${ETCD_STORAGE_CLASS}|g" "$GENERATED_DIR/hostedcluster.yaml"
+        sed -i "s|<DISABLE_MULTI_NETWORK_ANNOTATION>|${disable_multi_network_annotation}|g" "$GENERATED_DIR/hostedcluster.yaml"
+    fi
+    
     # Always copy Cert-Manager manifest (required for DPF operator)
     log [INFO] "Copying Cert-Manager manifest (required for DPF operator)..."
     cp "$MANIFESTS_DIR/cluster-installation/openshift-cert-manager.yaml" "$GENERATED_DIR/"
