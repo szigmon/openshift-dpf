@@ -100,6 +100,9 @@ interface-name=br-comm-ch
 autoconnect-ports=1
 autoconnect-slaves=1
 
+[ethernet]
+cloned-mac-address=stable
+
 [bridge]
 stp=false
 
