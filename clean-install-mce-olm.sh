@@ -13,8 +13,10 @@ echo ""
 # Step 1: Complete cleanup
 echo "1. Removing ALL MCE resources..."
 
-# Delete MCE CR
-oc delete mce --all -n multicluster-engine --ignore-not-found --wait=false
+# Delete MCE CR if CRD exists
+if oc get crd multiclusterengines.multicluster.openshift.io &>/dev/null; then
+    oc delete mce --all -n multicluster-engine --ignore-not-found --wait=false
+fi
 
 # Delete all pods
 oc delete pods --all -n multicluster-engine --force --grace-period=0 2>/dev/null || true
