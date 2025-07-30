@@ -238,24 +238,34 @@ function main() {
     
     # Step 4: Install MCE and enable HyperShift
     log [INFO] "Installing MCE and enabling HyperShift..."
-    make -C "$(dirname "$0")/.." deploy-hypershift
-    
-    # Wait for MCE HyperShift to be ready
-    log [INFO] "Waiting for MCE HyperShift to be ready..."
-    local retries=30
-    while [ $retries -gt 0 ]; do
-        if verify_mce_ready; then
-            print_success "MCE HyperShift is ready"
-            break
+    if ! make -C "$(dirname "$0")/.." deploy-hypershift; then
+        print_warning "MCE installation failed. Trying direct HyperShift installation..."
+        
+        # Fallback to direct HyperShift installation
+        if [ -x "$(dirname "$0")/../install-hypershift-direct.sh" ]; then
+            "$(dirname "$0")/../install-hypershift-direct.sh"
+        else
+            print_error "Could not install MCE or HyperShift"
+            exit 1
         fi
-        echo -n "."
-        sleep 10
-        ((retries--))
-    done
-    
-    if [ $retries -eq 0 ]; then
-        print_error "MCE HyperShift installation timed out"
-        exit 1
+    else
+        # Wait for MCE HyperShift to be ready
+        log [INFO] "Waiting for MCE HyperShift to be ready..."
+        local retries=30
+        while [ $retries -gt 0 ]; do
+            if verify_mce_ready; then
+                print_success "MCE HyperShift is ready"
+                break
+            fi
+            echo -n "."
+            sleep 10
+            ((retries--))
+        done
+        
+        if [ $retries -eq 0 ]; then
+            print_warning "MCE HyperShift installation timed out. Trying direct installation..."
+            "$(dirname "$0")/../install-hypershift-direct.sh"
+        fi
     fi
     
     # Step 5: Create HostedCluster using MCE approach
