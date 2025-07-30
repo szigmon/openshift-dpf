@@ -145,10 +145,10 @@ function remove_hypershift_operator() {
     
     # Remove HyperShift CRDs
     log [INFO] "Removing HyperShift CRDs..."
-    oc delete crd hostedclusters.hypershift.openshift.io --ignore-not-found
-    oc delete crd nodepools.hypershift.openshift.io --ignore-not-found
-    oc delete crd hostedcontrolplanes.hypershift.openshift.io --ignore-not-found
-    oc delete crd awsendpointservices.hypershift.openshift.io --ignore-not-found
+    for crd in $(oc get crd -o name | grep hypershift.openshift.io); do
+        log [INFO] "Deleting $crd..."
+        oc delete $crd --force --grace-period=0
+    done
 }
 
 function verify_mce_ready() {
