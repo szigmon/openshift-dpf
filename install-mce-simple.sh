@@ -8,29 +8,64 @@ source "$(dirname "$0")/scripts/utils.sh"
 echo "=== Simple MCE Installation ==="
 echo ""
 
-# Step 1: Clean up any existing MCE resources
-echo "1. Cleaning up any existing MCE resources..."
+# Step 1: Check if namespace exists or is terminating
+echo "1. Checking for existing MCE namespace..."
 if oc get namespace multicluster-engine &>/dev/null; then
-    echo "   Found existing MCE namespace, cleaning up..."
-    
-    # Delete subscription
-    if oc get subscription -n multicluster-engine multicluster-engine &>/dev/null; then
-        oc delete subscription -n multicluster-engine multicluster-engine --wait=false
+    PHASE=$(oc get namespace multicluster-engine -o jsonpath='{.status.phase}' 2>/dev/null || echo "")
+    if [ "$PHASE" = "Terminating" ]; then
+        echo "   Namespace is already terminating. Waiting for cleanup..."
+        retries=60
+        while [ $retries -gt 0 ]; do
+            if ! oc get namespace multicluster-engine &>/dev/null; then
+                echo ""
+                echo "   ✓ Namespace deleted"
+                break
+            fi
+            echo -n "."
+            sleep 2
+            ((retries--))
+        done
+        
+        if [ $retries -eq 0 ]; then
+            echo ""
+            echo "   ✗ Namespace still terminating after 2 minutes"
+            echo "   Run: ./force-clean-mce.sh"
+            exit 1
+        fi
+    else
+        echo "   Found active MCE namespace, cleaning up..."
+        
+        # Delete subscription
+        if oc get subscription -n multicluster-engine multicluster-engine &>/dev/null; then
+            oc delete subscription -n multicluster-engine multicluster-engine --wait=false
+        fi
+        
+        # Delete CSV
+        for csv in $(oc get csv -n multicluster-engine -o name | grep multiclusterengine); do
+            oc delete $csv -n multicluster-engine --wait=false
+        done
+        
+        # Delete MCE CR if exists
+        if oc get mce -n multicluster-engine &>/dev/null; then
+            oc delete mce --all -n multicluster-engine --wait=false
+        fi
+        
+        # Delete namespace
+        oc delete namespace multicluster-engine --wait=false --grace-period=0
+        
+        # Wait for deletion
+        echo "   Waiting for namespace deletion..."
+        retries=60
+        while [ $retries -gt 0 ]; do
+            if ! oc get namespace multicluster-engine &>/dev/null; then
+                echo "   ✓ Namespace deleted"
+                break
+            fi
+            echo -n "."
+            sleep 2
+            ((retries--))
+        done
     fi
-    
-    # Delete CSV
-    for csv in $(oc get csv -n multicluster-engine -o name | grep multiclusterengine); do
-        oc delete $csv -n multicluster-engine --wait=false
-    done
-    
-    # Delete MCE CR if exists
-    if oc get mce -n multicluster-engine &>/dev/null; then
-        oc delete mce --all -n multicluster-engine --wait=false
-    fi
-    
-    # Delete namespace
-    oc delete namespace multicluster-engine --wait=false --grace-period=0
-    sleep 10
 fi
 
 # Step 2: Install MCE operator
