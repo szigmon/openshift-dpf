@@ -112,11 +112,11 @@ prepare-dpu-files:
 deploy-dpu-services: prepare-dpu-files
 	@$(POST_INSTALL_SCRIPT) apply
 
-deploy-hypershift:
-	@$(DPF_SCRIPT) deploy-hypershift
+# deploy-hypershift: DISABLED - HyperShift installation removed for clean MCE testing
+#	@$(DPF_SCRIPT) deploy-hypershift
 
-create-ignition-template:
-	@$(DPF_SCRIPT) create-ignition-template
+# create-ignition-template: DISABLED - HyperShift-related, removed for clean MCE testing
+#	@$(DPF_SCRIPT) create-ignition-template
 
 redeploy-dpu:
 	@$(POST_INSTALL_SCRIPT) redeploy
@@ -140,8 +140,8 @@ kubeconfig:
 deploy-nfd:
 	@$(DPF_SCRIPT) deploy-nfd
 
-install-hypershift:
-	@$(TOOLS_SCRIPT) install-hypershift
+# install-hypershift: DISABLED - HyperShift installation removed for clean MCE testing
+#	@$(TOOLS_SCRIPT) install-hypershift
 
 install-helm:
 	@$(TOOLS_SCRIPT) install-helm
@@ -183,11 +183,11 @@ help:
 	@echo "  deploy-dpu-services - Deploy DPU services to the cluster"
 	@echo "  configure-flannel - Deploy flannel IPAM controller for automatic podCIDR assignment"
 	@echo ""
-	@echo "Hypershift Management:"
-	@echo "  install-hypershift - Install Hypershift binary and operator"
-	@echo "  create-hypershift-cluster - Create a new Hypershift hosted cluster"
-	@echo "  configure-hypershift-dpucluster - Configure DPF to use Hypershift hosted cluster"
-	@echo ""
+	# @echo "Hypershift Management:"
+	# @echo "  install-hypershift - Install Hypershift binary and operator"
+	# @echo "  create-hypershift-cluster - Create a new Hypershift hosted cluster"
+	# @echo "  configure-hypershift-dpucluster - Configure DPF to use Hypershift hosted cluster"
+	# @echo ""
 	@echo "Configuration options:"
 	@echo "Cluster Configuration:"
 	@echo "  CLUSTER_NAME      - Set cluster name (default: $(CLUSTER_NAME))"
@@ -200,12 +200,12 @@ help:
 	@echo "  NFD_OPERAND_IMAGE - (deprecated - no longer used)"
 	@echo "  ARGOCD_CHART_VERSION - ArgoCD helm chart version (default: $(ARGOCD_CHART_VERSION))"
 	@echo ""
-	@echo "Hypershift Configuration:"
-	@echo "  HYPERSHIFT_IMAGE  - Hypershift operator image (default: $(HYPERSHIFT_IMAGE))"
-	@echo "  HOSTED_CLUSTER_NAME - Name of the hosted cluster (default: $(HOSTED_CLUSTER_NAME))"
-	@echo "  CLUSTERS_NAMESPACE - Namespace for clusters (default: $(CLUSTERS_NAMESPACE))"
-	@echo "  OCP_RELEASE_IMAGE - OCP release image for hosted cluster (default: $(OCP_RELEASE_IMAGE))"
-	@echo ""
+	# @echo "Hypershift Configuration:"
+	# @echo "  HYPERSHIFT_IMAGE  - Hypershift operator image (default: $(HYPERSHIFT_IMAGE))"
+	# @echo "  HOSTED_CLUSTER_NAME - Name of the hosted cluster (default: $(HOSTED_CLUSTER_NAME))"
+	# @echo "  CLUSTERS_NAMESPACE - Namespace for clusters (default: $(CLUSTERS_NAMESPACE))"
+	# @echo "  OCP_RELEASE_IMAGE - OCP release image for hosted cluster (default: $(OCP_RELEASE_IMAGE))"
+	# @echo ""
 	@echo "Network Configuration:"
 	@echo "  POD_CIDR         - Set pod CIDR (default: $(POD_CIDR))"
 	@echo "  SERVICE_CIDR     - Set service CIDR (default: $(SERVICE_CIDR))"
