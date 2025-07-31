@@ -15,6 +15,7 @@ Isolate MCE installation issues by:
 - ✅ `deploy-hypershift` Makefile target (commented out)
 - ✅ `install-hypershift` Makefile target (commented out) 
 - ✅ `create-ignition-template` Makefile target (commented out)
+- ✅ `deploy_hosted_cluster` function call in `apply_dpf` script (commented out)
 - ✅ HyperShift help text sections (commented out)
 
 ### Clean Installation Flow:
