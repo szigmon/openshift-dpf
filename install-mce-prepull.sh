@@ -14,10 +14,10 @@ BUNDLE_INFO=$(oc get packagemanifest multicluster-engine -n openshift-marketplac
 BUNDLE_IMAGE=$(echo "$BUNDLE_INFO" | jq -r '.currentCSVDesc.annotations."operatorframework.io/bundle-image"' 2>/dev/null || echo "")
 CSV_NAME=$(echo "$BUNDLE_INFO" | jq -r '.currentCSV' 2>/dev/null || echo "")
 
-if [ -z "$BUNDLE_IMAGE" ]; then
+if [ -z "$BUNDLE_IMAGE" ] || [ "$BUNDLE_IMAGE" = "null" ]; then
     echo "   Using default bundle image for MCE 2.8"
-    BUNDLE_IMAGE="registry.redhat.io/multicluster-engine/multicluster-engine-rhel8-operator-bundle:v2.8.4"
-    CSV_NAME="multicluster-engine.v2.8.4"
+    BUNDLE_IMAGE="registry.redhat.io/multicluster-engine/multicluster-engine-rhel8-operator-bundle:v2.8.2"
+    CSV_NAME="multicluster-engine.v2.8.2"
 fi
 
 echo "   Bundle image: $BUNDLE_IMAGE"
