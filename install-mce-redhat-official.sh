@@ -120,23 +120,41 @@ EOF
 function wait_for_operator_ready() {
     print_info "Waiting for MCE operator to be ready..."
     
-    # Wait for subscription to be at latest known state
-    print_info "Waiting for subscription to reach AtLatestKnown state..."
-    if ! oc -n multicluster-engine wait --for=jsonpath='{.status.state}'=AtLatestKnown \
-        subscription/multicluster-engine --timeout=600s; then
-        print_error "Subscription failed to reach AtLatestKnown state"
+    # First wait for subscription to exist and have status
+    print_info "Waiting for subscription to initialize..."
+    local retries=30
+    while [ $retries -gt 0 ]; do
+        if oc get subscription multicluster-engine -n multicluster-engine -o jsonpath='{.status}' &>/dev/null; then
+            local status=$(oc get subscription multicluster-engine -n multicluster-engine -o jsonpath='{.status.state}' 2>/dev/null || echo "")
+            if [ -n "$status" ]; then
+                print_success "Subscription status initialized: $status"
+                break
+            fi
+        fi
+        echo -n "."
+        sleep 5
+        ((retries--))
+    done
+    
+    if [ $retries -eq 0 ]; then
+        print_error "Subscription failed to initialize status"
+        print_info "Current subscription details:"
+        oc get subscription multicluster-engine -n multicluster-engine -o yaml || true
         return 1
     fi
     
-    print_success "Subscription is ready"
-    
-    # Wait for CSV to be succeeded
-    print_info "Waiting for ClusterServiceVersion to be Succeeded..."
-    local retries=60
+    # Now wait for subscription to be at latest known state
+    print_info "Waiting for subscription to reach AtLatestKnown state..."
+    retries=60
     while [ $retries -gt 0 ]; do
-        if oc get csv -n multicluster-engine | grep -q "multiclusterengine.*Succeeded"; then
-            print_success "ClusterServiceVersion is Succeeded"
+        local state=$(oc get subscription multicluster-engine -n multicluster-engine -o jsonpath='{.status.state}' 2>/dev/null || echo "")
+        if [ "$state" = "AtLatestKnown" ]; then
+            print_success "Subscription reached AtLatestKnown state"
             break
+        elif [ "$state" = "UpgradePending" ]; then
+            print_info "Subscription in UpgradePending state, waiting..."
+        elif [ -n "$state" ]; then
+            print_info "Subscription state: $state"
         fi
         echo -n "."
         sleep 10
@@ -144,9 +162,49 @@ function wait_for_operator_ready() {
     done
     
     if [ $retries -eq 0 ]; then
-        print_error "ClusterServiceVersion failed to reach Succeeded state"
+        print_warning "Subscription did not reach AtLatestKnown state, checking CSV anyway..."
+        local current_state=$(oc get subscription multicluster-engine -n multicluster-engine -o jsonpath='{.status.state}' 2>/dev/null || echo "Unknown")
+        print_info "Final subscription state: $current_state"
+    fi
+    
+    # Wait for CSV to be succeeded
+    print_info "Waiting for ClusterServiceVersion to be Succeeded..."
+    local retries=60
+    while [ $retries -gt 0 ]; do
+        local csv_status=$(oc get csv -n multicluster-engine 2>/dev/null | grep multicluster | awk '{print $NF}' || echo "")
+        if [ "$csv_status" = "Succeeded" ]; then
+            print_success "ClusterServiceVersion is Succeeded"
+            break
+        elif [ "$csv_status" = "Installing" ]; then
+            print_info "CSV is Installing, waiting..."
+        elif [ "$csv_status" = "Failed" ]; then
+            print_error "CSV installation failed"
+            print_info "CSV details:"
+            oc get csv -n multicluster-engine | grep multicluster || echo "No CSV found"
+            print_info "Checking for bundle unpacking issues..."
+            oc get jobs -n multicluster-engine | grep -E "bundle|unpack" || echo "No bundle jobs found"
+            oc get pods -n multicluster-engine | grep -E "bundle|unpack|install" || echo "No bundle pods found"
+            return 1
+        elif [ -n "$csv_status" ]; then
+            print_info "CSV status: $csv_status"
+        fi
+        echo -n "."
+        sleep 10
+        ((retries--))
+    done
+    
+    if [ $retries -eq 0 ]; then
+        print_warning "ClusterServiceVersion did not reach Succeeded state in time"
         print_info "Current CSV status:"
         oc get csv -n multicluster-engine | grep multicluster || echo "No CSV found"
+        print_info "Checking subscription status:"
+        oc get subscription multicluster-engine -n multicluster-engine -o yaml
+        print_info "Checking for bundle unpacking issues:"
+        oc get jobs -n multicluster-engine | grep -E "bundle|unpack" || echo "No bundle jobs found"
+        if oc get jobs -n multicluster-engine | grep -E "bundle|unpack" >/dev/null; then
+            print_info "Bundle job logs:"
+            oc logs -n multicluster-engine job/$(oc get jobs -n multicluster-engine | grep -E "bundle|unpack" | awk '{print $1}' | head -1) || true
+        fi
         return 1
     fi
     
