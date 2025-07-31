@@ -17,9 +17,14 @@ POST_INSTALL_SCRIPT := scripts/post-install.sh
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
-        redeploy-dpu enable-ovn-injector deploy-argocd deploy-maintenance-operator configure-flannel
+        redeploy-dpu enable-ovn-injector disable-ovn-injector deploy-argocd deploy-maintenance-operator configure-flannel \
+        all-with-injector
 
-all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services enable-ovn-injector
+# Main target - deploys cluster and DPF WITHOUT OVN injector (to avoid blocking OLM operations)
+all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services
+
+# Alternative target - includes OVN injector (use only after ensuring MCE/operators work)
+all-with-injector: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services enable-ovn-injector
 	@echo ""
 	@echo "================================================================================"
 	@echo "✅ DPF Installation Complete!"
@@ -126,6 +131,10 @@ configure-flannel: deploy-dpu-services
 
 enable-ovn-injector: install-helm
 	@scripts/enable-ovn-injector.sh
+
+disable-ovn-injector:
+	@echo "🧹 Disabling OVN injector to unblock OLM operations..."
+	@scripts/disable-ovn-injector.sh
 
 update-etc-hosts:
 	@scripts/update-etc-hosts.sh
