@@ -3,13 +3,25 @@
 # Exit on error
 set -e
 
+# Prevent double sourcing
+if [ -n "${ENV_SH_SOURCED:-}" ]; then
+    return 0
+fi
+export ENV_SH_SOURCED=1
+
 # Function to load environment variables from .env file
 load_env() {
-    local env_file=".env"
+    # Find the .env file relative to the script location
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local env_file="${script_dir}/../.env"
     
     # Check if .env file exists
     if [ ! -f "$env_file" ]; then
-        echo "Error: .env file not found"
+        # If running from Makefile, .env is already loaded
+        if [ -n "${MAKEFILE:-}" ] || [ -n "${MAKELEVEL:-}" ]; then
+            return 0
+        fi
+        echo "Error: .env file not found at $env_file"
         exit 1
     fi
 
@@ -26,8 +38,10 @@ load_env() {
     done < "$env_file"
 }
 
-# Load environment variables from .env file
-load_env
+# Load environment variables from .env file (skip if already in Make context)
+if [ -z "${MAKELEVEL:-}" ]; then
+    load_env
+fi
 # Directory Configuration
 MANIFESTS_DIR=${MANIFESTS_DIR:-"manifests"}
 GENERATED_DIR=${GENERATED_DIR:-"$MANIFESTS_DIR/generated"}
@@ -44,6 +58,16 @@ HBN_OVN_NETWORK=${HBN_OVN_NETWORK:-"10.0.120.0/22"}
 # DPU Service Configuration
 HBN_HOSTNAME_NODE1=${HBN_HOSTNAME_NODE1:-"srv24-*"}
 HBN_HOSTNAME_NODE2=${HBN_HOSTNAME_NODE2:-"srv25-*"}
+
+# HBN Service Template Configuration
+HBN_HELM_REPO_URL=${HBN_HELM_REPO_URL:-"https://helm.ngc.nvidia.com/nvstaging/doca"}
+HBN_HELM_CHART_VERSION=${HBN_HELM_CHART_VERSION:-"1.0.3-beta"}
+HBN_IMAGE_REPO=${HBN_IMAGE_REPO:-"nvcr.io/nvstaging/doca/doca_hbn"}
+HBN_IMAGE_TAG=${HBN_IMAGE_TAG:-"3.dev.47-doca3.1.0"}
+
+# DTS Service Template Configuration
+DTS_HELM_REPO_URL=${DTS_HELM_REPO_URL:-"https://helm.ngc.nvidia.com/nvidia/doca"}
+DTS_HELM_CHART_VERSION=${DTS_HELM_CHART_VERSION:-"1.0.8"}
 
 # Cluster Configuration
 CLUSTER_NAME=${CLUSTER_NAME:-"doca"}
@@ -79,8 +103,14 @@ BRIDGE_NAME=${BRIDGE_NAME:-br0}
 SKIP_BRIDGE_CONFIG=${SKIP_BRIDGE_CONFIG:-"false"}
 
 # DPF Configuration
-DPF_VERSION="v25.4.0"
-DPF_HELM_REPO_URL=${DPF_HELM_REPO_URL:-"https://helm.ngc.nvidia.com/nvidia/doca/charts/dpf-operator"}
+DPF_VERSION=${DPF_VERSION:-"v25.7.0-beta.4"}
+
+# Helm Chart URLs - OCI registry format for v25.7+
+DPF_HELM_REPO_URL=${DPF_HELM_REPO_URL:-"oci://ghcr.io/nvidia"}
+OVN_CHART_URL=${OVN_CHART_URL:-"oci://ghcr.io/nvidia"}
+
+NFD_OPERAND_IMAGE=${NFD_OPERAND_IMAGE:-"quay.io/itsoiref/nfd:latest"}
+
 HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
 
 if [ "${VM_COUNT}" -lt 2 ]; then
@@ -94,8 +124,19 @@ NUM_VFS=${NUM_VFS:-"46"}
 
 # Feature Configuration
 
+# ArgoCD Configuration
+ARGOCD_CHART_VERSION=${ARGOCD_CHART_VERSION:-"7.8.2"}
+
+# Maintenance Operator Configuration
+MAINTENANCE_OPERATOR_VERSION=${MAINTENANCE_OPERATOR_VERSION:-"0.2.0"}
+
 # Hypershift Configuration
-HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/hypershift/hypershift-operator:latest"}
+ENABLE_HCP_MULTUS=${ENABLE_HCP_MULTUS:-"true"}
+if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
+    HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/lhadad/hypershift:7jan24-v1"}
+else
+    HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/hypershift/hypershift-operator:latest"}
+fi
 HOSTED_CLUSTER_NAME=${HOSTED_CLUSTER_NAME:-"doca"}
 CLUSTERS_NAMESPACE=${CLUSTERS_NAMESPACE:-"clusters"}
 OCP_RELEASE_IMAGE=${OCP_RELEASE_IMAGE:-"quay.io/openshift-release-dev/ocp-release:4.14.0-ec.4-x86_64"}

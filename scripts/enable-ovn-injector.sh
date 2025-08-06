@@ -24,8 +24,8 @@ log [INFO] "Enabling OVN resource injector..."
 # Generate full manifest with injector enabled
 mkdir -p "$GENERATED_DIR/ovn-injector"
 
-helm pull oci://quay.io/szigmon/ovn \
-    --version "v25.4.0-custom-v2" \
+helm pull "${OVN_CHART_URL}/ovn-kubernetes-chart" \
+    --version "${DPF_VERSION}" \
     --untar -d "$GENERATED_DIR/ovn-injector"
 
 # Replace template variables in values file
@@ -35,11 +35,11 @@ sed -e "s|<TARGETCLUSTER_API_SERVER_HOST>|api.$CLUSTER_NAME.$BASE_DOMAIN|" \
     -e "s|<SERVICE_CIDR>|$SERVICE_CIDR|" \
     -e "s|<DPU_P0_VF1>|$DPU_OVN_VF|" \
     -e "s|<DPU_P0>|$DPU_INTERFACE|" \
-    "$MANIFESTS_DIR/cluster-installation/ovn-values-with-injector.yaml" > "$GENERATED_DIR/ovn-injector/ovn-values-resolved.yaml"
+    "$HELM_CHARTS_DIR/ovn-values-with-injector.yaml" > "$GENERATED_DIR/ovn-injector/ovn-values-resolved.yaml"
 
 # Generate all manifests with injector enabled
 helm template -n ovn-kubernetes ovn-kubernetes \
-    "$GENERATED_DIR/ovn-injector/ovn" \
+    "$GENERATED_DIR/ovn-injector/ovn-kubernetes-chart" \
     -f "$GENERATED_DIR/ovn-injector/ovn-values-resolved.yaml" \
     | oc apply -f -
 

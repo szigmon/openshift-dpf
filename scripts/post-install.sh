@@ -37,7 +37,8 @@ SPECIAL_FILES=(
     "hbn-configuration.yaml"
     "dts-template.yaml"
     "blueman-template.yaml"
-    "flannel-template.yaml"
+    "dpu-node-ipam-controller.yaml"
+    "dpudeployment.yaml"
 )
 
 # Function to check if a file is in the special files list
@@ -110,7 +111,8 @@ function update_hbn_ovn_manifests() {
         update_file_multi_replace \
             "${POST_INSTALL_DIR}/ovn-template.yaml" \
             "${GENERATED_POST_INSTALL_DIR}/ovn-template.yaml" \
-            "<DPF_VERSION>" "${DPF_VERSION}"
+            "<DPF_VERSION>" "${DPF_VERSION}" \
+            "<OVN_CHART_URL>" "${OVN_CHART_URL}"
     fi
     
     # Update ovn-configuration.yaml for DPUDeployment
@@ -172,17 +174,47 @@ function update_service_templates() {
     fi
     
     # Update all service templates with DPF_VERSION if they exist
-    local templates=("hbn-template.yaml" "dts-template.yaml" "blueman-template.yaml" "flannel-template.yaml")
+    local templates=("hbn-template.yaml" "dts-template.yaml" "blueman-template.yaml")
     
     for template in "${templates[@]}"; do
         if [ -f "${POST_INSTALL_DIR}/${template}" ]; then
-            update_file_multi_replace \
-                "${POST_INSTALL_DIR}/${template}" \
-                "${GENERATED_POST_INSTALL_DIR}/${template}" \
-                "<DPF_VERSION>" "${DPF_VERSION}"
-            log [INFO] "Updated ${template} with <DPF_VERSION>=${DPF_VERSION}"
+            # HBN template needs helm repo URL, version, and image configuration
+            if [[ "${template}" == "hbn-template.yaml" ]]; then
+                update_file_multi_replace \
+                    "${POST_INSTALL_DIR}/${template}" \
+                    "${GENERATED_POST_INSTALL_DIR}/${template}" \
+                    "<HBN_HELM_REPO_URL>" "${HBN_HELM_REPO_URL}" \
+                    "<HBN_HELM_CHART_VERSION>" "${HBN_HELM_CHART_VERSION}" \
+                    "<HBN_IMAGE_REPO>" "${HBN_IMAGE_REPO}" \
+                    "<HBN_IMAGE_TAG>" "${HBN_IMAGE_TAG}"
+                log [INFO] "Updated ${template} with HBN helm and image configuration"
+            # DTS template needs helm repo URL and version
+            elif [[ "${template}" == "dts-template.yaml" ]]; then
+                update_file_multi_replace \
+                    "${POST_INSTALL_DIR}/${template}" \
+                    "${GENERATED_POST_INSTALL_DIR}/${template}" \
+                    "<DTS_HELM_REPO_URL>" "${DTS_HELM_REPO_URL}" \
+                    "<DTS_HELM_CHART_VERSION>" "${DTS_HELM_CHART_VERSION}"
+                log [INFO] "Updated ${template} with DTS helm configuration"
+            else
+                update_file_multi_replace \
+                    "${POST_INSTALL_DIR}/${template}" \
+                    "${GENERATED_POST_INSTALL_DIR}/${template}" \
+                    "<DPF_VERSION>" "${DPF_VERSION}"
+                log [INFO] "Updated ${template} with DPF_VERSION"
+            fi
         fi
     done
+    
+    # Update IPAM controller manifest
+    if [ -f "${POST_INSTALL_DIR}/dpu-node-ipam-controller.yaml" ]; then
+        update_file_multi_replace \
+            "${POST_INSTALL_DIR}/dpu-node-ipam-controller.yaml" \
+            "${GENERATED_POST_INSTALL_DIR}/dpu-node-ipam-controller.yaml" \
+            "<HOSTED_CONTROL_PLANE_NAMESPACE>" "${HOSTED_CONTROL_PLANE_NAMESPACE}" \
+            "<HOSTED_CLUSTER_NAME>" "${HOSTED_CLUSTER_NAME}"
+        log [INFO] "Updated dpu-node-ipam-controller.yaml with namespace and cluster name"
+    fi
     
     log [INFO] "Service template versions updated successfully"
 }
@@ -202,6 +234,11 @@ function prepare_post_installation() {
     update_hbn_ovn_manifests
     update_vf_configuration
     update_service_templates
+    
+    # Copy DPUDeployment
+    if [ -f "${POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
+        cp "${POST_INSTALL_DIR}/dpudeployment.yaml" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
+    fi
     
     # Copy remaining manifests
     for file in "${POST_INSTALL_DIR}"/*.yaml; do

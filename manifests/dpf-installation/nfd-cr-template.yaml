@@ -5,7 +5,6 @@ metadata:
   namespace: openshift-nfd
 spec:
   operand:
-    image: quay.io/yshnaidm/node-feature-discovery:dpf
     workerEnvs:
       - name: KUBERNETES_SERVICE_HOST
         value: api.<CLUSTER_FQDN>

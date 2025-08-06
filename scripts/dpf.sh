@@ -37,13 +37,11 @@ function deploy_nfd() {
         log [INFO] "NFD subscription already exists. Skipping deployment."
     fi
 
-    # Create NFD instance with custom operand image
-    log [INFO] "Creating NFD instance with custom operand image..."
+    log [INFO] "Creating NFD instance..."
     mkdir -p "$GENERATED_DIR"
     cp "$MANIFESTS_DIR/dpf-installation/nfd-cr-template.yaml" "$GENERATED_DIR/nfd-cr-template.yaml"
     echo
     sed -i "s|api.<CLUSTER_FQDN>|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr-template.yaml"
-    sed -i "s|image: quay.io/yshnaidm/node-feature-discovery:dpf|image: $NFD_OPERAND_IMAGE|g" "$GENERATED_DIR/nfd-cr-template.yaml"
 
     # Apply the NFD CR
     KUBECONFIG=$KUBECONFIG oc apply -f "$GENERATED_DIR/nfd-cr-template.yaml"
@@ -51,12 +49,6 @@ function deploy_nfd() {
     log [INFO] "NFD deployment completed successfully!"
 }
 
-function apply_crds() {
-    log [INFO] "Applying CRDs..."
-    for file in "$GENERATED_DIR"/*-crd.yaml; do
-        [ -f "$file" ] && apply_manifest "$file"
-    done
-}
 
 function apply_scc() {
     local scc_file="$GENERATED_DIR/scc.yaml"
@@ -127,6 +119,10 @@ function deploy_hosted_cluster() {
 }
 
 function deploy_hypershift() {
+    if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
+        log [INFO] "HCP Multus enabled mode is active. Using custom hypershift image: ${HYPERSHIFT_IMAGE}"
+    fi
+    
     # Check if Hypershift operator is already installed
     if oc get deployment -n hypershift hypershift-operator &>/dev/null; then
         log [INFO] "Hypershift operator already installed. Skipping deployment."
@@ -142,18 +138,56 @@ function deploy_hypershift() {
         wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
         log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
-        # --network-type=Other \
-        hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
-          --base-domain="${BASE_DOMAIN}" \
-          --release-image="${OCP_RELEASE_IMAGE}" \
-          --ssh-key="${SSH_KEY}" \
-          --network-type=Other \
-          --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
-          --node-selector='node-role.kubernetes.io/master=""' \
-          --node-upgrade-type=Replace \
-          --disable-cluster-capabilities=ImageRegistry \
-          --pull-secret="${OPENSHIFT_PULL_SECRET}"
+        
+        if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
+            log [INFO] "Creating hosted cluster with HCP multus enabled (multi-network enabled)..."
+            hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
+              --base-domain="${BASE_DOMAIN}" \
+              --release-image="${OCP_RELEASE_IMAGE}" \
+              --ssh-key="${SSH_KEY}" \
+              --pull-secret="${OPENSHIFT_PULL_SECRET}" \
+              --disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning \
+              --network-type=Other \
+              --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
+              --node-selector='node-role.kubernetes.io/master=""' \
+              --node-upgrade-type=Replace \
+              --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsMultusDisabledV1
+        else
+            log [INFO] "Creating hosted cluster with multi-network disabled..."
+            hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
+              --base-domain="${BASE_DOMAIN}" \
+              --release-image="${OCP_RELEASE_IMAGE}" \
+              --ssh-key="${SSH_KEY}" \
+              --pull-secret="${OPENSHIFT_PULL_SECRET}" \
+              --disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning \
+              --disable-multi-network \
+              --network-type=Other \
+              --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
+              --node-selector='node-role.kubernetes.io/master=""' \
+              --node-upgrade-type=Replace \
+              --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsMultusDisabledV1
+        fi
     fi
+
+    log [INFO] "Adding CNO image override annotation..."
+    local max_retries=10
+    local retry_count=0
+    while [ $retry_count -lt $max_retries ]; do
+        if oc annotate hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} \
+           hypershift.openshift.io/image-overrides=cluster-network-operator=quay.io/lhadad/cluster-network-operator:ingressJul24v1 \
+           --overwrite; then
+            log [INFO] "Successfully added CNO image override annotation"
+            break
+        else
+            retry_count=$((retry_count + 1))
+            if [ $retry_count -lt $max_retries ]; then
+                log [WARN] "Failed to annotate hosted cluster (attempt $retry_count/$max_retries), retrying in 5s..."
+                sleep 5
+            else
+                log [ERROR] "Failed to annotate hosted cluster after $max_retries attempts"
+            fi
+        fi
+    done
 
     log [INFO] "Checking hosted control plane pods..."
     oc -n ${HOSTED_CONTROL_PLANE_NAMESPACE} get pods
@@ -217,10 +251,10 @@ function copy_hypershift_kubeconfig() {
     
     # Create or update secret in dpf-operator-system namespace
     if ! oc create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig -n dpf-operator-system \
-         --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque 2>/dev/null; then
+         --from-file=super-admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque 2>/dev/null; then
         log [INFO] "Secret already exists, updating..."
         if ! oc -n dpf-operator-system create secret generic ${HOSTED_CLUSTER_NAME}-admin-kubeconfig \
-             --from-file=admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque --dry-run=client -o yaml | oc apply -f -; then
+             --from-file=super-admin.conf=./${HOSTED_CLUSTER_NAME}.kubeconfig --type=Opaque --dry-run=client -o yaml | oc apply -f -; then
             log [ERROR] "Failed to update kubeconfig secret"
             return 1
         fi
@@ -251,6 +285,66 @@ function apply_remaining() {
     done
 }
 
+function deploy_argocd() {
+    log [INFO] "Deploying ArgoCD..."
+    
+    # Check if ArgoCD is already installed
+    if check_helm_release_exists "dpf-operator-system" "argo-cd"; then
+        log [INFO] "Skipping ArgoCD deployment."
+        return 0
+    fi
+    
+    # Ensure helm is installed
+    ensure_helm_installed
+    
+    # Add ArgoCD helm repository
+    log [INFO] "Adding ArgoCD helm repository..."
+    helm repo add argoproj https://argoproj.github.io/argo-helm || true
+    helm repo update
+    
+    # Install ArgoCD
+    log [INFO] "Installing ArgoCD chart version ${ARGOCD_CHART_VERSION}..."
+    helm upgrade --install argo-cd argoproj/argo-cd \
+        --namespace dpf-operator-system \
+        --create-namespace \
+        --version ${ARGOCD_CHART_VERSION} \
+        --values "${HELM_CHARTS_DIR}/argocd-values.yaml" \
+        --wait
+    
+    # Apply SCC permissions for ArgoCD
+    log [INFO] "Applying OpenShift SCCs for ArgoCD..."
+    apply_manifest "${MANIFESTS_DIR}/dpf-installation/argocd-scc.yaml"
+    
+    # Restart Redis to pick up SCC
+    oc rollout restart deployment/argo-cd-argocd-redis -n dpf-operator-system || true
+    
+    log [INFO] "ArgoCD deployment complete!"
+}
+
+function deploy_maintenance_operator() {
+    log [INFO] "Deploying Maintenance Operator..."
+    
+    # Check if Maintenance Operator is already installed
+    if check_helm_release_exists "dpf-operator-system" "maintenance-operator"; then
+        log [INFO] "Skipping Maintenance Operator deployment."
+        return 0
+    fi
+    
+    # Ensure helm is installed
+    ensure_helm_installed
+    
+    # Install Maintenance Operator
+    log [INFO] "Installing Maintenance Operator chart..."
+    helm upgrade --install maintenance-operator oci://ghcr.io/mellanox/maintenance-operator-chart \
+        --namespace dpf-operator-system \
+        --create-namespace \
+        --version ${MAINTENANCE_OPERATOR_VERSION} \
+        --values "${HELM_CHARTS_DIR}/maintenance-operator-values.yaml" \
+        --wait
+    
+    log [INFO] "Maintenance Operator deployment complete!"
+}
+
 function apply_dpf() {
     log "INFO" "Starting DPF deployment sequence..."
     log "INFO" "Provided kubeconfig ${KUBECONFIG}"
@@ -258,10 +352,26 @@ function apply_dpf() {
     
     get_kubeconfig
     
+    # Verify cluster is accessible before any deployments
+    log "INFO" "Verifying cluster accessibility..."
+    if ! oc cluster-info &>/dev/null; then
+        log "ERROR" "Cluster is not accessible. Cannot proceed with DPF deployment."
+        log "ERROR" "Please ensure the cluster is running and accessible."
+        log "ERROR" "For SNO: Check if cluster VMs are running with: virsh list --all"
+        return 1
+    fi
+    log "INFO" "Cluster is accessible, proceeding with DPF deployment..."
+    
+    # Deploy ArgoCD and Maintenance Operator for DPF v25.7+
+    if [[ "$DPF_VERSION" =~ ^v25\.[7-9] ]] || [[ "$DPF_VERSION" =~ ^v2[6-9] ]]; then
+        log [INFO] "DPF version $DPF_VERSION requires ArgoCD and Maintenance Operator"
+        deploy_argocd
+        deploy_maintenance_operator
+    fi
+    
     deploy_nfd
     
     apply_namespaces
-    apply_crds
     deploy_cert_manager
     
     # Install/upgrade DPF Operator using helm (idempotent operation)
@@ -296,12 +406,21 @@ function apply_dpf() {
         return 1
     }
     
-    # Construct the full chart URL with version
-    CHART_URL="${DPF_HELM_REPO_URL}-${DPF_VERSION}.tgz"
+    # Determine chart URL and args based on format
+    if [[ "$DPF_HELM_REPO_URL" == oci://* ]]; then
+        # OCI registry format (v25.7+)
+        CHART_URL="${DPF_HELM_REPO_URL}/dpf-operator"
+        HELM_ARGS="--version ${DPF_VERSION}"
+    else
+        # Legacy NGC format (v25.4 and older)
+        CHART_URL="${DPF_HELM_REPO_URL}-${DPF_VERSION}.tgz"
+        HELM_ARGS=""
+    fi
     
     # Install without --wait for immediate feedback
     if helm upgrade --install dpf-operator \
         "${CHART_URL}" \
+        ${HELM_ARGS} \
         --namespace dpf-operator-system \
         --create-namespace \
         --values "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"; then
@@ -334,6 +453,12 @@ function main() {
             deploy-nfd)
                 deploy_nfd
                 ;;
+            deploy-argocd)
+                deploy_argocd
+                ;;
+            deploy-maintenance-operator)
+                deploy_maintenance_operator
+                ;;
             apply-dpf)
                 apply_dpf
                 ;;
@@ -348,7 +473,7 @@ function main() {
                 ;;
             *)
                 log [INFO] "Unknown command: $command"
-                log [INFO] "Available commands: deploy-nfd, apply-dpf, deploy-hypershift"
+                log [INFO] "Available commands: deploy-nfd, deploy-argocd, deploy-maintenance-operator, apply-dpf, deploy-hypershift"
                 exit 1
                 ;;
         esac

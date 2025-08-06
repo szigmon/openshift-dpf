@@ -22,3 +22,5 @@ spec:
           ipamPoolType: "cidrpool"
           ipamVTEPIPIndex: 0
           ipamPFIPIndex: 1
+          cniBinDir: "/var/lib/cni/bin/"
+          cniConfDir: "/run/multus/cni/net.d"

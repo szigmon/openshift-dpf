@@ -4,32 +4,29 @@ metadata:
   name: dpfoperatorconfig
   namespace: dpf-operator-system
 spec:
-  flannel:
-    disable: true
   imagePullSecrets:
     - dpf-pull-secret
   # Kamaji is permanently disabled - only Hypershift is supported
   kamajiClusterManager:
     disable: true
+  # Trimmed multus chart for deploying system NADs only
   multus:
-    disable: false
+    # TODO: Update to official v25.7 chart once paths are verified
+    # The custom chart was needed for lib64 path support, but v25.7 official chart
+    # now supports this via dpuOpenvSwitchSystemSharedLib64Path override
     helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.0
-  networking:
-    controlPlaneMTU: 1500
-    highSpeedMTU: 1500
   overrides:
     kubernetesAPIServerVIP: api.<CLUSTER_NAME>.<BASE_DOMAIN>
     kubernetesAPIServerPort: 6443
     dpuCNIBinPath: /var/lib/cni/bin/
     dpuCNIPath: /run/multus/cni/net.d/
-  ovsHelper:
-    disable: true
+    # Configure lib64 path for RHCOS systems
+    dpuOpenvSwitchSystemSharedLib64Path: /lib64
+    # When using OpenShift Multus (default), Flannel needs to install CNI config
+    flannelSkipCNIConfigInstallation: false
   provisioningController:
     bfCFGTemplateConfigMap: custom-bfb.cfg
     bfbPVCName: bfb-pvc
-    dmsTimeout: 1800
-  sfcController:
-    helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.0
-  # Static cluster manager enabled for Hypershift hosted cluster integration
+    dmsTimeout: 900
   staticClusterManager:
     disable: false

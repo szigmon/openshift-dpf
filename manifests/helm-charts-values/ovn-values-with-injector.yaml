@@ -32,6 +32,12 @@ podNetwork: <POD_CIDR>/24
 serviceNetwork: <SERVICE_CIDR>
 gatewayOpts: --gateway-interface=<DPU_P0>
 
+# DPU manifests configuration (for DPUService deployment)
+dpuManifests:
+  enabled: false  # Will be enabled by DPUService
+  cniBinDir: "/var/lib/cni/bin/"
+  cniConfDir: "/run/multus/cni/net.d"
+
 ovn-kubernetes-resource-injector:
   enabled: true
   resourceName: openshift.io/bf3-p0-vfs
