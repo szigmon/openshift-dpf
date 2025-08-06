@@ -140,6 +140,28 @@ never-default=true
 method=ignore
 """)
     ),
+    # We disable IPv4 and IPv6 on the oob_net0 interface for DPF Host Trusted Mode.
+    # TODO: Fix this for DPF Zero Trust Mode.
+    FileEntry(
+        path="/etc/NetworkManager/system-connections/oob_net0.nmconnection",
+        overwrite=True,
+        mode=600,
+        contents=FileContents(
+            inline="""[connection]
+id=oob_net0
+type=ethernet
+interface-name=oob_net0
+autoconnect=true
+
+[ethernet]
+
+[ipv4]
+method=disabled
+
+[ipv6]
+method=disabled
+""")
+    ),
     FileEntry(
         path="/etc/sysctl.d/98-dpunet.conf",
         overwrite=True,
