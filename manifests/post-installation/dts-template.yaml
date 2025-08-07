@@ -15,4 +15,7 @@ spec:
       chart: doca-telemetry
       version: "1.0.8"
     values:
+      configMapData:
+        general:
+          prometheus: http://0.0.0.0:9189
       hostVolumePrefix: "/var/lib"
