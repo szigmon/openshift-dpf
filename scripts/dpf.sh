@@ -139,34 +139,26 @@ function deploy_hypershift() {
         log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
         
-        if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
-            log [INFO] "Creating hosted cluster with HCP multus enabled (multi-network enabled)..."
-            hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
-              --base-domain="${BASE_DOMAIN}" \
-              --release-image="${OCP_RELEASE_IMAGE}" \
-              --ssh-key="${SSH_KEY}" \
-              --pull-secret="${OPENSHIFT_PULL_SECRET}" \
-              --disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning \
-              --network-type=Other \
-              --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
-              --node-selector='node-role.kubernetes.io/master=""' \
-              --node-upgrade-type=Replace \
-              --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsMultusDisabledV1
-        else
-            log [INFO] "Creating hosted cluster with multi-network disabled..."
-            hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
-              --base-domain="${BASE_DOMAIN}" \
-              --release-image="${OCP_RELEASE_IMAGE}" \
-              --ssh-key="${SSH_KEY}" \
-              --pull-secret="${OPENSHIFT_PULL_SECRET}" \
-              --disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning \
-              --disable-multi-network \
-              --network-type=Other \
-              --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
-              --node-selector='node-role.kubernetes.io/master=""' \
-              --node-upgrade-type=Replace \
-              --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsMultusDisabledV1
+        # Build hypershift command with conditional multi-network flag
+        local multi_network_flag=""
+
+        if [ "${ENABLE_HCP_MULTUS}" != "true" ]; then
+            multi_network_flag="--disable-multi-network"
         fi
+
+        log [INFO] "Creating hosted cluster with HCP multus enabled ${ENABLE_HCP_MULTUS}..."
+        hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
+          --base-domain="${BASE_DOMAIN}" \
+          --release-image="${OCP_RELEASE_IMAGE}" \
+          --ssh-key="${SSH_KEY}" \
+          --pull-secret="${OPENSHIFT_PULL_SECRET}" \
+          --disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning \
+          ${multi_network_flag} \
+          --network-type=Other \
+          --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
+          --node-selector='node-role.kubernetes.io/master=""' \
+          --node-upgrade-type=Replace \
+          --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsMultusDisabledV1
     fi
 
     log [INFO] "Adding CNO image override annotation..."
