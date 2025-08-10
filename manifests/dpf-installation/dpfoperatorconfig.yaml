@@ -9,12 +9,9 @@ spec:
   # Kamaji is permanently disabled - only Hypershift is supported
   kamajiClusterManager:
     disable: true
-  # Trimmed multus chart for deploying system NADs only
+  #Openshift multus is used for DPU cluster 
   multus:
-    # TODO: Update to official v25.7 chart once paths are verified
-    # The custom chart was needed for lib64 path support, but v25.7 official chart
-    # now supports this via dpuOpenvSwitchSystemSharedLib64Path override
-    helmChart: oci://quay.io/itsoiref/dpf-system-helm/dpu-networking:v0.1.0
+    disable: true
   overrides:
     kubernetesAPIServerVIP: api.<CLUSTER_NAME>.<BASE_DOMAIN>
     kubernetesAPIServerPort: 6443
