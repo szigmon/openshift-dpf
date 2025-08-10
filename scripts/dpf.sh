@@ -304,7 +304,8 @@ function apply_dpf() {
         "${CHART_URL}" \
         --namespace dpf-operator-system \
         --create-namespace \
-        --values "${HELM_CHARTS_DIR}/dpf-operator-values.yaml"; then
+        --values "${HELM_CHARTS_DIR}/dpf-operator-values.yaml" \
+        --set kamajiEtcdDefrag.enabled=false; then
         
         log "INFO" "Helm release 'dpf-operator' deployed successfully"
         log "INFO" "DPF Operator deployment initiated. Use 'oc get pods -n dpf-operator-system' to monitor progress."
