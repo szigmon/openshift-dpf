@@ -71,6 +71,29 @@ FILES_PLAIN: list[FileEntry] = [
 
 FILES: list[FileEntry] = [
     FileEntry(
+        path="/etc/mellanox/mlnx-bf.conf",
+        overwrite=True,
+        mode=644,
+        contents=FileContents(
+            inline="""
+ALLOW_SHARED_RQ="no"
+IPSEC_FULL_OFFLOAD="no"
+ENABLE_ESWITCH_MULTIPORT="yes"
+"""
+        )
+    ),
+    FileEntry(
+        path="/etc/mellanox/mlnx-ovs.conf",
+        overwrite=True,
+        mode=644,
+        contents=FileContents(
+            inline="""
+CREATE_OVS_BRIDGES="no"
+OVS_DOCA="yes"
+"""
+        )
+    ),
+    FileEntry(
         path="/etc/NetworkManager/system-connections/pf0vf0.nmconnection",
         overwrite=True,
         mode=600,
