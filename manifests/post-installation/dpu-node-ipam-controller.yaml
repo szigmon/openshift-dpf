@@ -99,6 +99,8 @@ spec:
           name: server-crt
         - mountPath: /etc/kubernetes/certs/service-signer
           name: service-signer
+        - mountPath: /etc/kubernetes/certs/service-ca
+          name: service-ca
       dnsPolicy: ClusterFirst
       initContainers:
       - command:
@@ -161,3 +163,7 @@ spec:
           defaultMode: 420
           name: recycler-config
         name: recycler-config
+      - name: service-ca
+        configMap:
+          defaultMode: 420
+          name: service-serving-ca
