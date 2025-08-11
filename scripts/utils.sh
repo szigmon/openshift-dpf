@@ -314,6 +314,27 @@ function clean_resources() {
     log "INFO" "Cleanup complete"
 }
 
+generate_mac_from_machine_id() {
+    local vm_name="$1"
+
+    # Get machine-id from /etc/machine-id
+    if [ ! -f "/etc/machine-id" ]; then
+        log "ERROR" "Could not find /etc/machine-id file."
+        exit 1
+    fi
+
+    local machine_id
+    read -r machine_id < /etc/machine-id
+    local combined="${machine_id}-${vm_name}"
+    local hash
+    hash=$(printf "%s" "$combined" | sha256sum | cut -c1-10)
+
+    # Use QEMU's standard locally administered MAC prefix (52:54:00)
+    local mac="52:54:00:$(echo "$hash" | sed 's/\(..\)\(..\)\(..\).*/\1:\2:\3/')"
+
+    echo "$mac"
+}
+
 # If script is executed directly (not sourced), handle commands
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     command=$1
