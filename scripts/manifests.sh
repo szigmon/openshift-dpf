@@ -233,6 +233,37 @@ prepare_dpf_manifests() {
     fi
 }
 
+function update_ovn_mtu_in_value_file() {
+    local ovn_values_file=$1
+
+    if [ -z "$ovn_values_file" ] || [ ! -f "$ovn_values_file" ]; then 
+       log "ERROR" "OVN values file not found: ${ovn_values_file}" 
+       return 1
+    fi
+    # Check if NODES_MTU is defined and is not 1500
+    if [[ -n "$NODES_MTU" ]] && [[ "$NODES_MTU" != "1500" ]]; then
+        echo "NODES_MTU is defined as $NODES_MTU. Updating MTU in $ovn_values_file."
+
+        local new_mtu=$((NODES_MTU - 100))
+        if grep -Eq '^[[:space:]]*mtu:' "$ovn_values_file"; then
+           sed -i "s/mtu:.*/mtu: $new_mtu/" "$ovn_values_file"
+        else
+           sed -i "/podNetwork:/a\mtu: $new_mtu" "$ovn_values_file"
+        fi
+        echo "Successfully updated MTU to $new_mtu in $ovn_values_file."
+    else
+        echo "NODES_MTU is not defined or is 1500. Setting default MTU to 1400 in $ovn_values_file."
+        local new_mtu=1400
+
+        if grep -Eq '^[[:space:]]*mtu:' "$ovn_values_file"; then
+            sed -i "s/mtu:.*/mtu: $new_mtu/" "$ovn_values_file"
+        else
+            sed -i "/podNetwork:/a\mtu: $new_mtu" "$ovn_values_file"
+        fi
+        echo "Successfully set default MTU to $new_mtu in $ovn_values_file." 
+    fi
+}
+
 function generate_ovn_manifests() {
     log [INFO] "Generating OVN manifests for cluster installation..."
     
@@ -259,6 +290,8 @@ function generate_ovn_manifests() {
         log [ERROR] "Failed to pull OVN chart ${DPF_VERSION}"
         return 1
     fi
+    
+    update_ovn_mtu_in_value_file $HELM_CHARTS_DIR/ovn-values.yaml
     
     # Replace template variables in values file
     sed -e "s|<TARGETCLUSTER_API_SERVER_HOST>|api.$CLUSTER_NAME.$BASE_DOMAIN|" \
