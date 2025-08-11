@@ -52,26 +52,7 @@ function create_vms() {
     fi
 
     # --- MAC Address Generation Functions ---
-    
-    # Function to generate a unique MAC address based on machine-id and VM name
-    generate_mac_from_machine_id() {
-        local vm_name="$1"
-        
-        # Get machine-id from /etc/machine-id
-        if [ ! -f "/etc/machine-id" ]; then
-            log "ERROR" "Could not find /etc/machine-id file."
-            exit 1
-        fi
-        
-        local machine_id=$(cat /etc/machine-id)
-        local combined="${machine_id}-${vm_name}"
-        local hash=$(echo "$combined" | sha256sum | cut -c1-10)
-        
-        # Use QEMU's standard locally administered MAC prefix (52:54:00)
-        local mac="52:54:00:$(echo "$hash" | sed 's/\(..\)\(..\)\(..\).*/\1:\2:\3/')"
-        
-        echo "$mac"
-    }
+    # from utils: generate_mac_from_machine_id
 
     # Function to generate MAC address with custom prefix
     generate_mac_with_custom_prefix() {
@@ -93,8 +74,38 @@ function create_vms() {
         echo "$mac"
     }
 
-    # --- VM Creation Loop ---
-    for i in $(seq 1 "$VM_COUNT"); do
+    if [ -f "$STATIC_NET_FILE" ] && [ "$NODES_MTU" != "1500" ]; then
+        log "INFO" "Found static_net.yaml. Creating VMs based on file content."
+        # parse the YAML into a JSON string
+        VMS_CONFIG=$(python3 -c 'import yaml, json; print(json.dumps(yaml.safe_load(open("'"$STATIC_NET_FILE"'"))["static_network_config"]))')
+
+        i=1
+        for interface_config in $(echo "$VMS_CONFIG" | jq -c '.[] | .interfaces[]'); do
+           VM_MAC=$(echo "$interface_config" | jq -r '.["mac-address"]')
+           VM_NAME="${VM_PREFIX}${i}"
+
+           network_full_arg="bridge=${BRIDGE_NAME},model=e1000e,mac=${VM_MAC}"
+
+           log "INFO" "Starting VM creation for $VM_NAME with MAC: $VM_MAC..."
+           nohup virt-install --name "$VM_NAME" --memory "$RAM" \
+                  --vcpus "$VCPUS" \
+                  --os-variant=rhel9.4 \
+                  --disk pool=default,size="${DISK_SIZE1}" \
+                  --disk pool=default,size="${DISK_SIZE2}" \
+                  --network "${network_full_arg}" \
+                  --graphics=vnc \
+                  --events on_reboot=restart \
+                  --cdrom "$ISO_PATH" \
+                  --cpu host-passthrough \
+                  --noautoconsole \
+                  --wait=-1 &
+
+           i=$((i+1))
+        done
+
+    else
+      # --a- VM Creation Loop ---
+      for i in $(seq 1 "$VM_COUNT"); do
         VM_NAME="${VM_PREFIX}${i}"
         network_mac_arg=""
 
@@ -128,7 +139,8 @@ function create_vms() {
                 --cpu host-passthrough \
                 --noautoconsole \
                 --wait=-1 &
-    done
+      done
+    fi
 
     # Wait for all VMs to be running using retry mechanism
     MAX_RETRIES=24  # 2 minutes (24 retries * 5s)

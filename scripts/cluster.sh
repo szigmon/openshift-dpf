@@ -86,6 +86,41 @@ function check_cluster_installed() {
     return 1
 }
 
+function set_cluster_mtu() {
+    if ! [[ "$NODES_MTU" =~ ^[0-9]+$ ]]; then
+          log "ERROR" "NODES_MTU must be a positive integer, got: $NODES_MTU"
+          return 1
+    fi
+    if [ -f "$STATIC_NET_FILE" ]; then
+        rm "$STATIC_NET_FILE"
+    fi
+    echo "static_network_config:" >> "$STATIC_NET_FILE"
+
+    for i in $(seq 1 "$VM_COUNT"); do
+        VM_NAME="${VM_PREFIX}${i}"
+
+        # Use machine-id based MAC (default)
+        if ! UNIQUE_MAC=$(generate_mac_from_machine_id "$VM_NAME"); then
+            log "ERROR" "Failed to generate MAC for $VM_NAME"
+            return 1
+        fi
+
+        log "INFO" "Set MAC: $UNIQUE_MAC ,Will be set on VM: $VM_NAME"
+
+        cat << EOF >> "$STATIC_NET_FILE"
+        - interfaces: 
+           - name: ${PRIMARY_IFACE:-enp1s0}
+             type: ethernet
+             state: up
+             mtu: ${NODES_MTU}
+             mac-address: '${UNIQUE_MAC}'
+             ipv4:
+               dhcp: true
+               enabled: true
+EOF
+    done
+}
+
 function check_create_cluster() {
     log "INFO" "Checking if cluster ${CLUSTER_NAME} exists..."
     
@@ -94,7 +129,11 @@ function check_create_cluster() {
         log "INFO" "Cluster is already installed, skipping creation"
         return 0
     fi
-    
+
+    if [ "${NODES_MTU}" != "1500" ] ; then
+       set_cluster_mtu || return 1
+    fi
+
     if ! aicli info cluster ${CLUSTER_NAME} >/dev/null 2>&1; then
         log "INFO" "Cluster ${CLUSTER_NAME} not found, creating..."
 
@@ -106,6 +145,7 @@ function check_create_cluster() {
                 -P pull_secret="${OPENSHIFT_PULL_SECRET}" \
                 -P high_availability_mode=None \
                 -P user_managed_networking=True \
+		        $([ "${NODES_MTU}" != "1500" ] && echo "--paramfile ${STATIC_NET_FILE}") \
                 "${CLUSTER_NAME}"
         else
             log "INFO" "Creating multi-node cluster..."
@@ -119,6 +159,7 @@ function check_create_cluster() {
                 -P pull_secret="${OPENSHIFT_PULL_SECRET}" \
                 -P public_key="${SSH_KEY}" \
                 -P ingress_vips="${INGRESS_VIPS}" \
+		        $([ "${NODES_MTU}" != "1500" ] && echo "--paramfile ${STATIC_NET_FILE}") \
                 "${CLUSTER_NAME}"
         fi
         
