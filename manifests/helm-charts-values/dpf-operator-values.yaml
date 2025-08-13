@@ -4,6 +4,8 @@ kamaji:
   enabled: false
 kamaji-etcd:
   enabled: false
+  kamajiEtcdDefrag:
+    enabled: false
 node-feature-discovery:
   enabled: false
 isOpenshift: true
