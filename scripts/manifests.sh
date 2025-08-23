@@ -91,8 +91,6 @@ function prepare_cluster_manifests() {
     # Check if cluster is already installed
     if check_cluster_installed; then
         log [INFO] "Skipping configuration updates as cluster is already installed"
-    else
-        aicli update installconfig "$CLUSTER_NAME" -P network_type=NVIDIA-OVN
     fi
 
     # Always copy Cert-Manager manifest (required for DPF operator)
@@ -106,7 +104,6 @@ function prepare_cluster_manifests() {
         log "INFO" "Removed Helm values files from generated directory"
     fi
 
-    generate_ovn_manifests
     enable_storage
     
     # Install manifests to cluster

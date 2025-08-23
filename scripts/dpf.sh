@@ -21,6 +21,73 @@ function deploy_nfd() {
 
     get_kubeconfig
 
+    if [ "${NFD_DEPLOY_FROM_GIT}" = "true" ]; then
+
+        # Ensure namespace exists
+        oc get ns "${NFD_NAMESPACE}" >/dev/null 2>&1 || oc create ns "${NFD_NAMESPACE}"
+
+            # Check if NFD operator is already installed
+        if oc get deployment -n ${NFD_NAMESPACE} nfd-operator &>/dev/null; then
+            log [INFO] "NFD operator already installed. Skipping deployment."
+            return 0
+        fi
+
+        log [INFO] "Deploying NFD operator directly from source..."
+
+        # Check if Go is installed
+        if ! command -v go &> /dev/null; then
+            log [INFO] "Error: Go is not installed but required for NFD operator deployment"
+            log [INFO] "Please install Go before continuing"
+            exit 1
+        fi
+
+        # Clone the NFD operator repository if not exists
+        if [ ! -d "cluster-nfd-operator" ]; then
+            log [INFO] "NFD operator repository not found. Cloning..."
+            git clone https://github.com/openshift/cluster-nfd-operator.git
+        fi
+        get_kubeconfig
+
+        # Deploy the NFD operator
+        if ! make -C cluster-nfd-operator deploy deploy IMAGE_TAG=$NFD_OPERATOR_IMAGE KUBECONFIG=$KUBECONFIG; then
+            log [ERROR] "Failed to deploy NFD operator"
+            return 1
+        fi
+
+        # Ensure CRD is ready before creating the CR instance
+        log [INFO] "Waiting for NodeFeatureDiscovery CRD to be established..."
+        oc wait --for=condition=Established crd/nodefeaturediscoveries.nfd.openshift.io --timeout=180s || true
+
+        # Create NFD CR instance (inject operand image only when running from git)
+        log [INFO] "Creating NFD instance via CR..."
+        mkdir -p "$GENERATED_DIR"
+        cp "$MANIFESTS_DIR/dpf-installation/nfd-cr-template.yaml" "$GENERATED_DIR/nfd-cr-template.yaml"
+        sed -i "s|api.<CLUSTER_FQDN>|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr-template.yaml"
+
+        if [ -n "${NFD_OPERAND_IMAGE}" ]; then
+            log [INFO] "Setting operand image in NFD CR to ${NFD_OPERAND_IMAGE}"
+            # Insert the image field directly under the operand: key with proper indentation
+            awk -v img="${NFD_OPERAND_IMAGE}" '
+                {
+                    print
+                    if ($0 ~ /^\s{2}operand:\s*$/ && !inserted) {
+                        print "    image: " img
+                        inserted=1
+                    }
+                }
+            ' "$GENERATED_DIR/nfd-cr-template.yaml" > "$GENERATED_DIR/nfd-cr.yaml.tmp" && mv "$GENERATED_DIR/nfd-cr.yaml.tmp" "$GENERATED_DIR/nfd-cr-template.yaml"
+        fi
+
+        KUBECONFIG=$KUBECONFIG oc apply -f "$GENERATED_DIR/nfd-cr-template.yaml"
+
+        # Wait for components to be ready
+        wait_for_pods "${NFD_NAMESPACE}" "app=nfd-worker" "status.phase=Running" "1/1" 30 10 || true
+
+        log [INFO] "NFD deployment from git completed successfully!"
+        return 0
+    fi
+
+    # Operator-based flow (default)
     # Check if NFD subscription exists, if not apply it
     if ! oc get subscription -n openshift-nfd nfd &>/dev/null; then
         log [INFO] "NFD subscription not found. Applying NFD subscription..."
@@ -480,3 +547,4 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     
     main "$@"
 fi
+

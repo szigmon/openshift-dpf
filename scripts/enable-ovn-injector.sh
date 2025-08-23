@@ -37,8 +37,9 @@ sed -e "s|<TARGETCLUSTER_API_SERVER_HOST>|api.$CLUSTER_NAME.$BASE_DOMAIN|" \
     -e "s|<DPU_P0>|$DPU_INTERFACE|" \
     "$HELM_CHARTS_DIR/ovn-values-with-injector.yaml" > "$GENERATED_DIR/ovn-injector/ovn-values-resolved.yaml"
 
+#return 1
 # Generate all manifests with injector enabled
-helm template -n ovn-kubernetes ovn-kubernetes \
+helm template -n openshift-ovn-kubernetes ovn-kubernetes \
     "$GENERATED_DIR/ovn-injector/ovn-kubernetes-chart" \
     -f "$GENERATED_DIR/ovn-injector/ovn-values-resolved.yaml" \
     | oc apply -f -
@@ -48,10 +49,10 @@ rm -rf "$GENERATED_DIR/ovn-injector"
 
 # Wait for injector to be ready
 log [INFO] "Waiting for OVN injector deployment to be ready..."
-wait_for_pods "ovn-kubernetes" "app.kubernetes.io/name=ovn-kubernetes-resource-injector" "status.phase=Running" "Running" 30 10
+wait_for_pods "opeshift-ovn-kubernetes" "app.kubernetes.io/name=ovn-kubernetes-resource-injector" "status.phase=Running" "Running" 30 10
 
 # Verify NAD creation
-if oc get net-attach-def -n ovn-kubernetes dpf-ovn-kubernetes &>/dev/null; then
+if oc get net-attach-def -n openshift-ovn-kubernetes dpf-ovn-kubernetes &>/dev/null; then
     log [INFO] "NetworkAttachmentDefinition 'dpf-ovn-kubernetes' created successfully"
 else
     log [ERROR] "NetworkAttachmentDefinition 'dpf-ovn-kubernetes' was not created"

@@ -1,4 +1,5 @@
 nameOverride: ovn-kubernetes
+namespaceOverride: openshift-ovn-kubernetes
 
 # Enable control plane for OVN
 controlPlaneManifests:
