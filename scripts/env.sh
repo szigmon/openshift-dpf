@@ -61,9 +61,9 @@ HBN_HOSTNAME_NODE2=${HBN_HOSTNAME_NODE2:-"srv25-*"}
 
 # HBN Service Template Configuration
 HBN_HELM_REPO_URL=${HBN_HELM_REPO_URL:-"https://helm.ngc.nvidia.com/nvidia/doca"}
-HBN_HELM_CHART_VERSION=${HBN_HELM_CHART_VERSION:-"1.0.2"}
-HBN_IMAGE_REPO=${HBN_IMAGE_REPO:-"quay.io/itsoiref/hbn"}
-HBN_IMAGE_TAG=${HBN_IMAGE_TAG:-"25.4-doca-3.0-1"}
+HBN_HELM_CHART_VERSION=${HBN_HELM_CHART_VERSION:-"1.0.3"}
+HBN_IMAGE_REPO=${HBN_IMAGE_REPO:-"nvcr.io/nvidia/doca/doca_hbn"}
+HBN_IMAGE_TAG=${HBN_IMAGE_TAG:-"3.1.0-doca3.1.0"}
 
 # DTS Service Template Configuration
 DTS_HELM_REPO_URL=${DTS_HELM_REPO_URL:-"https://helm.ngc.nvidia.com/nvidia/doca"}
