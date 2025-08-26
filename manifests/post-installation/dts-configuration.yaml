@@ -4,5 +4,13 @@ metadata:
   name: doca-telemetry-service
   namespace: dpf-operator-system
 spec:
-  deploymentServiceName: "doca-telemetry-service"
-  serviceConfiguration: {}
+  deploymentServiceName: doca-telemetry-service
+  serviceConfiguration:
+    configPorts:
+      ports:
+        - name: httpserverport
+          port: 9189
+          protocol: TCP
+      serviceType: None
+  upgradePolicy:
+    applyNodeEffect: true
