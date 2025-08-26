@@ -186,6 +186,17 @@ method=disabled
 """)
     ),
     FileEntry(
+        path="/etc/crio/crio.conf.d/99-ulimits.conf",
+        overwrite=True,
+        mode=644,
+        contents=FileContents(
+            inline="""[crio.runtime]
+default_ulimits = [
+  "nofile=4096:8192"
+]
+""")
+    ),
+    FileEntry(
         path="/etc/sysctl.d/98-dpunet.conf",
         overwrite=True,
         mode=644,
