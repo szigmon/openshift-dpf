@@ -192,7 +192,7 @@ method=disabled
         contents=FileContents(
             inline="""[crio.runtime]
 default_ulimits = [
-  "nofile=4096:8192"
+  "nofile=524288:524288"
 ]
 """)
     ),
