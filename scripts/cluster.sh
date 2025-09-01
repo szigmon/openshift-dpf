@@ -48,6 +48,19 @@ function validate_vips() {
     fi
 }
 
+
+update_worker_manifest() {
+    local file="manifests/cluster-installation/99-worker-bridge.yaml"
+
+    if [ "${NODES_MTU}" != "1500" ]; then
+        log "INFO" "Setting ExecStart to include MTU: ${NODES_MTU}"
+        sed -i -E "s|(ExecStart=/usr/local/bin/apply-nmstate-bridge.sh)([[:space:]]*[0-9]*)?|\1 ${NODES_MTU}|" "$file"
+    else
+        log "INFO" "Resetting ExecStart to default (no MTU arg)"
+        sed -i -E "s|(ExecStart=/usr/local/bin/apply-nmstate-bridge.sh)([[:space:]]*[0-9]*)?|\1|" "$file"
+    fi
+}
+
 function is_valid_ip() {
     local ip=$1
     if [[ $ip =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ || $ip =~ ^([0-9a-fA-F]*:[0-9a-fA-F]*){2,}$ ]]; then
@@ -122,6 +135,7 @@ function check_create_cluster() {
                 "${CLUSTER_NAME}"
         fi
         
+        update_worker_manifest
         log "INFO" "Cluster ${CLUSTER_NAME} created successfully"
     else
         log "INFO" "Cluster ${CLUSTER_NAME} already exists"

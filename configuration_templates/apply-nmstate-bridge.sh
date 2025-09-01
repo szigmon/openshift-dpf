@@ -1,5 +1,8 @@
 #!/bin/bash
 
+DEFAULT_MTU=1500
+NODES_MTU=${1:-$DEFAULT_MTU}
+
 # Wait indefinitely for an interface to get an IP address and default route
 WAIT_INTERVAL=5  # Check interval in seconds
 ATTEMPT=1
@@ -48,6 +51,7 @@ interfaces:
   - name: br-dpu
     type: linux-bridge
     state: up
+    mtu: $NODES_MTU
     ipv6:
       enabled: false
     ipv4:
@@ -62,6 +66,10 @@ interfaces:
           enabled: false
       port:
         - name: $DEFAULT_INTERFACE
+  - name: $DEFAULT_INTERFACE
+    type: ethernet
+    state: up
+    mtu: $NODES_MTU
 EOF
 
 echo "Created NMState configuration with interface $DEFAULT_INTERFACE"
