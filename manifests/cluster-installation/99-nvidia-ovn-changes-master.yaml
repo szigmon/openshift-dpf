@@ -10,6 +10,22 @@ spec:
       version: 3.1.0
     systemd:
       units:
+        - name: shutdown-interface-51.service
+          enabled: true
+          contents: |
+            [Unit]
+            Description=Shutdown interface with MAC ending in 51 to prevent dual IPs on br-ex
+            After=network.target NetworkManager.service nmstate.service
+            Wants=NetworkManager.service
+            Before=ovs-configuration.service
+            
+            [Service]
+            Type=oneshot
+            ExecStart=/usr/local/bin/shutdown-interface-51.sh
+            RemainAfterExit=yes
+            
+            [Install]
+            WantedBy=multi-user.target
         - name: restart-ovs-vswitchd.service
           enable: true
           contents: |
@@ -31,13 +47,13 @@ spec:
             # If OVS has already run, the kdump fails to gather a working network config,
             # which prevent network log exports, sush as SSH.
             # See https://issues.redhat.com/browse/OCPBUGS-28239
-            After=kdump.service
+            After=kdump.service shutdown-interface-51.service
             Description=Configures OVS with proper host networking configuration
             # This service is used to move a physical NIC into OVS and reconfigure OVS to use the host IP
             Requires=openvswitch.service
             Wants=NetworkManager-wait-online.service
             After=firstboot-osupdate.target
-            After=NetworkManager-wait-online.service openvswitch.service network.service nodeip-configuration.service nmstate.service
+            After=NetworkManager-wait-online.service openvswitch.service network.service nodeip-configuration.service nmstate.service shutdown-interface-51.service
             Before=kubelet-dependencies.target node-valid-hostname.service
 
             [Service]
@@ -106,6 +122,108 @@ spec:
           name: kubelet.service
     storage:
       files:
+        - path: /usr/local/bin/shutdown-interface-51.sh
+          mode: 0755
+          overwrite: true
+          contents:
+            inline: |
+              #!/bin/bash
+              
+              # Script to shutdown interface with MAC ending in :51 using nmstate
+              # This prevents dual IP addresses on br-ex by ensuring only the :50 interface is active
+              # Runs on master nodes before OVS configuration
+              
+              set -e
+              
+              echo "$(date): Starting interface shutdown check for MAC ending in :51"
+              
+              # Wait for network to be ready
+              WAIT_INTERVAL=5
+              MAX_ATTEMPTS=12  # 1 minute total wait
+              ATTEMPT=1
+              
+              while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+                  if ip link show &>/dev/null; then
+                      echo "$(date): Network interfaces are available"
+                      break
+                  fi
+                  echo "$(date): Waiting for network interfaces... (attempt $ATTEMPT/$MAX_ATTEMPTS)"
+                  sleep $WAIT_INTERVAL
+                  ATTEMPT=$((ATTEMPT + 1))
+              done
+              
+              if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+                  echo "$(date): Timeout waiting for network interfaces, continuing anyway"
+              fi
+              
+              # Find interface with MAC ending in :51
+              INTERFACE_51=""
+              for iface in $(ip link show | grep -E '^[0-9]+:' | awk -F': ' '{print $2}' | grep -v lo); do
+                  # Clean interface name (remove @if suffix if present)
+                  clean_iface=$(echo "$iface" | cut -d'@' -f1)
+                  
+                  # Get MAC address
+                  mac=$(ip link show "$clean_iface" 2>/dev/null | grep -o -E '([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}' | head -1)
+                  
+                  if [[ "$mac" =~ :51$ ]]; then
+                      INTERFACE_51="$clean_iface"
+                      echo "$(date): Found interface $INTERFACE_51 with MAC $mac (ends in :51)"
+                      break
+                  fi
+              done
+              
+              if [ -z "$INTERFACE_51" ]; then
+                  echo "$(date): No interface found with MAC ending in :51, exiting successfully"
+                  exit 0
+              fi
+              
+              # Check if interface is already down
+              state=$(ip link show "$INTERFACE_51" | grep -o "state [A-Z]*" | cut -d' ' -f2)
+              if [ "$state" = "DOWN" ]; then
+                  echo "$(date): Interface $INTERFACE_51 is already DOWN, no action needed"
+                  exit 0
+              fi
+              
+              echo "$(date): Interface $INTERFACE_51 is $state, shutting it down with nmstate..."
+              
+              # Create temporary nmstate config to shut down the interface
+              TMP_FILE=$(mktemp)
+              cat > "$TMP_FILE" << EOF
+              interfaces:
+                - name: $INTERFACE_51
+                  type: ethernet
+                  state: down
+              EOF
+              
+              echo "$(date): Applying nmstate configuration to shutdown $INTERFACE_51..."
+              echo "Configuration:"
+              cat "$TMP_FILE"
+              
+              # Apply the configuration
+              if nmstatectl apply "$TMP_FILE" 2>&1; then
+                  echo "$(date): Successfully shut down interface $INTERFACE_51"
+                  
+                  # Verify the interface is down
+                  sleep 2
+                  new_state=$(ip link show "$INTERFACE_51" | grep -o "state [A-Z]*" | cut -d' ' -f2)
+                  echo "$(date): Interface $INTERFACE_51 state after shutdown: $new_state"
+                  
+                  if [ "$new_state" = "DOWN" ]; then
+                      echo "$(date): Verification successful - interface is DOWN"
+                  else
+                      echo "$(date): Warning - interface state is $new_state, not DOWN"
+                  fi
+              else
+                  echo "$(date): Failed to shut down interface $INTERFACE_51"
+                  rm "$TMP_FILE"
+                  exit 1
+              fi
+              
+              # Clean up
+              rm "$TMP_FILE"
+              
+              echo "$(date): Interface shutdown process completed successfully"
+              exit 0
         - path: /etc/sysconfig/openvswitch
           mode: 0644
           overwrite: true
