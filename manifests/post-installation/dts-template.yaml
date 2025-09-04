@@ -16,6 +16,6 @@ spec:
       version: <DTS_HELM_CHART_VERSION>
     values:
       configMapData:
-        general:
-          prometheus: http://0.0.0.0:9189
+        prometheus:
+          port: 9189
       hostVolumePrefix: "/var/lib"
