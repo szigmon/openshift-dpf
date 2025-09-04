@@ -67,7 +67,7 @@ HBN_IMAGE_TAG=${HBN_IMAGE_TAG:-"3.1.0-doca3.1.0"}
 
 # DTS Service Template Configuration
 DTS_HELM_REPO_URL=${DTS_HELM_REPO_URL:-"https://helm.ngc.nvidia.com/nvidia/doca"}
-DTS_HELM_CHART_VERSION=${DTS_HELM_CHART_VERSION:-"1.0.8"}
+DTS_HELM_CHART_VERSION=${DTS_HELM_CHART_VERSION:-"1.22.1"}
 
 # Cluster Configuration
 CLUSTER_NAME=${CLUSTER_NAME:-"doca"}
