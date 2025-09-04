@@ -230,6 +230,21 @@ cleanup_networkmanager() {
   echo "NetworkManager cleanup complete."
 }
 
+adapt_bridge_mtu() {
+  echo "Checking connection MTU ..."
+  nmcon=$(nmcli -t -f NAME c s | grep -- "-${BRIDGE_NAME}$" || true)
+  for con in $nmcon; do
+    cur_mtu=$(nmcli -g 802-3-ethernet.mtu connection show "$con")
+    if [ "$cur_mtu" != "$NODES_MTU" ]; then
+       echo "Modifying connection '$con' mtu to $NODES_MTU from current $cur_mtu"
+       nmcli con modify "$con" mtu "$NODES_MTU" || true
+       nmcli con up "$con" || true 
+    else
+       echo "No need to modify connection '$con' MTU (already $NODES_MTU)"
+    fi
+  done
+}
+
 # Function to configure using NetworkManager
 configure_with_networkmanager() {
   echo "Creating bridge with NetworkManager..."
@@ -260,6 +275,11 @@ configure_with_networkmanager() {
 
   # Create the slave connection with bridge name in the connection name
   nmcli con add type bridge-slave con-name bridge-slave-"$DEFAULT_INTERFACE-$BRIDGE_NAME" ifname "$DEFAULT_INTERFACE" master $BRIDGE_NAME
+
+  if [ "$NODES_MTU" != "1500" ] ; then
+     nmcli con modify bridge-$BRIDGE_NAME mtu $NODES_MTU
+     nmcli con modify bridge-slave-"$DEFAULT_INTERFACE-$BRIDGE_NAME" mtu $NODES_MTU
+  fi
 
   echo "NetworkManager configurations created. Ready to activate."
 
@@ -345,10 +365,12 @@ network:
   ethernets:
     $DEFAULT_INTERFACE:
       dhcp4: no
+      mtu: $NODES_MTU
   bridges:
     $BRIDGE_NAME:
       interfaces: [$DEFAULT_INTERFACE]
       dhcp4: yes
+      mtu: $NODES_MTU
 EOF
 
   echo "Netplan configuration created."
@@ -426,6 +448,7 @@ do_create() {
   BRIDGE_CHECK_RESULT=$?
 
   if [ $BRIDGE_CHECK_RESULT -eq 0 ]; then
+    adapt_bridge_mtu
     # Bridge exists and is properly configured
     exit 0
   elif [ $BRIDGE_CHECK_RESULT -eq 2 ]; then
@@ -464,6 +487,7 @@ do_create() {
 FORCE_MODE=false
 CLEANUP_MODE=false
 BRIDGE_NAME=${BRIDGE_NAME:-br0}  # Default to br0 if not set
+NODES_MTU=${NODES_MTU:-"1500"}
 
 if [ "$1" = "--force" ]; then
   FORCE_MODE=true
