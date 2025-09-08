@@ -154,4 +154,8 @@ PRIMARY_IFACE=${PRIMARY_IFACE:-enp1s0}
 # NFD IMAGE (Required for NFD_DEPLOY_FROM_GIT=true)
 NFD_OPERATOR_IMAGE=${NFD_OPERATOR_IMAGE:-"quay.io/itsoiref/nfd-operator:latest"}
 NFD_NAMESPACE=${NFD_NAMESPACE:-"openshift-nfd"}
-NFD_DEPLOY_FROM_GIT=${NFD_DEPLOY_FROM_GIT:-"false"}
+NFD_DEPLOY_FROM_GIT=${NFD_DEPLOY_FROM_GIT:-"true"}
+
+# SR-IOV Operator Configuration
+SRIOV_NAMESPACE=${SRIOV_NAMESPACE:-"openshift-sriov-network-operator"}
+SRIOV_DEPLOY_FROM_GIT=${SRIOV_DEPLOY_FROM_GIT:-"true"}

@@ -20,11 +20,8 @@ function deploy_nfd() {
     log [INFO] "Managing NFD deployment..."
 
     get_kubeconfig
-
     if [ "${NFD_DEPLOY_FROM_GIT}" = "true" ]; then
-
-        # Ensure namespace exists
-        oc get ns "${NFD_NAMESPACE}" >/dev/null 2>&1 || oc create ns "${NFD_NAMESPACE}"
+        ensure_namespace "${NFD_NAMESPACE}"
 
             # Check if NFD operator is already installed
         if oc get deployment -n ${NFD_NAMESPACE} nfd-operator &>/dev/null; then
@@ -41,13 +38,8 @@ function deploy_nfd() {
             exit 1
         fi
 
-        # Clone the NFD operator repository if not exists
-        if [ ! -d "cluster-nfd-operator" ]; then
-            log [INFO] "NFD operator repository not found. Cloning..."
-            git clone https://github.com/openshift/cluster-nfd-operator.git
-        fi
+        clone_or_pull_repo https://github.com/openshift/cluster-nfd-operator.git cluster-nfd-operator
         get_kubeconfig
-
         # Deploy the NFD operator
         if ! make -C cluster-nfd-operator deploy deploy IMAGE_TAG=$NFD_OPERATOR_IMAGE KUBECONFIG=$KUBECONFIG; then
             log [ERROR] "Failed to deploy NFD operator"
@@ -78,14 +70,18 @@ function deploy_nfd() {
             ' "$GENERATED_DIR/nfd-cr-template.yaml" > "$GENERATED_DIR/nfd-cr.yaml.tmp" && mv "$GENERATED_DIR/nfd-cr.yaml.tmp" "$GENERATED_DIR/nfd-cr-template.yaml"
         fi
 
+        KUBECONFIG=$KUBECONFIG oc apply -f "$GENERATED_DIR/nfd-cr-template.yaml"
+
         # Wait for components to be ready
         wait_for_pods "${NFD_NAMESPACE}" "app=nfd-worker" "status.phase=Running" "1/1" 30 10 || true
 
         log [INFO] "NFD deployment from git completed successfully!"
-    else
-        # Operator-based flow (default)
-        # Check if NFD subscription exists, if not apply it
-        if ! oc get subscription -n openshift-nfd nfd &>/dev/null; then
+        return 0
+    fi
+
+    # Operator-based flow (default)
+    # Check if NFD subscription exists, if not apply it
+    if ! oc get subscription -n openshift-nfd nfd &>/dev/null; then
         log [INFO] "NFD subscription not found. Applying NFD subscription..."
         apply_manifest "$MANIFESTS_DIR/cluster-installation/nfd-subscription.yaml"
         
@@ -95,23 +91,76 @@ function deploy_nfd() {
             log [ERROR] "Timeout: NFD operator installation failed"
             return 1
         fi
-            log [INFO] "NFD operator installation verified successfully"
-        else
-            log [INFO] "NFD subscription already exists. Skipping deployment."
-        fi
-    
+        log [INFO] "NFD operator installation verified successfully"
+    else
+        log [INFO] "NFD subscription already exists. Skipping deployment."
     fi
 
     log [INFO] "Creating NFD instance..."
     mkdir -p "$GENERATED_DIR"
     cp "$MANIFESTS_DIR/dpf-installation/nfd-cr-template.yaml" "$GENERATED_DIR/nfd-cr-template.yaml"
-    echo
     sed -i "s|api.<CLUSTER_FQDN>|$HOST_CLUSTER_API|g" "$GENERATED_DIR/nfd-cr-template.yaml"
 
     # Apply the NFD CR
     KUBECONFIG=$KUBECONFIG oc apply -f "$GENERATED_DIR/nfd-cr-template.yaml"
 
     log [INFO] "NFD deployment completed successfully!"
+}
+
+
+
+function deploy_sriov() {
+    log [INFO] "Managing SR-IOV Network Operator deployment..."
+
+    get_kubeconfig
+
+    ensure_namespace "${SRIOV_NAMESPACE}"
+
+    # Skip if operator already installed
+    if oc get deployment -n ${SRIOV_NAMESPACE} sriov-network-operator &>/dev/null; then
+        log [INFO] "SR-IOV operator already installed. Skipping deployment."
+    else
+        if [ "${SRIOV_DEPLOY_FROM_GIT}" = "true" ]; then
+            log [INFO] "Deploying SR-IOV operator directly from source..."
+
+            clone_or_pull_repo https://github.com/openshift/sriov-network-operator.git sriov-network-operator
+
+            # Ensure helm is installed
+            ensure_helm_installed
+
+            # Install using the Helm chart from the repo
+            log [INFO] "Installing SR-IOV operator Helm chart from local repository..."
+            helm upgrade --install sriov-network-operator ./sriov-network-operator/deployment/sriov-network-operator-chart \
+                --namespace ${SRIOV_NAMESPACE} \
+                --create-namespace \
+                --wait || {
+                log [ERROR] "Failed to install SR-IOV operator from GitHub chart"
+                return 1
+            }
+
+            # Wait for operator to be up
+            wait_for_pods "${SRIOV_NAMESPACE}" "name=sriov-network-operator" "status.phase=Running" "1/1" 30 10 || true
+            log [INFO] "SR-IOV deployment from git completed successfully!"
+        else
+            # Operator-based flow (OLM)
+            if ! oc get subscription -n ${SRIOV_NAMESPACE} sriov-network-operator-subscription &>/dev/null; then
+                log [INFO] "SR-IOV subscription not found. Applying SR-IOV subscription..."
+                apply_manifest "${MANIFESTS_DIR}/dpf-installation/sriov-op-dpf.yaml"
+
+                # Verify operator is ready by checking CSV
+                log [INFO] "Verifying SR-IOV operator installation..."
+                if ! retry 30 10 bash -c 'oc get csv -n "'"${SRIOV_NAMESPACE}"'" -o jsonpath="{.items[*].status.phase}" | grep -q "Succeeded"'; then
+                    log [ERROR] "Timeout: SR-IOV operator installation failed"
+                    return 1
+                fi
+                log [INFO] "SR-IOV operator installation verified successfully"
+            else
+                log [INFO] "SR-IOV subscription already exists. Skipping subscription application."
+            fi
+        fi
+    fi
+
+    log [INFO] "SR-IOV deployment completed successfully!"
 }
 
 
@@ -427,6 +476,7 @@ function apply_dpf() {
     fi
     
     deploy_nfd
+    deploy_sriov
     
     apply_namespaces
     deploy_cert_manager
@@ -510,6 +560,9 @@ function main() {
             deploy-nfd)
                 deploy_nfd
                 ;;
+            deploy-sriov)
+                deploy_sriov
+                ;;
             deploy-argocd)
                 deploy_argocd
                 ;;
@@ -530,7 +583,7 @@ function main() {
                 ;;
             *)
                 log [INFO] "Unknown command: $command"
-                log [INFO] "Available commands: deploy-nfd, deploy-argocd, deploy-maintenance-operator, apply-dpf, deploy-hypershift"
+                log [INFO] "Available commands: deploy-nfd, deploy-sriov, deploy-argocd, deploy-maintenance-operator, apply-dpf, deploy-hypershift"
                 exit 1
                 ;;
         esac

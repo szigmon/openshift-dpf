@@ -254,6 +254,32 @@ escape_sed_replacement() {
     printf '%s' "$str" | sed 's/\\/\\\\/g; s/&/\\&/g; s/\//\\\//g'
 }
 
+# Ensure a namespace exists (idempotent)
+ensure_namespace() {
+    local namespace=$1
+    if ! oc get ns "$namespace" >/dev/null 2>&1; then
+        log "INFO" "Creating namespace $namespace"
+        oc create ns "$namespace"
+    else
+        log "INFO" "Namespace $namespace already exists"
+    fi
+}
+
+# Clone repository if missing; otherwise update it
+clone_or_pull_repo() {
+    local repo_url=$1
+    local repo_dir=$2
+
+    if [ -d "$repo_dir/.git" ]; then
+        log "INFO" "Updating repository $repo_dir"
+        git -C "$repo_dir" fetch --all --quiet || true
+        git -C "$repo_dir" pull --ff-only || true
+    else
+        log "INFO" "Cloning repository from $repo_url into $repo_dir"
+        git clone "$repo_url" "$repo_dir"
+    fi
+}
+
 # -----------------------------------------------------------------------------
 # Template processing functions
 # -----------------------------------------------------------------------------
