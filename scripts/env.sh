@@ -38,10 +38,19 @@ load_env() {
     done < "$env_file"
 }
 
+validate_mtu() {
+    if [ "$NODES_MTU" != "1500" ] && [ "$NODES_MTU" != "9000" ]; then
+        echo "Error: NODES_MTU must be either 1500 or 9000. Current value: $NODES_MTU"
+        exit 1
+    fi
+}
+
 # Load environment variables from .env file (skip if already in Make context)
 if [ -z "${MAKELEVEL:-}" ]; then
     load_env
+    validate_mtu
 fi
+
 # Directory Configuration
 MANIFESTS_DIR=${MANIFESTS_DIR:-"manifests"}
 GENERATED_DIR=${GENERATED_DIR:-"$MANIFESTS_DIR/generated"}

@@ -249,6 +249,17 @@ prepare_dpf_manifests() {
         "<CLUSTER_NAME>" "$CLUSTER_NAME" \
         "<BASE_DOMAIN>" "$BASE_DOMAIN"
     
+    if [ -n "$NODES_MTU" ] && [ "$NODES_MTU" == "9000" ]; then
+        log "INFO" "Appending networking configuration with MTU: $NODES_MTU"
+        cat >> "$GENERATED_DIR/dpfoperatorconfig.yaml" <<-EOF
+  networking:
+    controlPlaneMTU: $NODES_MTU
+    highSpeedMTU: $NODES_MTU
+EOF
+    else
+       log "INFO" "NODES_MTU is not set. Skipping networking configuration."
+    fi
+
     # Final verification: ensure no Helm values files are in the generated directory
     if find "$GENERATED_DIR" -maxdepth 1 -type f -name "*-values.yaml" | grep -q .; then
         log "ERROR" "Helm values files found in generated directory. These should not be processed during cluster installation."
@@ -268,7 +279,7 @@ function update_ovn_mtu_in_value_file() {
     if [[ -n "$NODES_MTU" ]] && [[ "$NODES_MTU" != "1500" ]]; then
         echo "NODES_MTU is defined as $NODES_MTU. Updating MTU in $ovn_values_file."
 
-        local new_mtu=$((NODES_MTU - 100))
+        local new_mtu=$((NODES_MTU - 60))
         if grep -Eq '^[[:space:]]*mtu:' "$ovn_values_file"; then
            sed -i "s/mtu:.*/mtu: $new_mtu/" "$ovn_values_file"
         else
