@@ -29,7 +29,9 @@ mkdir -p "${GENERATED_POST_INSTALL_DIR}"
 SPECIAL_FILES=(
     "bfb.yaml"
     "hbn-ovn-ipam.yaml"
+    "dpu-service-nads.yaml"
     "dpuflavor-1500.yaml"
+    "dpuflavor-9000.yaml"
     "sriov-policy.yaml"
     "ovn-template.yaml"
     "ovn-configuration.yaml"
@@ -114,15 +116,24 @@ function update_hbn_ovn_manifests() {
             "<DPF_VERSION>" "${DPF_VERSION}" \
             "<OVN_CHART_URL>" "${OVN_CHART_URL}"
     fi
-    
+
     # Update ovn-configuration.yaml for DPUDeployment
     if [ -f "${POST_INSTALL_DIR}/ovn-configuration.yaml" ]; then
+        local ovn_mtu=""
+
+        if [ "$NODES_MTU" != "1500" ]; then
+            ovn_mtu=$((NODES_MTU - 60))
+        else
+            ovn_mtu=1400
+        fi
+        log "INFO" "ovn-configuration will be set with MTU:$ovn_mtu"
         update_file_multi_replace \
             "${POST_INSTALL_DIR}/ovn-configuration.yaml" \
             "${GENERATED_POST_INSTALL_DIR}/ovn-configuration.yaml" \
             "<HBN_OVN_NETWORK>" "${HBN_OVN_NETWORK}" \
             "<HOST_CLUSTER_API>" "${HOST_CLUSTER_API}" \
-            "<DPU_HOST_CIDR>" "${DPU_HOST_CIDR}"
+            "<DPU_HOST_CIDR>" "${DPU_HOST_CIDR}" \
+            "<NODES_MTU>" "${ovn_mtu}"
     fi
     
     # Update hbn-configuration.yaml 
@@ -143,11 +154,19 @@ function update_vf_configuration() {
     
     # Calculate VF range upper bound
     local vf_range_upper=$((NUM_VFS - 1))
-    
-    # Update dpuflavor-1500.yaml
+
+    if [ "$NODES_MTU" == "1500" ]; then
+        mtu_file="dpuflavor-1500.yaml"
+        mtu_desc="MTU 1500"
+    else
+        mtu_file="dpuflavor-9000.yaml"
+        mtu_desc="MTU 9000"
+    fi
+
+    log "INFO" "Applying $mtu_file for $mtu_desc"
     update_file_multi_replace \
-        "${POST_INSTALL_DIR}/dpuflavor-1500.yaml" \
-        "${GENERATED_POST_INSTALL_DIR}/dpuflavor-1500.yaml" \
+        "${POST_INSTALL_DIR}/$mtu_file" \
+        "${GENERATED_POST_INSTALL_DIR}/$mtu_file" \
         "<NUM_VFS>" \
         "${NUM_VFS}"
     
@@ -219,6 +238,37 @@ function update_service_templates() {
     log [INFO] "Service template versions updated successfully"
 }
 
+function update_flavor_in_yaml() {
+  if [ ! -f "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
+    log "ERROR" "File not found: ${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
+    return 1
+  fi
+
+  local flavor="flavor-$NODES_MTU" 
+
+  log "INFO" "Updating flavor in to $new_flavor"
+  sed -i "s|flavor: .*|flavor: $flavor|g" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" || {
+    log "ERROR" "Failed to update flavor in ${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
+    return 1
+  }
+
+  log "INFO" "Successfully updated flavor in ${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
+}
+
+
+function update_dpu_service_nad() {
+   local svc_file="dpu-service-nads.yaml" 
+
+   if [ -f "${POST_INSTALL_DIR}/${svc_file}" ]; then
+       update_file_multi_replace \
+         "${POST_INSTALL_DIR}/${svc_file}" \
+         "${GENERATED_POST_INSTALL_DIR}/${svc_file}" \
+         "<SVC_MTU>" "${NODES_MTU}"
+   fi
+
+   log [INFO] "Updated ${svc_file} with MTU: ${NODES_MTU}"
+}
+
 # Function to prepare post-installation manifests
 function prepare_post_installation() {
     log [INFO] "Starting post-installation manifest preparation..."
@@ -234,12 +284,14 @@ function prepare_post_installation() {
     update_hbn_ovn_manifests
     update_vf_configuration
     update_service_templates
+    update_dpu_service_nad
     
     # Copy DPUDeployment
     if [ -f "${POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
         cp "${POST_INSTALL_DIR}/dpudeployment.yaml" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
     fi
-    
+    update_flavor_in_yaml
+
     # Copy remaining manifests
     for file in "${POST_INSTALL_DIR}"/*.yaml; do
         if [ -f "$file" ]; then

@@ -7,7 +7,7 @@ spec:
   resourceType: sf
   ipam: false
   bridge: "br-hbn"
-  serviceMTU: 1500
+  serviceMTU: <SVC_MTU>
 --- 
 apiVersion: svc.dpu.nvidia.com/v1alpha1
 kind: DPUServiceNAD
@@ -18,4 +18,4 @@ spec:
   resourceType: sf
   ipam: true
   bridge: "br-sfc"
-  serviceMTU: 1500
+  serviceMTU: <SVC_MTU>
