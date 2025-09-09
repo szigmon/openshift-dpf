@@ -264,7 +264,6 @@ function get_kubeconfig() {
     if [ ! -f "$kubeconfig_path" ]; then
         log "INFO" "Downloading kubeconfig for $CLUSTER_NAME"
         aicli download kubeconfig "$CLUSTER_NAME"
-        cp "kubeconfig.$CLUSTER_NAME" "$kubeconfig_path"
         log "INFO" "Kubeconfig downloaded to $KUBECONFIG"
     else
         log "INFO" "Using existing kubeconfig at: $KUBECONFIG"
