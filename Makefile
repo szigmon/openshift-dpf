@@ -20,7 +20,11 @@ POST_INSTALL_SCRIPT := scripts/post-install.sh
         redeploy-dpu enable-ovn-injector deploy-argocd deploy-maintenance-operator configure-flannel \
         deploy-core-operator-sources
 
-all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services enable-ovn-injector
+all: 
+	@mkdir -p logs
+	@bash -o pipefail -c '$(MAKE) _all 2>&1 | tee "logs/make_all_$(shell date +%Y%m%d_%H%M%S).log"'
+
+_all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services enable-ovn-injector
 	@echo ""
 	@echo "================================================================================"
 	@echo "✅ DPF Installation Complete!"
