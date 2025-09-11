@@ -16,6 +16,7 @@ log() {
     shift
     local message="$*"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    local script_name=$(basename "$0")
 
     # Debugging output
 
@@ -27,21 +28,21 @@ log() {
 
     case "$level" in
         "INFO")
-            echo -e "\033[0;32m[${timestamp}] [INFO] ${message}\033[0m"
+            echo -e "\033[0;32m[${timestamp}] [${script_name}] [INFO] ${message}\033[0m"
             ;;
         "WARN")
-            echo -e "\033[0;33m[${timestamp}] [WARN] ${message}\033[0m"
+            echo -e "\033[0;33m[${timestamp}] [${script_name}] [WARN] ${message}\033[0m"
             ;;
         "ERROR")
-            echo -e "\033[0;31m[${timestamp}] [ERROR] ${message}\033[0m" >&2
+            echo -e "\033[0;31m[${timestamp}] [${script_name}] [ERROR] ${message}\033[0m" >&2
             ;;
         "DEBUG")
             if [ "${DEBUG:-false}" = "true" ]; then
-                echo -e "\033[0;36m[${timestamp}] [DEBUG] ${message}\033[0m"
+                echo -e "\033[0;36m[${timestamp}] [${script_name}] [DEBUG] ${message}\033[0m"
             fi
             ;;
         *)
-            echo -e "[${timestamp}] [${level}] ${message}"
+            echo -e "[${timestamp}] [${script_name}] [${level}] ${message}"
             ;;
     esac
 }
