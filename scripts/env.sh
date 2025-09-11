@@ -132,11 +132,7 @@ MAINTENANCE_OPERATOR_VERSION=${MAINTENANCE_OPERATOR_VERSION:-"0.2.0"}
 
 # Hypershift Configuration
 ENABLE_HCP_MULTUS=${ENABLE_HCP_MULTUS:-"true"}
-if [ "${ENABLE_HCP_MULTUS}" = "true" ]; then
-    HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/lhadad/hypershift:7jan24-v1"}
-else
-    HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/hypershift/hypershift-operator:latest"}
-fi
+HYPERSHIFT_IMAGE=${HYPERSHIFT_IMAGE:-"quay.io/hypershift/hypershift-operator:latest"}
 HOSTED_CLUSTER_NAME=${HOSTED_CLUSTER_NAME:-"doca"}
 CLUSTERS_NAMESPACE=${CLUSTERS_NAMESPACE:-"clusters"}
 OCP_RELEASE_IMAGE=${OCP_RELEASE_IMAGE:-"quay.io/openshift-release-dev/ocp-release:4.14.0-ec.4-x86_64"}
