@@ -157,8 +157,7 @@ function deploy_hypershift() {
           --network-type=Other \
           --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
           --node-selector='node-role.kubernetes.io/master=""' \
-          --node-upgrade-type=Replace \
-          --control-plane-operator-image=quay.io/lhadad/controlplaneoperator:allCapsMultusDisabledV1
+          --node-upgrade-type=Replace
     fi
 
     log [INFO] "Adding CNO image override annotation..."
