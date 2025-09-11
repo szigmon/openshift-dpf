@@ -21,30 +21,28 @@ ensure_helm_installed
 
 log [INFO] "Enabling OVN resource injector..."
 
-# Generate full manifest with injector enabled
 mkdir -p "$GENERATED_DIR/ovn-injector"
+
+INJECTOR_RESOURCE_NAME="${INJECTOR_RESOURCE_NAME:-openshift.io/bf3-p0-vfs}"
 
 helm pull "${OVN_CHART_URL}/ovn-kubernetes-chart" \
     --version "${DPF_VERSION}" \
     --untar -d "$GENERATED_DIR/ovn-injector"
 
-# Replace template variables in values file
-sed -e "s|<TARGETCLUSTER_API_SERVER_HOST>|api.$CLUSTER_NAME.$BASE_DOMAIN|" \
-    -e "s|<TARGETCLUSTER_API_SERVER_PORT>|6443|" \
-    -e "s|<POD_CIDR>|$POD_CIDR|" \
-    -e "s|<SERVICE_CIDR>|$SERVICE_CIDR|" \
-    -e "s|<DPU_P0_VF1>|$DPU_OVN_VF|" \
-    -e "s|<DPU_P0>|$DPU_INTERFACE|" \
-    "$HELM_CHARTS_DIR/ovn-values-with-injector.yaml" > "$GENERATED_DIR/ovn-injector/ovn-values-resolved.yaml"
-
-# Generate all manifests with injector enabled
-helm template -n ovn-kubernetes ovn-kubernetes \
+helm template -n ovn-kubernetes ovn-kubernetes-resource-injector \
     "$GENERATED_DIR/ovn-injector/ovn-kubernetes-chart" \
-    -f "$GENERATED_DIR/ovn-injector/ovn-values-resolved.yaml" \
+    --set ovn-kubernetes-resource-injector.enabled=true \
+    --set ovn-kubernetes-resource-injector.resourceName="${INJECTOR_RESOURCE_NAME}" \
+    --set ovn-kubernetes-resource-injector.nadName=dpf-ovn-kubernetes \
+    --set nodeWithDPUManifests.enabled=false \
+    --set nodeWithoutDPUManifests.enabled=false \
+    --set dpuManifests.enabled=false \
+    --set controlPlaneManifests.enabled=false \
+    --set commonManifests.enabled=false \
     | oc apply -f -
 
-# Clean up
 rm -rf "$GENERATED_DIR/ovn-injector"
+
 
 # Wait for injector to be ready
 log [INFO] "Waiting for OVN injector deployment to be ready..."
