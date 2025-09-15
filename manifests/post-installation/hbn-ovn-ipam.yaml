@@ -8,4 +8,4 @@ spec:
   ipv4Network:
     network: "<HBN_OVN_NETWORK>"
     gatewayIndex: 3
-    prefixSize: 29
+    prefixSize: <HBN_OVN_PREFIX_SIZE>
