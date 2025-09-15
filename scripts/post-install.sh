@@ -20,7 +20,7 @@ GENERATED_POST_INSTALL_DIR="${GENERATED_DIR}/post-install"
 BFB_URL=${BFB_URL:-"http://10.8.2.236/bfb/rhcos_4.19.0-ec.4_installer_2025-04-23_07-48-42.bfb"}
 
 # HBN OVN Configuration with defaults
-HBN_OVN_NETWORK=${HBN_OVN_NETWORK:-"10.0.120.0/22"}
+HBN_OVN_NETWORK=${HBN_OVN_NETWORK:-"10.6.156.192/28"}
 
 # Ensure directories exist
 mkdir -p "${GENERATED_POST_INSTALL_DIR}"
@@ -96,12 +96,15 @@ function update_hbn_ovn_manifests() {
         log [ERROR] "DPU_HOST_CIDR environment variable is not set. Please set it to the DPU nodes subnet (e.g., 10.6.135.0/24)"
         return 1
     fi
+    # Extract prefix size from HBN_OVN_NETWORK CIDR
+    HBN_OVN_PREFIX_SIZE=$(echo "${HBN_OVN_NETWORK}" | cut -d'/' -f2)
+
     # Update hbn-ovn-ipam.yaml
     update_file_multi_replace \
         "${POST_INSTALL_DIR}/hbn-ovn-ipam.yaml" \
         "${GENERATED_POST_INSTALL_DIR}/hbn-ovn-ipam.yaml" \
-        "<HBN_OVN_NETWORK>" \
-        "${HBN_OVN_NETWORK}"
+        "<HBN_OVN_NETWORK>" "${HBN_OVN_NETWORK}" \
+        "<HBN_OVN_PREFIX_SIZE>" "${HBN_OVN_PREFIX_SIZE}"
     
     # Skip ovn-dpuservice.yaml - now handled by DPUDeployment
     # Services are now managed through DPUDeployment with templates and configurations

@@ -53,7 +53,7 @@ HELM_CHARTS_DIR=${HELM_CHARTS_DIR:-"$MANIFESTS_DIR/helm-charts-values"}
 BFB_URL=${BFB_URL:-"http://10.8.2.236/bfb/rhcos_4.19.0-ec.4_installer_2025-04-23_07-48-42.bfb"}
 
 # HBN OVN Configuration
-HBN_OVN_NETWORK=${HBN_OVN_NETWORK:-"10.0.120.0/22"}
+HBN_OVN_NETWORK=${HBN_OVN_NETWORK:-"10.6.156.192/28"}
 
 # DPU Service Configuration
 HBN_HOSTNAME_NODE1=${HBN_HOSTNAME_NODE1:-"srv24-*"}
