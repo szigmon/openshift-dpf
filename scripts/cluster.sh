@@ -120,8 +120,43 @@ function set_cluster_mtu() {
 
         log "INFO" "Set MAC: $UNIQUE_MAC ,Will be set on VM: $VM_NAME"
 
-        cat << EOF >> "$STATIC_NET_FILE"
-        - interfaces: 
+        # Use static IP if API_VIP is defined, otherwise DHCP
+        if [ -n "${API_VIP}" ] && [ "${API_VIP}" != "" ]; then
+            # Calculate IP and gateway for static configuration
+            if [ "$VM_COUNT" -eq 1 ]; then
+                VM_IP="${API_VIP}"
+            else
+                IFS='.' read -r a b c d <<< "${API_VIP}"
+                VM_IP="${a}.${b}.${c}.$((d + i - 1))"
+            fi
+            GATEWAY=$(echo "${API_VIP}" | sed 's/\.[^.]*$/\.1/')
+
+            cat << EOF >> "$STATIC_NET_FILE"
+        - interfaces:
+           - name: ${PRIMARY_IFACE:-enp1s0}
+             type: ethernet
+             state: up
+             mtu: ${NODES_MTU}
+             mac-address: '${UNIQUE_MAC}'
+             ipv4:
+               dhcp: false
+               enabled: true
+               address:
+                 - ip: ${VM_IP}
+                   prefix-length: 24
+               dns-resolver:
+                 config:
+                   server:
+                     - ${GATEWAY}
+               route:
+                 config:
+                   - destination: 0.0.0.0/0
+                     next-hop-address: ${GATEWAY}
+                     next-hop-interface: ${PRIMARY_IFACE:-enp1s0}
+EOF
+        else
+            cat << EOF >> "$STATIC_NET_FILE"
+        - interfaces:
            - name: ${PRIMARY_IFACE:-enp1s0}
              type: ethernet
              state: up
@@ -131,6 +166,7 @@ function set_cluster_mtu() {
                dhcp: true
                enabled: true
 EOF
+        fi
     done
 }
 
