@@ -21,6 +21,7 @@ ensure_helm_installed
 
 log [INFO] "Enabling OVN resource injector..."
 
+rm -rf "$GENERATED_DIR/ovn-injector" | true
 mkdir -p "$GENERATED_DIR/ovn-injector"
 
 INJECTOR_RESOURCE_NAME="${INJECTOR_RESOURCE_NAME:-openshift.io/bf3-p0-vfs}"
@@ -29,7 +30,7 @@ helm pull "${OVN_CHART_URL}/ovn-kubernetes-chart" \
     --version "${DPF_VERSION}" \
     --untar -d "$GENERATED_DIR/ovn-injector"
 
-helm template -n ovn-kubernetes ovn-kubernetes-resource-injector \
+helm template -n ${OVNK_NAMESPACE} ovn-kubernetes-resource-injector \
     "$GENERATED_DIR/ovn-injector/ovn-kubernetes-chart" \
     --set ovn-kubernetes-resource-injector.enabled=true \
     --set ovn-kubernetes-resource-injector.resourceName="${INJECTOR_RESOURCE_NAME}" \
@@ -46,10 +47,10 @@ rm -rf "$GENERATED_DIR/ovn-injector"
 
 # Wait for injector to be ready
 log [INFO] "Waiting for OVN injector deployment to be ready..."
-wait_for_pods "ovn-kubernetes" "app.kubernetes.io/name=ovn-kubernetes-resource-injector" "status.phase=Running" "Running" 30 10
+wait_for_pods "${OVNK_NAMESPACE}" "app.kubernetes.io/name=ovn-kubernetes-resource-injector" "status.phase=Running" "Running" 30 10
 
 # Verify NAD creation
-if oc get net-attach-def -n ovn-kubernetes dpf-ovn-kubernetes &>/dev/null; then
+if oc get net-attach-def -n "${OVNK_NAMESPACE}" dpf-ovn-kubernetes &>/dev/null; then
     log [INFO] "NetworkAttachmentDefinition 'dpf-ovn-kubernetes' created successfully"
 else
     log [ERROR] "NetworkAttachmentDefinition 'dpf-ovn-kubernetes' was not created"
