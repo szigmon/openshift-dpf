@@ -121,15 +121,27 @@ function set_cluster_mtu() {
         log "INFO" "Set MAC: $UNIQUE_MAC ,Will be set on VM: $VM_NAME"
 
         cat << EOF >> "$STATIC_NET_FILE"
-        - interfaces: 
+        - interfaces:
            - name: ${PRIMARY_IFACE:-enp1s0}
              type: ethernet
-             state: up
-             mtu: ${NODES_MTU}
              mac-address: '${UNIQUE_MAC}'
+             state: up
              ipv4:
-               dhcp: true
-               enabled: true
+                 enabled: true
+                 address:
+                 - ip: 10.1.178.246
+                       prefix-length: 24
+                dhcp: false
+          routes:
+            config:
+                - destination: 0.0.0.0/0
+                next-hop-address: 192.168.1.1
+                next-hop-interface: enp1s0
+          dns-resolver:
+            config:
+                server:
+                - 8.8.8.8
+                - 8.8.4.4 
 EOF
     done
 }
@@ -143,10 +155,7 @@ function check_create_cluster() {
         return 0
     fi
 
-    if [ "${NODES_MTU}" != "1500" ] ; then
-       set_cluster_mtu || return 1
-    fi
-
+    set_cluster_mtu
     if ! aicli info cluster ${CLUSTER_NAME} >/dev/null 2>&1; then
         log "INFO" "Cluster ${CLUSTER_NAME} not found, creating..."
 
@@ -158,7 +167,7 @@ function check_create_cluster() {
                 -P pull_secret="${OPENSHIFT_PULL_SECRET}" \
                 -P high_availability_mode=None \
                 -P user_managed_networking=True \
-		        $([ "${NODES_MTU}" != "1500" ] && echo "--paramfile ${STATIC_NET_FILE}") \
+		        " --paramfile ${STATIC_NET_FILE}") \
                 "${CLUSTER_NAME}"
         else
             log "INFO" "Creating multi-node cluster..."
@@ -172,7 +181,7 @@ function check_create_cluster() {
                 -P pull_secret="${OPENSHIFT_PULL_SECRET}" \
                 -P public_key="${SSH_KEY}" \
                 -P ingress_vips="${INGRESS_VIPS}" \
-		        $([ "${NODES_MTU}" != "1500" ] && echo "--paramfile ${STATIC_NET_FILE}") \
+		        " --paramfile ${STATIC_NET_FILE}") \
                 "${CLUSTER_NAME}"
         fi
         
