@@ -113,6 +113,19 @@ DPF_VERSION=${DPF_VERSION:-"v25.7.0-beta.4"}
 # Helm Chart URLs - OCI registry format for v25.7+
 DPF_HELM_REPO_URL=${DPF_HELM_REPO_URL:-"oci://ghcr.io/nvidia"}
 OVN_CHART_URL=${OVN_CHART_URL:-"oci://ghcr.io/nvidia"}
+OVN_TEMPLATE_CHART_URL=${OVN_TEMPLATE_CHART_URL:-${OVN_CHART_URL}}
+OVN_CHART_VERSION=${OVN_CHART_VERSION:-${DPF_VERSION}}
+
+# OVN Image Configuration
+OVN_IMAGE=${OVN_IMAGE:-"quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256"}
+OVN_IMAGE_TAG=${OVN_IMAGE_TAG:-"780d11fac73412276b312b3f7c879b5e63da9687c7c8e79fc142e9c6e2f7c4cf"}
+
+# OVN-Kubernetes DPF Utils Image Configuration
+OVN_KUBERNETES_UTILS_IMAGE_REPO=${OVN_KUBERNETES_UTILS_IMAGE_REPO:-"nvcr.io/nvidia/doca/ovn-kubernetes-dpf-utils"}
+OVN_KUBERNETES_UTILS_IMAGE_TAG=${OVN_KUBERNETES_UTILS_IMAGE_TAG:-"v25.7.1-rc.1"}
+
+# OVN-Kubernetes Namespace
+OVNK_NAMESPACE=${OVNK_NAMESPACE:-"openshift-ovn-kubernetes"}
 
 OVN_TEMPLATE_CHART_URL=${OVN_TEMPLATE_CHART_URL:-${OVN_CHART_URL}}
 OVN_CHART_VERSION=${OVN_CHART_VERSION:-${DPF_VERSION}}

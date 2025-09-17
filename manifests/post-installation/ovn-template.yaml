@@ -7,9 +7,9 @@ spec:
   deploymentServiceName: "ovn"
   helmChart:
     source:
-      repoURL: <OVN_CHART_URL>
+      repoURL: <OVN_TEMPLATE_CHART_URL>
       chart: ovn-kubernetes-chart
-      version: <DPF_VERSION>
+      version: <OVN_CHART_VERSION>
     values:
       commonManifests:
         enabled: true
@@ -23,5 +23,5 @@ spec:
         enabled: true
         cniBinDir: /var/lib/cni/bin/
         cniConfDir: /run/multus/cni/net.d
-      leaseNamespace: "ovn-kubernetes"
+      leaseNamespace: "openshift-ovn-kubernetes"
       gatewayOpts: "--gateway-interface=br-dpu"
