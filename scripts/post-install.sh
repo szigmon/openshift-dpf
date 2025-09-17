@@ -84,6 +84,7 @@ function update_hbn_ovn_manifests() {
             "${POST_INSTALL_DIR}/ovn-template.yaml" \
             "${GENERATED_POST_INSTALL_DIR}/ovn-template.yaml" \
             "<DPF_VERSION>" "${DPF_VERSION}" \
+            "<OVN_CHART_VERSION>" "${OVN_CHART_VERSION}" \
             "<OVN_KUBERNETES_IMAGE_REPO>" "${OVN_KUBERNETES_IMAGE_REPO}" \
             "<OVN_KUBERNETES_IMAGE_TAG>" "${OVN_KUBERNETES_IMAGE_TAG}" \
             "<OVN_KUBERNETES_UTILS_IMAGE_REPO>" "${OVN_KUBERNETES_UTILS_IMAGE_REPO}" \
