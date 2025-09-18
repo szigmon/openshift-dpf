@@ -22,5 +22,5 @@ spec:
   channel: stable
   installPlanApproval: Automatic
   name: sriov-network-operator
-  source: redhat-operators
+  source: <CATALOG_SOURCE_NAME>
   sourceNamespace: openshift-marketplace

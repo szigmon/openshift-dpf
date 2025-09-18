@@ -85,6 +85,14 @@ function prepare_cluster_manifests() {
         | grep -v "ovn-values-with-injector.yaml" \
         | xargs -I {} cp {} "$GENERATED_DIR/"
 
+     # Substitute catalog source name via sed in generated files
+    if [ -f "$GENERATED_DIR/nfd-subscription.yaml" ]; then
+        sed -i "s|<CATALOG_SOURCE_NAME>|$CATALOG_SOURCE_NAME|g" "$GENERATED_DIR/nfd-subscription.yaml"
+    fi
+    if [ -f "$GENERATED_DIR/sriov-subscription.yaml" ]; then
+        sed -i "s|<CATALOG_SOURCE_NAME>|$CATALOG_SOURCE_NAME|g" "$GENERATED_DIR/sriov-subscription.yaml"
+    fi
+
     # Configure cluster components
     log [INFO] "Configuring cluster installation..."
     
@@ -119,6 +127,22 @@ function prepare_cluster_manifests() {
     fi
 
     log [INFO] "Cluster manifests preparation complete."
+}
+
+function deploy_core_operator_sources() {
+    log [INFO] "Deploying NFD and SR-IOV subscriptions and CatalogSource..."
+
+    mkdir -p "$GENERATED_DIR"
+    for f in "$MANIFESTS_DIR/cluster-installation/nfd-subscription.yaml" \
+             "$MANIFESTS_DIR/cluster-installation/sriov-subscription.yaml" \
+             "$MANIFESTS_DIR/cluster-installation/4.19-cataloguesource.yaml"; do
+        if [ -f "$f" ]; then
+            cp "$f" "$GENERATED_DIR/"
+            sed -i "s|<CATALOG_SOURCE_NAME>|$CATALOG_SOURCE_NAME|g" "$GENERATED_DIR/$(basename "$f")"
+            apply_manifest "$GENERATED_DIR/$(basename "$f")" true
+        fi
+    done
+    log [INFO] "Core operator sources deployed."
 }
 
 # Function to prepare DPF manifests
@@ -349,6 +373,9 @@ function main() {
     shift
 
     case "$command" in
+        deploy-core-operator-sources)
+            deploy_core_operator_sources
+            ;;
         generate-ovn-manifests)
             generate_ovn_manifests
             ;;
