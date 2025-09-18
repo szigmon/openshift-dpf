@@ -80,10 +80,16 @@ function prepare_cluster_manifests() {
     # Clean up any existing Helm values files that might have been left from previous runs
     find "$GENERATED_DIR" -maxdepth 1 -type f -name "*-values.yaml" -delete 2>/dev/null || true
     
-    find "$MANIFESTS_DIR/cluster-installation" -maxdepth 1 -type f -name "*.yaml" -o -name "*.yml" \
+    find "$MANIFESTS_DIR/cluster-installation" -maxdepth 1 -type f \( -name "*.yaml" -o -name "*.yml" \) \
         | grep -v "ovn-values.yaml" \
         | grep -v "ovn-values-with-injector.yaml" \
+        | grep -v "/nfd-subscription.yaml$" \
+        | grep -v "/sriov-subscription.yaml$" \
+        | grep -v "/4.19-cataloguesource.yaml$" \
         | xargs -I {} cp {} "$GENERATED_DIR/"
+
+    # Prepare core operator sources (copy + placeholder replacement)
+    prepare_core_operator_sources_files
 
     # Configure cluster components
     log [INFO] "Configuring cluster installation..."
@@ -119,6 +125,25 @@ function prepare_cluster_manifests() {
     fi
 
     log [INFO] "Cluster manifests preparation complete."
+}
+
+function prepare_core_operator_sources_files() {
+    local deploy_flag=${1:-"false"}
+    log [INFO] "Preparing core operator source files (copy + placeholder replacement)..."
+
+    mkdir -p "$GENERATED_DIR"
+    for f in "$MANIFESTS_DIR/cluster-installation/nfd-subscription.yaml" \
+             "$MANIFESTS_DIR/cluster-installation/sriov-subscription.yaml" \
+             "$MANIFESTS_DIR/cluster-installation/4.19-cataloguesource.yaml"; do
+        if [ -f "$f" ]; then
+            cp "$f" "$GENERATED_DIR/"
+            sed -i "s|<CATALOG_SOURCE_NAME>|$CATALOG_SOURCE_NAME|g" "$GENERATED_DIR/$(basename "$f")"
+            if [ "$deploy_flag" = "true" ]; then
+                apply_manifest "$GENERATED_DIR/$(basename "$f")" true
+            fi
+        fi
+    done
+    log [INFO] "Core operator sources deployed."
 }
 
 # Function to prepare DPF manifests
@@ -349,6 +374,9 @@ function main() {
     shift
 
     case "$command" in
+        deploy-core-operator-sources)
+            prepare_core_operator_sources_files "true"
+            ;;
         generate-ovn-manifests)
             generate_ovn_manifests
             ;;
