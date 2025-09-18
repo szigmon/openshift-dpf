@@ -30,6 +30,9 @@ node-feature-discovery
 # kubeconfigs
 *kubeconfig*
 
+# generated static file
+configuration_templates/static_net.yaml
+
 # discovery iso
 discovery_image*
 
