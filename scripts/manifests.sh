@@ -85,6 +85,14 @@ function prepare_cluster_manifests() {
         | grep -v "ovn-values-with-injector.yaml" \
         | xargs -I {} cp {} "$GENERATED_DIR/"
 
+     # Substitute catalog source name via sed in generated files
+    if [ -f "$GENERATED_DIR/nfd-subscription.yaml" ]; then
+        sed -i "s|<CATALOG_SOURCE_NAME>|$CATALOG_SOURCE_NAME|g" "$GENERATED_DIR/nfd-subscription.yaml"
+    fi
+    if [ -f "$GENERATED_DIR/sriov-subscription.yaml" ]; then
+        sed -i "s|<CATALOG_SOURCE_NAME>|$CATALOG_SOURCE_NAME|g" "$GENERATED_DIR/sriov-subscription.yaml"
+    fi
+
     # Configure cluster components
     log [INFO] "Configuring cluster installation..."
     

@@ -146,3 +146,6 @@ SLEEP_TIME=${SLEEP_TIME:-"60"}
 STATIC_NET_FILE=${STATIC_NET_FILE:-"./configuration_templates/static_net.yaml"}
 NODES_MTU=${NODES_MTU:-"1500"}
 PRIMARY_IFACE=${PRIMARY_IFACE:-enp1s0}
+
+# OLM Catalog Source Configuration
+CATALOG_SOURCE_NAME=${CATALOG_SOURCE_NAME:-"redhat-operators"}
