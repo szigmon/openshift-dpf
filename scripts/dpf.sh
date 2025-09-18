@@ -160,12 +160,29 @@ function deploy_hypershift() {
           --node-upgrade-type=Replace
     fi
 
+    if [ -n "${CNO_HCP_IMAGE}" ]; then
+        add_cno_image_override
+    fi
+
+    log [INFO] "Checking hosted control plane pods..."
+    oc -n ${HOSTED_CONTROL_PLANE_NAMESPACE} get pods
+    log [INFO] "Waiting for etcd pods..."
+    wait_for_pods ${HOSTED_CONTROL_PLANE_NAMESPACE} "app=etcd" "status.phase=Running" "3/3" 60 10
+
+    log [INFO] "Patching nodepool to replica 0..."
+    oc patch nodepool -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} --type=merge -p '{"spec":{"replicas":0}}'
+
+    configure_hypershift
+    create_ignition_template
+}
+
+function add_cno_image_override() {
     log [INFO] "Adding CNO image override annotation..."
     local max_retries=10
     local retry_count=0
     while [ $retry_count -lt $max_retries ]; do
         if oc annotate hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} \
-           hypershift.openshift.io/image-overrides=cluster-network-operator=quay.io/lhadad/cluster-network-operator:ingressJul24v1 \
+           hypershift.openshift.io/image-overrides=cluster-network-operator=${CNO_HCP_IMAGE} \
            --overwrite; then
             log [INFO] "Successfully added CNO image override annotation"
             break
@@ -179,17 +196,6 @@ function deploy_hypershift() {
             fi
         fi
     done
-
-    log [INFO] "Checking hosted control plane pods..."
-    oc -n ${HOSTED_CONTROL_PLANE_NAMESPACE} get pods
-    log [INFO] "Waiting for etcd pods..."
-    wait_for_pods ${HOSTED_CONTROL_PLANE_NAMESPACE} "app=etcd" "status.phase=Running" "3/3" 60 10
-
-    log [INFO] "Patching nodepool to replica 0..."
-    oc patch nodepool -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} --type=merge -p '{"spec":{"replicas":0}}'
-
-    configure_hypershift
-    create_ignition_template
 }
 
 function create_ignition_template() {
