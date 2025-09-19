@@ -17,7 +17,8 @@ POST_INSTALL_SCRIPT := scripts/post-install.sh
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
-        redeploy-dpu enable-ovn-injector deploy-argocd deploy-maintenance-operator configure-flannel
+        redeploy-dpu enable-ovn-injector deploy-argocd deploy-maintenance-operator configure-flannel \
+        deploy-core-operator-sources
 
 all: verify-files check-cluster create-vms prepare-manifests cluster-install update-etc-hosts kubeconfig deploy-dpf prepare-dpu-files deploy-dpu-services enable-ovn-injector
 	@echo ""
@@ -127,6 +128,9 @@ configure-flannel: deploy-dpu-services
 enable-ovn-injector: install-helm
 	@scripts/enable-ovn-injector.sh
 
+deploy-core-operator-sources:
+	@$(MANIFESTS_SCRIPT) deploy-core-operator-sources
+
 update-etc-hosts:
 	@scripts/update-etc-hosts.sh
 
@@ -155,6 +159,7 @@ help:
 	@echo "  get-day2-iso      - Get ISO URL for worker nodes with DPUs (uses day2 cluster)"
 	@echo "  download-iso      - Download the ISO for master nodes"
 	@echo "  prepare-manifests - Prepare required manifests"
+	@echo "  deploy-core-operator-sources - Deploy NFD & SR-IOV subscriptions and CatalogSource"
 	@echo "  delete-cluster    - Delete the cluster"
 	@echo "  clean            - Remove generated files"
 	@echo "  clean-all        - Delete cluster, VMs, and clean all generated files"
