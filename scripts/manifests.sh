@@ -88,12 +88,6 @@ function prepare_cluster_manifests() {
     # Configure cluster components
     log [INFO] "Configuring cluster installation..."
     
-    # Check if cluster is already installed
-    if check_cluster_installed; then
-        log [INFO] "Skipping configuration updates as cluster is already installed"
-    else
-        aicli update installconfig "$CLUSTER_NAME" -P network_type=NVIDIA-OVN
-    fi
 
     # Always copy Cert-Manager manifest (required for DPF operator)
     log [INFO] "Copying Cert-Manager manifest (required for DPF operator)..."
@@ -106,7 +100,6 @@ function prepare_cluster_manifests() {
         log "INFO" "Removed Helm values files from generated directory"
     fi
 
-    generate_ovn_manifests
     enable_storage
     
     # Install manifests to cluster
@@ -264,6 +257,8 @@ function update_ovn_mtu_in_value_file() {
     fi
 }
 
+# Not used anymore
+# Saving it for possible future use
 function generate_ovn_manifests() {
     log [INFO] "Generating OVN manifests for cluster installation..."
     
@@ -303,7 +298,7 @@ function generate_ovn_manifests() {
         "$HELM_CHARTS_DIR/ovn-values.yaml" > "$GENERATED_DIR/temp/ovn-values-resolved.yaml"
     
     log [INFO] "Generating OVN manifests from helm template..."
-    if ! helm template -n ovn-kubernetes ovn-kubernetes \
+    if ! helm template -n ${OVNK_NAMESPACE} ovn-kubernetes \
         "$GENERATED_DIR/temp/ovn-kubernetes-chart" \
         -f "$GENERATED_DIR/temp/ovn-values-resolved.yaml" \
         > "$GENERATED_DIR/ovn-manifests.yaml"; then
@@ -349,9 +344,6 @@ function main() {
     shift
 
     case "$command" in
-        generate-ovn-manifests)
-            generate_ovn_manifests
-            ;;
         prepare-manifests)
             prepare_manifests "cluster"
             ;;
