@@ -128,7 +128,7 @@ function deploy_hypershift() {
         log [INFO] "Hypershift operator already installed. Skipping deployment."
     else
         log [INFO] "Installing latest hypershift operator"
-        install_hypershift
+        ensure_hypershift_installed
     fi
 
     log [INFO] "Checking if Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists..."
