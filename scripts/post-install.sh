@@ -129,9 +129,7 @@ function update_hbn_ovn_manifests() {
     if [ -f "${POST_INSTALL_DIR}/hbn-configuration.yaml" ]; then
         update_file_multi_replace \
             "${POST_INSTALL_DIR}/hbn-configuration.yaml" \
-            "${GENERATED_POST_INSTALL_DIR}/hbn-configuration.yaml" \
-            "<HBN_HOSTNAME_NODE1>" "${HBN_HOSTNAME_NODE1}" \
-            "<HBN_HOSTNAME_NODE2>" "${HBN_HOSTNAME_NODE2}"
+            "${GENERATED_POST_INSTALL_DIR}/hbn-configuration.yaml"
     fi
 
     log [INFO] "HBN OVN manifests updated successfully"
