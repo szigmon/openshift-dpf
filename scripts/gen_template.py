@@ -1,16 +1,16 @@
 #!/usr/bin/python3
 
+import argparse
 import base64
 import gzip
+import http.client
 import json
 import os
-import http.client
 import ssl
 import subprocess
-import argparse
 from dataclasses import dataclass
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 
 @dataclass
@@ -90,6 +90,66 @@ ENABLE_ESWITCH_MULTIPORT="yes"
             inline="""
 CREATE_OVS_BRIDGES="no"
 OVS_DOCA="yes"
+"""
+        )
+    ),
+    FileEntry(
+        path="/etc/NetworkManager/system-connections/p0.nmconnection",
+        overwrite=True,
+        mode=600,
+        contents=FileContents(
+            inline="""[connection]
+id=p0
+type=ethernet
+interface-name=p0
+
+[ethernet]
+mtu=9216
+"""
+        )
+    ),
+    FileEntry(
+        path="/etc/NetworkManager/system-connections/p1.nmconnection",
+        overwrite=True,
+        mode=600,
+        contents=FileContents(
+            inline="""[connection]
+id=p1
+type=ethernet
+interface-name=p1
+
+[ethernet]
+mtu=9216
+"""
+        )
+    ),
+    FileEntry(
+        path="/etc/NetworkManager/system-connections/p0hpf.nmconnection",
+        overwrite=True,
+        mode=600,
+        contents=FileContents(
+            inline="""[connection]
+id=p0hpf
+type=ethernet
+interface-name=p0hpf
+
+[ethernet]
+mtu=9216
+"""
+        )
+    ),
+    FileEntry(
+        path="/etc/NetworkManager/system-connections/p1hpf.nmconnection",
+        overwrite=True,
+        mode=600,
+        contents=FileContents(
+            inline="""[connection]
+id=p1hpf
+type=ethernet
+interface-name=p1hpf
+
+[ethernet]
+mtu=9216
 """
         )
     ),
