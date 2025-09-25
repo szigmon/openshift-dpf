@@ -124,14 +124,14 @@ mtu=9216
         )
     ),
     FileEntry(
-        path="/etc/NetworkManager/system-connections/p0hpf.nmconnection",
+        path="/etc/NetworkManager/system-connections/pf0hpf.nmconnection",
         overwrite=True,
         mode=600,
         contents=FileContents(
             inline="""[connection]
-id=p0hpf
+id=pf0hpf
 type=ethernet
-interface-name=p0hpf
+interface-name=pf0hpf
 
 [ethernet]
 mtu=9216
@@ -139,14 +139,14 @@ mtu=9216
         )
     ),
     FileEntry(
-        path="/etc/NetworkManager/system-connections/p1hpf.nmconnection",
+        path="/etc/NetworkManager/system-connections/pf1hpf.nmconnection",
         overwrite=True,
         mode=600,
         contents=FileContents(
             inline="""[connection]
-id=p1hpf
+id=pf1hpf
 type=ethernet
-interface-name=p1hpf
+interface-name=pf1hpf
 
 [ethernet]
 mtu=9216
