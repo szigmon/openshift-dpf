@@ -5,6 +5,9 @@ controlPlaneManifests:
   enabled: true
   cniBinDir: "/var/lib/cni/bin/"
   cniConfDir: "/run/multus/cni/net.d"
+  image:
+    repository: <OVN_KUBERNETES_IMAGE_REPO>
+    tag: <OVN_KUBERNETES_IMAGE_TAG>
 
 # Enable node with DPU manifests
 nodeWithDPUManifests:
@@ -13,6 +16,9 @@ nodeWithDPUManifests:
   dpuServiceAccountNamespace: dpf-operator-system
   cniBinDir: "/var/lib/cni/bin/"
   cniConfDir: "/run/multus/cni/net.d"
+  image:
+    repository: <OVN_KUBERNETES_IMAGE_REPO>
+    tag: <OVN_KUBERNETES_IMAGE_TAG>
 
 # Enable common manifests
 commonManifests:
@@ -23,6 +29,9 @@ nodeWithoutDPUManifests:
   enabled: true
   cniBinDir: "/var/lib/cni/bin/"
   cniConfDir: "/run/multus/cni/net.d"
+  image:
+    repository: <OVN_KUBERNETES_IMAGE_REPO>
+    tag: <OVN_KUBERNETES_IMAGE_TAG>
 
 global:
   imagePullSecretName: "dpf-pull-secret"
@@ -37,7 +46,13 @@ dpuManifests:
   enabled: false  # Will be enabled by DPUService
   cniBinDir: "/var/lib/cni/bin/"
   cniConfDir: "/run/multus/cni/net.d"
+  image:
+    repository: <OVN_KUBERNETES_IMAGE_REPO>
+    tag: <OVN_KUBERNETES_IMAGE_TAG>
 
 ovn-kubernetes-resource-injector:
   enabled: false
   resourceName: openshift.io/bf3-p0-vfs
+  image:
+    repository: <OVN_KUBERNETES_UTILS_IMAGE_REPO>
+    tag: <OVN_KUBERNETES_UTILS_IMAGE_TAG>

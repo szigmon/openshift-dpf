@@ -13,6 +13,7 @@ spec:
     values:
       commonManifests:
         enabled: true
+      dpuManifests:
         image:
           repository: <OVN_KUBERNETES_IMAGE_REPO>
           tag: <OVN_KUBERNETES_IMAGE_TAG>
