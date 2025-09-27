@@ -54,26 +54,6 @@ is_special_file() {
     return 1
 }
 
-# Function to update a file with multiple replacements
-update_file_multi_replace() {
-    local source_file=$1
-    local target_file=$2
-    shift 2
-    local pairs=("$@")
-
-    log [INFO] "Updating ${source_file} with multiple replacements..."
-    cp "${source_file}" "${target_file}"
-    local i=0
-    while [ $i -lt ${#pairs[@]} ]; do
-        local placeholder="${pairs[$i]}"
-        local value="${pairs[$((i+1))]}"
-        sed -i "s|${placeholder}|${value}|g" "${target_file}"
-        log [INFO] "Replaced ${placeholder} with ${value} in ${target_file}"
-        i=$((i+2))
-    done
-    log [INFO] "Updated ${source_file} with all replacements successfully"
-}
-
 # Function to update BFB manifest
 function update_bfb_manifest() {
     log [INFO] "Updating BFB manifest..."
