@@ -237,18 +237,19 @@ function update_service_templates() {
 }
 
 function update_flavor_in_yaml() {
-  if [ ! -f "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
-    log "ERROR" "File not found: ${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
+  if [ ! -f "${POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
+    log "ERROR" "Source file not found: ${POST_INSTALL_DIR}/dpudeployment.yaml"
     return 1
   fi
 
   local flavor="flavor-$NODES_MTU" 
 
-  log "INFO" "Updating flavor in to $new_flavor"
-  sed -i "s|flavor: .*|flavor: $flavor|g" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" || {
-    log "ERROR" "Failed to update flavor in ${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
-    return 1
-  }
+  log "INFO" "Updating flavor to $flavor"
+  update_file_multi_replace \
+    "${POST_INSTALL_DIR}/dpudeployment.yaml" \
+    "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" \
+    "<FLAVOR>" \
+    "$flavor"
 
   log "INFO" "Successfully updated flavor in ${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
 }
@@ -284,10 +285,7 @@ function prepare_post_installation() {
     update_service_templates
     update_dpu_service_nad
     
-    # Copy DPUDeployment
-    if [ -f "${POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
-        cp "${POST_INSTALL_DIR}/dpudeployment.yaml" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
-    fi
+    # Update DPUDeployment with flavor
     update_flavor_in_yaml
 
     # Copy remaining manifests
