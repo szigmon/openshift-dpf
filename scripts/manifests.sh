@@ -44,30 +44,35 @@ function prepare_nfs() {
     # Two scenarios require NFS:
     # 1. Small clusters (VM_COUNT < 3) that lack OCS/ODF storage classes
     # 2. Explicit NFS configuration (BFB_STORAGE_CLASS="nfs-client") regardless of cluster size
-    local needs_nfs=false
-    local reason=""
-    
-    if [[ "${VM_COUNT}" -lt 3 ]]; then
-        needs_nfs=true
-        reason="small cluster without OCS (VM_COUNT=${VM_COUNT})"
-    elif [[ "${BFB_STORAGE_CLASS}" == "nfs-client" ]]; then
-        needs_nfs=true
-        reason="explicit NFS configuration (BFB_STORAGE_CLASS=nfs-client)"
-    fi
-    
-    if [[ "$needs_nfs" == "true" ]]; then
-        log "INFO" "Deploying NFS for ReadWriteMany storage: ${reason}"
+        
+    # For sno clusters, deploy internal NFS server
+    log "INFO" "Deploying NFS for ReadWriteMany storage"
+    if [[ "${VM_COUNT}" -lt 2 ]]; then
         # Validate ETCD_STORAGE_CLASS is set
         if [ -z "${ETCD_STORAGE_CLASS}" ]; then
             log "ERROR" "ETCD_STORAGE_CLASS is not set but required for NFS deployment"
             return 1
         fi
-        sed -e "s|<STORAGECLASS_NAME>|${ETCD_STORAGE_CLASS}|g" \
-            -e "s|<NFS_SERVER_NODE_IP>|${HOST_CLUSTER_API}|g" \
-        "${MANIFESTS_DIR}/nfs/nfs-sno.yaml" > "${GENERATED_DIR}/nfs-sno.yaml"
+        update_file_multi_replace \
+        "${MANIFESTS_DIR}/nfs/nfs-sno.yaml" \
+        "${GENERATED_DIR}/nfs-sno.yaml" \
+        "<STORAGECLASS_NAME>" "${ETCD_STORAGE_CLASS}"
+        NFS_PATH="/"
     else
-        log "INFO" "Skipping NFS deployment: using OCS/ODF storage (VM_COUNT=${VM_COUNT})"
+        if [ -z "${NFS_SERVER}" ] && [ -z "${NFS_PATH}" ]; then
+            log "ERROR" "NFS_SERVER or NFS_PATH is not set but required for NFS deployment"
+            return 1
+        fi
+        HOST_CLUSTER_API="${NFS_SERVER}"
     fi
+
+    update_file_multi_replace \
+    "${MANIFESTS_DIR}/nfs/nfs-pv.yaml" \
+    "${GENERATED_DIR}/nfs-pv.yaml" \
+    "<NFS_SERVER_NODE_IP>" "${HOST_CLUSTER_API}" \
+    "<NFS_PATH>" "${NFS_PATH}"
+
+    log "INFO" "NFS deployment completed successfully"
 }
 
 
@@ -145,6 +150,7 @@ function deploy_core_operator_sources() {
     log [INFO] "Core operator sources deployed."
 }
 
+
 # Function to prepare DPF manifests
 prepare_dpf_manifests() {
     log [INFO] "Starting DPF manifest preparation..."
@@ -196,23 +202,6 @@ prepare_dpf_manifests() {
     log "INFO" "DPF manifest preparation completed successfully"
 
     # Update manifests with configuration
-    # Check if bfb-pvc.yaml exists before modifying
-    if [ ! -f "$GENERATED_DIR/bfb-pvc.yaml" ]; then
-        log "ERROR" "bfb-pvc.yaml not found in $GENERATED_DIR"
-        return 1
-    fi
-    
-    # For single-node clusters (VM_COUNT < 2), we use direct NFS PV binding, so remove storageClassName
-    if [ "${VM_COUNT}" -lt 2 ]; then
-        if ! grep -v 'storageClassName: ""' "$GENERATED_DIR/bfb-pvc.yaml" > "$GENERATED_DIR/bfb-pvc.yaml.tmp"; then
-            log "ERROR" "Failed to process bfb-pvc.yaml for single-node cluster"
-            return 1
-        fi
-        mv "$GENERATED_DIR/bfb-pvc.yaml.tmp" "$GENERATED_DIR/bfb-pvc.yaml"
-    else
-        sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
-    fi
-
     # Update static DPU cluster template
     sed -i "s|<KUBERNETES_VERSION>|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
     sed -i "s|<HOSTED_CLUSTER_NAME>|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
