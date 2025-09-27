@@ -44,30 +44,82 @@ function prepare_nfs() {
     # Two scenarios require NFS:
     # 1. Small clusters (VM_COUNT < 3) that lack OCS/ODF storage classes
     # 2. Explicit NFS configuration (BFB_STORAGE_CLASS="nfs-client") regardless of cluster size
-    local needs_nfs=false
-    local reason=""
-    
-    if [[ "${VM_COUNT}" -lt 3 ]]; then
-        needs_nfs=true
-        reason="small cluster without OCS (VM_COUNT=${VM_COUNT})"
-    elif [[ "${BFB_STORAGE_CLASS}" == "nfs-client" ]]; then
-        needs_nfs=true
-        reason="explicit NFS configuration (BFB_STORAGE_CLASS=nfs-client)"
+        
+    # Check if NFS PV already exists
+    if oc get pv nfs-client-hostnet-pv >/dev/null 2>&1; then
+        log "INFO" "NFS PersistentVolume already exists. Skipping NFS deployment."
+        return 0
     fi
     
-    if [[ "$needs_nfs" == "true" ]]; then
-        log "INFO" "Deploying NFS for ReadWriteMany storage: ${reason}"
-        # Validate ETCD_STORAGE_CLASS is set
-        if [ -z "${ETCD_STORAGE_CLASS}" ]; then
-            log "ERROR" "ETCD_STORAGE_CLASS is not set but required for NFS deployment"
+    log "INFO" "Deploying NFS for ReadWriteMany storage"
+    
+    # Validate ETCD_STORAGE_CLASS is set
+    if [ -z "${ETCD_STORAGE_CLASS}" ]; then
+        log "ERROR" "ETCD_STORAGE_CLASS is not set but required for NFS deployment"
+        return 1
+    fi
+    
+    local selected_master_node=""
+    local selected_master_ip=""
+    local node_affinity=""
+    
+    if [[ "${VM_COUNT}" -lt 2 ]]; then
+        # For SNO clusters, deploy internal NFS server without specific node affinity
+        log "INFO" "Deploying NFS for SNO cluster"
+        node_affinity=""
+    else
+        # For multi-node clusters, deploy internal NFS server on a specific master
+        log "INFO" "Deploying NFS for multi-node cluster on a specific master"
+        
+        # Get a random master node hostname and IP
+        log "INFO" "Selecting a random master node for NFS deployment"
+        selected_master_node=$(oc get nodes -l node-role.kubernetes.io/control-plane -o jsonpath='{.items[0].metadata.name}')
+        
+        if [ -z "${selected_master_node}" ]; then
+            log "ERROR" "Failed to retrieve master node hostname"
             return 1
         fi
-        sed -e "s|<STORAGECLASS_NAME>|${ETCD_STORAGE_CLASS}|g" \
-            -e "s|<NFS_SERVER_NODE_IP>|${HOST_CLUSTER_API}|g" \
-        "${MANIFESTS_DIR}/nfs/nfs-sno.yaml" > "${GENERATED_DIR}/nfs-sno.yaml"
-    else
-        log "INFO" "Skipping NFS deployment: using OCS/ODF storage (VM_COUNT=${VM_COUNT})"
+        
+        log "INFO" "Selected master node: ${selected_master_node}"
+        
+        # Get the internal IP of the selected master
+        selected_master_ip=$(oc get node "${selected_master_node}" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
+        
+        if [ -z "${selected_master_ip}" ]; then
+            log "ERROR" "Failed to retrieve IP address for master node: ${selected_master_node}"
+            return 1
+        fi
+        
+        log "INFO" "Selected master IP: ${selected_master_ip}"
+        
+        # Build node affinity YAML block (properly indented with 6 spaces)
+        node_affinity="affinity:\\
+        nodeAffinity:\\
+          requiredDuringSchedulingIgnoredDuringExecution:\\
+            nodeSelectorTerms:\\
+            - matchExpressions:\\
+              - key: kubernetes.io/hostname\\
+                operator: In\\
+                values:\\
+                - ${selected_master_node}"
+        
+        # Set HOST_CLUSTER_API to the selected master IP
+        HOST_CLUSTER_API="${selected_master_ip}"
     fi
+
+    # Generate nfs.yaml with storage class and node affinity
+    update_file_multi_replace \
+        "${MANIFESTS_DIR}/nfs/nfs.yaml" \
+        "${GENERATED_DIR}/nfs.yaml" \
+        "<STORAGECLASS_NAME>" "${ETCD_STORAGE_CLASS}" \
+        "<NODE_AFFINITY>" "${node_affinity}"
+    
+    update_file_multi_replace \
+        "${MANIFESTS_DIR}/nfs/nfs-pv.yaml" \
+        "${GENERATED_DIR}/nfs-pv.yaml" \
+        "<NFS_SERVER_NODE_IP>" "${HOST_CLUSTER_API}" \
+
+    log "INFO" "NFS deployment completed successfully"
 }
 
 
@@ -167,6 +219,7 @@ function deploy_core_operator_sources() {
     log [INFO] "Core operator sources deployed."
 }
 
+
 # Function to prepare DPF manifests
 prepare_dpf_manifests() {
     log [INFO] "Starting DPF manifest preparation..."
@@ -221,23 +274,6 @@ prepare_dpf_manifests() {
     log "INFO" "DPF manifest preparation completed successfully"
 
     # Update manifests with configuration
-    # Check if bfb-pvc.yaml exists before modifying
-    if [ ! -f "$GENERATED_DIR/bfb-pvc.yaml" ]; then
-        log "ERROR" "bfb-pvc.yaml not found in $GENERATED_DIR"
-        return 1
-    fi
-    
-    # For single-node clusters (VM_COUNT < 2), we use direct NFS PV binding, so remove storageClassName
-    if [ "${VM_COUNT}" -lt 2 ]; then
-        if ! grep -v 'storageClassName: ""' "$GENERATED_DIR/bfb-pvc.yaml" > "$GENERATED_DIR/bfb-pvc.yaml.tmp"; then
-            log "ERROR" "Failed to process bfb-pvc.yaml for single-node cluster"
-            return 1
-        fi
-        mv "$GENERATED_DIR/bfb-pvc.yaml.tmp" "$GENERATED_DIR/bfb-pvc.yaml"
-    else
-        sed -i "s|storageClassName: \"\"|storageClassName: \"$BFB_STORAGE_CLASS\"|g" "$GENERATED_DIR/bfb-pvc.yaml"
-    fi
-
     # Update static DPU cluster template
     sed -i "s|<KUBERNETES_VERSION>|$OPENSHIFT_VERSION|g" "$GENERATED_DIR/static-dpucluster-template.yaml"
     sed -i "s|<HOSTED_CLUSTER_NAME>|$HOSTED_CLUSTER_NAME|g" "$GENERATED_DIR/static-dpucluster-template.yaml"

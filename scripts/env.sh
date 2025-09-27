@@ -139,12 +139,13 @@ HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
 
 if [ "${VM_COUNT}" -lt 2 ]; then
   ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"lvms-vg1"}
-  BFB_STORAGE_CLASS=${BFB_STORAGE_CLASS:-"nfs-client"}
 else
   ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"ocs-storagecluster-ceph-rbd"}
-  BFB_STORAGE_CLASS=${BFB_STORAGE_CLASS:-""}
 fi
 NUM_VFS=${NUM_VFS:-"46"}
+
+# NFS Configuration
+NFS_SERVER=${NFS_SERVER-""}
 
 # Feature Configuration
 
