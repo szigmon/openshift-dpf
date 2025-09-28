@@ -342,6 +342,9 @@ function apply_post_installation() {
                     export KUBECONFIG="${HOSTED_CLUSTER_NAME}.kubeconfig"
                     apply_manifest "$file" "true"
                     export KUBECONFIG="${saved_kubeconfig}"
+                elif [[ "${filename}" == "hbn-asn-ipam.yaml" ]]; then
+                    log [INFO] "Applying post-installation manifest: ${filename}"
+                    apply_manifest "$file" "false"
                 else
                     log [INFO] "Applying post-installation manifest: ${filename}"
                     apply_manifest "$file" "true"

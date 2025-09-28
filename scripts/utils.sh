@@ -217,7 +217,7 @@ function apply_manifest() {
     fi
     
     log "INFO" "Applying $file..."
-    oc apply -f "$file"
+    retry 3 15 oc apply -f "$file"
     local exit_code=$?
     if [ $exit_code -ne 0 ]; then
         log "ERROR" "Failed to apply $file (exit code: $exit_code)"
