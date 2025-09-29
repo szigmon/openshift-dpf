@@ -1,0 +1,10 @@
+---
+apiVersion: argoproj.io/v1beta1
+kind: ArgoCD
+metadata:
+  name: argocd
+  namespace: dpf-operator-system
+spec:
+  server:
+    route:
+      enabled: true

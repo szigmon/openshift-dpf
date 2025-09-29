@@ -280,39 +280,27 @@ function apply_remaining() {
 }
 
 function deploy_argocd() {
-    log [INFO] "Deploying ArgoCD..."
-    
-    # Check if ArgoCD is already installed
-    if check_helm_release_exists "dpf-operator-system" "argo-cd"; then
-        log [INFO] "Skipping ArgoCD deployment."
-        return 0
+    log [INFO] "Deploying GitOps operator..."
+
+    if ! oc get subscription openshift-gitops-operator -n openshift-gitops-operator &>/dev/null; then
+        log [INFO] "Installing GitOps operator..."
+        mkdir -p "$GENERATED_DIR"
+        process_template \
+            "${MANIFESTS_DIR}/gitops-operator/subscription.yaml" \
+            "$GENERATED_DIR/gitops-operator-subscription.yaml" \
+            "<GITOPS_OPERATOR_CHANNEL>" "$GITOPS_OPERATOR_CHANNEL" \
+            "<GITOPS_OPERATOR_VERSION>" "$GITOPS_OPERATOR_VERSION"
+        apply_manifest "$GENERATED_DIR/gitops-operator-subscription.yaml"
+        wait_for_pods "openshift-gitops-operator" "name=gitops-operator-controller-manager" "status.phase=Running" "1/1" 60 10
+    else
+        log [INFO] "GitOps operator already exists."
     fi
-    
-    # Ensure helm is installed
-    ensure_helm_installed
-    
-    # Add ArgoCD helm repository
-    log [INFO] "Adding ArgoCD helm repository..."
-    helm repo add argoproj https://argoproj.github.io/argo-helm || true
-    helm repo update
-    
-    # Install ArgoCD
-    log [INFO] "Installing ArgoCD chart version ${ARGOCD_CHART_VERSION}..."
-    helm upgrade --install argo-cd argoproj/argo-cd \
-        --namespace dpf-operator-system \
-        --create-namespace \
-        --version ${ARGOCD_CHART_VERSION} \
-        --values "${HELM_CHARTS_DIR}/argocd-values.yaml" \
-        --wait
-    
-    # Apply SCC permissions for ArgoCD
-    log [INFO] "Applying OpenShift SCCs for ArgoCD..."
-    apply_manifest "${MANIFESTS_DIR}/dpf-installation/argocd-scc.yaml"
-    
-    # Restart Redis to pick up SCC
-    oc rollout restart deployment/argo-cd-argocd-redis -n dpf-operator-system || true
-    
-    log [INFO] "ArgoCD deployment complete!"
+
+    log [INFO] "Creating ArgoCD instance..."
+    apply_manifest "${MANIFESTS_DIR}/gitops-operator/argocd.yaml"
+    wait_for_pods "dpf-operator-system" "app.kubernetes.io/part-of=argocd" "status.phase=Running" "1/1" 60 10
+
+    log [INFO] "GitOps operator deployment complete!"
 }
 
 function deploy_maintenance_operator() {
