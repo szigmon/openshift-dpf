@@ -13,9 +13,14 @@ spec:
     values:
       commonManifests:
         enabled: true
-      dpuManifests:
+        image:
+          repository: <OVN_KUBERNETES_IMAGE_REPO>
+          tag: <OVN_KUBERNETES_IMAGE_TAG>
+        imagedpf:
+          repository: <OVN_KUBERNETES_UTILS_IMAGE_REPO>
+          tag: <OVN_KUBERNETES_UTILS_IMAGE_TAG>
         enabled: true
         cniBinDir: /var/lib/cni/bin/
         cniConfDir: /run/multus/cni/net.d
       leaseNamespace: "ovn-kubernetes"
-      gatewayOpts: "--gateway-interface=br-ovn"
+      gatewayOpts: "--gateway-interface=br-dpu"
