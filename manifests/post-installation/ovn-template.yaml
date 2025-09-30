@@ -14,7 +14,6 @@ spec:
       commonManifests:
         enabled: true
       dpuManifests:
-<<<<<<< HEAD
         image:
           repository: <OVN_KUBERNETES_IMAGE_REPO>
           tag: <OVN_KUBERNETES_IMAGE_TAG>
@@ -26,16 +25,3 @@ spec:
         cniConfDir: /run/multus/cni/net.d
       leaseNamespace: "ovn-kubernetes"
       gatewayOpts: "--gateway-interface=br-dpu"
-=======
-        image:
-          repository: <OVN_KUBERNETES_IMAGE_REPO>
-          tag: <OVN_KUBERNETES_IMAGE_TAG>
-        imagedpf:
-          repository: <OVN_KUBERNETES_UTILS_IMAGE_REPO>
-          tag: <OVN_KUBERNETES_UTILS_IMAGE_TAG>
-        enabled: true
-        cniBinDir: /var/lib/cni/bin/
-        cniConfDir: /run/multus/cni/net.d
-      leaseNamespace: "ovn-kubernetes"
-      gatewayOpts: "--gateway-interface=br-dpu"
->>>>>>> 4c83ce5 (chore: update repo for DPF 25.7.1)

@@ -345,6 +345,10 @@ function generate_ovn_manifests() {
         -e "s|<SERVICE_CIDR>|$SERVICE_CIDR|" \
         -e "s|<DPU_P0_VF1>|${DPU_OVN_VF:-ens7f0v1}|" \
         -e "s|<DPU_P0>|$DPU_INTERFACE|" \
+        -e "s|<OVN_KUBERNETES_IMAGE_REPO>|$OVN_KUBERNETES_IMAGE_REPO|" \
+        -e "s|<OVN_KUBERNETES_IMAGE_TAG>|$OVN_KUBERNETES_IMAGE_TAG|" \
+        -e "s|<OVN_KUBERNETES_UTILS_IMAGE_REPO>|$OVN_KUBERNETES_UTILS_IMAGE_REPO|" \
+        -e "s|<OVN_KUBERNETES_UTILS_IMAGE_TAG>|$OVN_KUBERNETES_UTILS_IMAGE_TAG|" \
         "$HELM_CHARTS_DIR/ovn-values.yaml" > "$GENERATED_DIR/temp/ovn-values-resolved.yaml"
     
     log [INFO] "Generating OVN manifests from helm template..."
