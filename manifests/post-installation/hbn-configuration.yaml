@@ -37,14 +37,14 @@ spec:
                   p0_if,p1_if:
                     type: swp
                     link:
-                      mtu: 9000
+                      mtu: 9216
                   pf2dpu2_if:
                     ip:
                       address:
                         {{ ipaddresses.ip_pf2dpu2.cidr }}: {}
                     type: swp
                     link:
-                      mtu: 9000
+                      mtu: 9216
                 router:
                   bgp:
                     autonomous-system: {{ ( ipaddresses.ip_asn.ip.split(".")[2] | int ) * 256 + ( ipaddresses.ip_asn.ip.split(".")[3] | int ) + 65101 }}
