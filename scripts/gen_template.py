@@ -106,7 +106,7 @@ master=br-comm-ch
 slave-type=bridge
 
 [ethernet]
-mtu=9000
+mtu=9216
 
 [bridge-port]"""
         )
