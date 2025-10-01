@@ -113,6 +113,10 @@ DPF_VERSION=${DPF_VERSION:-"v25.7.0-beta.4"}
 # Helm Chart URLs - OCI registry format for v25.7+
 DPF_HELM_REPO_URL=${DPF_HELM_REPO_URL:-"oci://ghcr.io/nvidia"}
 OVN_CHART_URL=${OVN_CHART_URL:-"oci://ghcr.io/nvidia"}
+OVN_KUBERNETES_IMAGE_REPO=${OVN_KUBERNETES_IMAGE_REPO:-"ghcr.io/mellanox/ovn-kubernetes"}
+OVN_KUBERNETES_IMAGE_TAG=${OVN_KUBERNETES_IMAGE_TAG:-"fedora-dpf-v25.7.1"}
+OVN_KUBERNETES_UTILS_IMAGE_REPO=${OVN_KUBERNETES_UTILS_IMAGE_REPO:-"ghcr.io/nvidia/ovn-kubernetes-dpf-utils"}
+OVN_KUBERNETES_UTILS_IMAGE_TAG=${OVN_KUBERNETES_UTILS_IMAGE_TAG:-"v25.7.1-rc.1"}
 
 NFD_OPERAND_IMAGE=${NFD_OPERAND_IMAGE:-"quay.io/itsoiref/nfd:latest"}
 
