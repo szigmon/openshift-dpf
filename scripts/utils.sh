@@ -301,6 +301,78 @@ function process_template() {
 }
 
 # -----------------------------------------------------------------------------
+# File copying and processing functions
+# -----------------------------------------------------------------------------
+
+# Function to update a file with multiple replacements
+update_file_multi_replace() {
+    local source_file=$1
+    local target_file=$2
+    shift 2
+    local pairs=("$@")
+
+    log [INFO] "Updating ${source_file} with multiple replacements..."
+    cp "${source_file}" "${target_file}"
+    local i=0
+    while [ $i -lt ${#pairs[@]} ]; do
+        local placeholder="${pairs[$i]}"
+        local value="${pairs[$((i+1))]}"
+        sed -i "s|${placeholder}|${value}|g" "${target_file}"
+        log [INFO] "Replaced ${placeholder} with ${value} in ${target_file}"
+        i=$((i+2))
+    done
+    log [INFO] "Updated ${source_file} with all replacements successfully"
+}
+
+# Function to check if a file is in an exclusion list
+is_file_excluded() {
+    local filename=$1
+    shift
+    local excluded_files=("$@")
+    
+    for excluded_file in "${excluded_files[@]}"; do
+        if [[ "${filename}" == "${excluded_file}" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Copy manifest files from source to target directory, excluding specified files
+# Usage: copy_manifests_with_exclusions SOURCE_DIR TARGET_DIR [EXCLUDED_FILE1 EXCLUDED_FILE2 ...]
+copy_manifests_with_exclusions() {
+    local source_dir=$1
+    local target_dir=$2
+    shift 2
+    local excluded_files=("$@")
+    
+    log "INFO" "Copying manifests from $(basename "$source_dir") to $(basename "$target_dir")..."
+    
+    # Track counts for summary
+    
+    # Copy all yaml/yml files except excluded ones
+    for file in "$source_dir"/*.yaml "$source_dir"/*.yml; do
+        # Skip if glob didn't match any files
+        [ -f "$file" ] || continue
+        
+        local filename=$(basename "$file")
+        
+        if is_file_excluded "$filename" "${excluded_files[@]}"; then
+            log "INFO" "Skipping excluded file: ${filename}"
+        else
+            cp "$file" "$target_dir/" || {
+                log "ERROR" "Failed to copy ${filename}"
+                return 1
+            }
+            log "INFO" "Copied manifest: ${filename}"
+        fi
+    done
+    
+    log "INFO" "Manifest copy complete"
+    return 0
+}
+
+# -----------------------------------------------------------------------------
 # Cleanup functions
 # -----------------------------------------------------------------------------
 function clean_resources() {
