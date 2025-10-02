@@ -25,7 +25,7 @@ HBN_OVN_NETWORK=${HBN_OVN_NETWORK:-"10.0.120.0/22"}
 # Ensure directories exist
 mkdir -p "${GENERATED_POST_INSTALL_DIR}"
 
-# List of files that need special processing
+# List of files that need special processing (excluded from direct copy)
 SPECIAL_FILES=(
     "bfb.yaml"
     "hbn-ovn-ipam.yaml"
@@ -43,37 +43,6 @@ SPECIAL_FILES=(
     "dpu-node-ipam-controller.yaml"
     "dpudeployment.yaml"
 )
-
-# Function to check if a file is in the special files list
-is_special_file() {
-    local filename=$1
-    for special_file in "${SPECIAL_FILES[@]}"; do
-        if [[ "${filename}" == "${special_file}" ]]; then
-            return 0
-        fi
-    done
-    return 1
-}
-
-# Function to update a file with multiple replacements
-update_file_multi_replace() {
-    local source_file=$1
-    local target_file=$2
-    shift 2
-    local pairs=("$@")
-
-    log [INFO] "Updating ${source_file} with multiple replacements..."
-    cp "${source_file}" "${target_file}"
-    local i=0
-    while [ $i -lt ${#pairs[@]} ]; do
-        local placeholder="${pairs[$i]}"
-        local value="${pairs[$((i+1))]}"
-        sed -i "s|${placeholder}|${value}|g" "${target_file}"
-        log [INFO] "Replaced ${placeholder} with ${value} in ${target_file}"
-        i=$((i+2))
-    done
-    log [INFO] "Updated ${source_file} with all replacements successfully"
-}
 
 # Function to update BFB manifest
 function update_bfb_manifest() {
@@ -273,17 +242,8 @@ function prepare_post_installation() {
         cp "${POST_INSTALL_DIR}/dpudeployment.yaml" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
     fi
 
-    # Copy remaining manifests
-    for file in "${POST_INSTALL_DIR}"/*.yaml; do
-        if [ -f "$file" ]; then
-            local filename=$(basename "$file")
-            # Skip files we've already processed
-            if ! is_special_file "${filename}"; then
-                log [INFO] "Copying manifest: ${filename}"
-                cp "$file" "${GENERATED_POST_INSTALL_DIR}/${filename}"
-            fi
-        fi
-    done
+    # Copy remaining manifests using utility function (exclude special files)
+    copy_manifests_with_exclusions "${POST_INSTALL_DIR}" "${GENERATED_POST_INSTALL_DIR}" "${SPECIAL_FILES[@]}"
     
     log [INFO] "Post-installation manifest preparation completed successfully"
 }
