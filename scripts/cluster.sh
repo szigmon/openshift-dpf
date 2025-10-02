@@ -301,32 +301,40 @@ function clean_all() {
 # -----------------------------------------------------------------------------
 
 function create_day2_cluster() {
-    # Create a day2 cluster for adding worker nodes to existing cluster
-    local day2_cluster="${CLUSTER_NAME}-day2"
+    # Move cluster to day2 mode for adding worker nodes to existing cluster
+    log "INFO" "Checking cluster ${CLUSTER_NAME} for day2 transition..."
 
-    # Check if main cluster exists
+    # Get cluster ID and status in a single call
+    local cluster_id cluster_status
+    read -r cluster_id cluster_status <<< "$(aicli -o json info cluster "${CLUSTER_NAME}" | jq -r '[.id, .status] | @tsv')"
 
-    # Get OpenShift version of the main cluster
-    openshift_version=$(aicli info cluster "${CLUSTER_NAME}" -f openshift_version -v)
-    if [ -z "${openshift_version}" ]; then
-        log "ERROR" "Failed to retrieve OpenShift version for cluster ${CLUSTER_NAME}. Ensure the cluster is exists and properly configured."
+    if [ -z "${cluster_id}" ] || [ -z "${cluster_status}" ]; then
+        log "ERROR" "Cluster ${CLUSTER_NAME} not found or failed to retrieve cluster information"
         return 1
     fi
 
-    # Check if day2 cluster already exists
-    if ! aicli info cluster ${day2_cluster} >/dev/null 2>&1; then
-        log "INFO" "Creating day2 cluster for adding nodes to ${CLUSTER_NAME}"
-        # Create day2 cluster
-        aicli create cluster \
-            -P openshift_version="${openshift_version}" \
-            -P public_key="${SSH_KEY}" \
-            "${day2_cluster}" >/dev/null 2>&1
+    log "INFO" "Found cluster ${CLUSTER_NAME} (ID: ${cluster_id}, Status: ${cluster_status})"
 
-        log "INFO" "Day2 cluster created successfully: ${day2_cluster}"
-    else
-        log "INFO" "Day2 cluster ${day2_cluster} already exists"
+    # Check if cluster is already in adding-hosts status (day2 mode)
+    if [ "${cluster_status}" = "adding-hosts" ]; then
+        log "INFO" "Cluster ${CLUSTER_NAME} was already moved to day2 mode"
+        return 0
     fi
 
+    # Check if cluster is installed
+    if [ "${cluster_status}" != "installed" ]; then
+        log "ERROR" "Cannot move cluster ${CLUSTER_NAME} to day2 mode. Cluster must be installed first (current status: ${cluster_status})"
+        return 1
+    fi
+
+    # Move cluster to day2 mode
+    log "INFO" "Moving cluster ${CLUSTER_NAME} (ID: ${cluster_id}) to day2 mode..."
+    if ! aicli update cluster "${cluster_id}" -P day2=true -P infraenv=false; then
+        log "ERROR" "Failed to update cluster ${CLUSTER_NAME} to day2 mode"
+        return 1
+    fi
+
+    log "INFO" "Cluster ${CLUSTER_NAME} successfully moved to day2 mode"
     return 0
 }
 
@@ -348,8 +356,6 @@ function get_iso() {
             return 0
         fi
     fi
-
-    [ "${cluster_type}" = "day2" ] && cluster_name="${cluster_name}-day2"
 
     log "INFO" "Getting ISO URL..."
     local iso_url="$(aicli info iso "${cluster_name}" -s)"
