@@ -136,7 +136,7 @@ deploy-core-operator-sources:
 	@$(MANIFESTS_SCRIPT) deploy-core-operator-sources
 
 update-etc-hosts:
-	@scripts/update-etc-hosts.sh
+	@scripts/update-etc-hosts.sh update_etc_hosts
 
 clean-all:
 	@$(CLUSTER_SCRIPT) clean-all
