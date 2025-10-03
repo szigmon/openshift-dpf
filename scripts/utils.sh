@@ -312,6 +312,7 @@ update_file_multi_replace() {
     local pairs=("$@")
 
     log [INFO] "Updating ${source_file} with multiple replacements..."
+        
     cp "${source_file}" "${target_file}"
     local i=0
     while [ $i -lt ${#pairs[@]} ]; do
