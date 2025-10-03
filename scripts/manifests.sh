@@ -85,6 +85,7 @@ function prepare_cluster_manifests() {
         "nfd-subscription.yaml"
         "sriov-subscription.yaml"
         "lso-419.yaml"
+        "99-worker-bridge.yaml"
     )
 
     
@@ -122,6 +123,8 @@ function prepare_cluster_manifests() {
     fi
 
     enable_storage
+
+    update_worker_manifest
     
     # Install manifests to cluster
     # Check if cluster is already installed
@@ -133,6 +136,20 @@ function prepare_cluster_manifests() {
     fi
 
     log [INFO] "Cluster manifests preparation complete."
+}
+
+
+update_worker_manifest() {
+
+    local mtu=""
+    if [ "${NODES_MTU}" != "1500" ]; then
+        log "INFO" "Setting ExecStart to include MTU: ${NODES_MTU}"
+        mtu="${NODES_MTU}"
+    fi
+    update_file_multi_replace \
+            "$MANIFESTS_DIR/cluster-installation/99-worker-bridge.yaml" \
+            "$GENERATED_DIR/99-worker-bridge.yaml" \
+            "<NODES_MTU>" "$mtu"
 }
 
 function deploy_core_operator_sources() {
