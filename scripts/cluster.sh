@@ -20,6 +20,7 @@ source "$(dirname "$0")/env.sh"
 
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/update-etc-hosts.sh"
 
 function validate_vips() {
     if [ -z "${API_VIP}" ] || [ "${API_VIP}" = "[]" ]; then
@@ -239,6 +240,9 @@ function start_cluster_installation() {
     log "INFO" "Waiting for cluster to be ready..."
     wait_for_cluster_status "ready"
     aicli start cluster ${CLUSTER_NAME}
+    log "INFO" "Waiting for cluster to be finalizing..."
+    wait_for_cluster_status "finalizing"
+    apply_lso_for_multinode
     log "INFO" "Waiting for installation to complete..."
     wait_for_cluster_status "installed"
     log "INFO" "Cluster installation completed successfully"
@@ -294,6 +298,35 @@ function clean_all() {
     clean_resources
     
     log "Full cleanup complete"
+}
+
+function apply_lso_for_multinode() {
+    log "INFO" "Checking if LSO should be applied for multi-node cluster..."
+    
+    # Only apply LSO for multi-node clusters (VM_COUNT > 1)
+    if [ "$VM_COUNT" -le 1 ]; then
+        log "INFO" "Single-node cluster detected, skipping LSO installation"
+        return 0
+    fi
+    
+    log "INFO" "Multi-node cluster detected (VM_COUNT=${VM_COUNT}), applying Local Storage Operator..."
+    
+    # Get kubeconfig
+    get_kubeconfig
+    
+    # Update /etc/hosts with API endpoint
+    log "INFO" "Updating /etc/hosts with API endpoint..."
+    update_etc_hosts
+    
+    # Apply LSO manifest
+    log "INFO" "Applying Local Storage Operator manifest..."
+    if [ -f "${MANIFESTS_DIR}/cluster-installation/lso-419.yaml" ]; then
+        oc apply -f "${MANIFESTS_DIR}/cluster-installation/lso-419.yaml"
+        log "INFO" "Local Storage Operator applied successfully"
+    else
+        log "ERROR" "LSO manifest not found: ${MANIFESTS_DIR}/cluster-installation/lso-419.yaml"
+        return 1
+    fi
 }
 
 # -----------------------------------------------------------------------------

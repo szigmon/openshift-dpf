@@ -74,23 +74,35 @@ function prepare_nfs() {
 function prepare_cluster_manifests() {
     log [INFO] "Preparing cluster installation manifests..."
     
-    # Copy all manifests
-    log [INFO] "Copying static manifests..."
-    
     # Clean up any existing Helm values files that might have been left from previous runs
     find "$GENERATED_DIR" -maxdepth 1 -type f -name "*-values.yaml" -delete 2>/dev/null || true
     
-    find "$MANIFESTS_DIR/cluster-installation" -maxdepth 1 -type f -name "*.yaml" -o -name "*.yml" \
-        | grep -v "ovn-values.yaml" \
-        | grep -v "ovn-values-with-injector.yaml" \
-        | xargs -I {} cp {} "$GENERATED_DIR/"
+    # Build list of files to exclude
+    local excluded_files=(
+        "ovn-values.yaml"
+        "ovn-values-with-injector.yaml"
+        "nfd-subscription.yaml"
+        "sriov-subscription.yaml"
+        "lso-419.yaml"
+    )
 
-     # Substitute catalog source name via sed in generated files
-    if [ -f "$GENERATED_DIR/nfd-subscription.yaml" ]; then
-        sed -i "s|<CATALOG_SOURCE_NAME>|$CATALOG_SOURCE_NAME|g" "$GENERATED_DIR/nfd-subscription.yaml"
+    
+    # Copy all manifests except excluded files using utility function
+    copy_manifests_with_exclusions "$MANIFESTS_DIR/cluster-installation" "$GENERATED_DIR" "${excluded_files[@]}"
+
+    # Process subscription manifests with catalog source name
+    if [ -f "$MANIFESTS_DIR/cluster-installation/nfd-subscription.yaml" ]; then
+        update_file_multi_replace \
+            "$MANIFESTS_DIR/cluster-installation/nfd-subscription.yaml" \
+            "$GENERATED_DIR/nfd-subscription.yaml" \
+            "<CATALOG_SOURCE_NAME>" "$CATALOG_SOURCE_NAME"
     fi
-    if [ -f "$GENERATED_DIR/sriov-subscription.yaml" ]; then
-        sed -i "s|<CATALOG_SOURCE_NAME>|$CATALOG_SOURCE_NAME|g" "$GENERATED_DIR/sriov-subscription.yaml"
+    
+    if [ -f "$MANIFESTS_DIR/cluster-installation/sriov-subscription.yaml" ]; then
+        update_file_multi_replace \
+            "$MANIFESTS_DIR/cluster-installation/sriov-subscription.yaml" \
+            "$GENERATED_DIR/sriov-subscription.yaml" \
+            "<CATALOG_SOURCE_NAME>" "$CATALOG_SOURCE_NAME"
     fi
 
     # Configure cluster components
@@ -184,10 +196,13 @@ prepare_dpf_manifests() {
     # Clean up any existing Helm values files that might have been left from previous runs
     find "$GENERATED_DIR" -maxdepth 1 -type f -name "*-values.yaml" -delete 2>/dev/null || true
     
-    # Copy all manifests except NFD and Helm values files
-    find "$MANIFESTS_DIR/dpf-installation" -maxdepth 1 -type f -name "*.yaml" \
-        | grep -v -- "-values.yaml" \
-        | xargs -I {} cp {} "$GENERATED_DIR/"
+    # Build list of files to exclude (all Helm values files)
+    local excluded_files=(
+        "*-values.yaml"
+    )
+    
+    # Copy all manifests except Helm values files using utility function
+    copy_manifests_with_exclusions "$MANIFESTS_DIR/dpf-installation" "$GENERATED_DIR" "${excluded_files[@]}"
 
     # Copy cert-manager manifest (required for DPF deployment)
     log "INFO" "Copying Cert-Manager manifest (required for DPF operator)..."
@@ -396,9 +411,12 @@ function main() {
         prepare-dpf-manifests)
             prepare_manifests "dpf"
             ;;
+        apply-lso)
+            apply_lso_for_multinode
+            ;;
         *)
             log [INFO] "Unknown command: $command"
-            log [INFO] "Available commands: prepare-manifests, prepare-dpf-manifests"
+            log [INFO] "Available commands: prepare-manifests, prepare-dpf-manifests, apply-lso, deploy-core-operator-sources, generate-ovn-manifests"
             exit 1
             ;;
     esac
@@ -412,4 +430,5 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     fi
     
     main "$@"
-fi 
+fi
+
