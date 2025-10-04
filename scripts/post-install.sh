@@ -113,8 +113,12 @@ function update_hbn_ovn_manifests() {
         update_file_multi_replace \
             "${POST_INSTALL_DIR}/ovn-template.yaml" \
             "${GENERATED_POST_INSTALL_DIR}/ovn-template.yaml" \
-            "<DPF_VERSION>" "${DPF_VERSION}" \
-            "<OVN_CHART_URL>" "${OVN_CHART_URL}"
+            "<OVN_TEMPLATE_CHART_URL>" "${OVN_TEMPLATE_CHART_URL}" \
+            "<OVN_CHART_VERSION>" "${OVN_CHART_VERSION}" \
+            "<OVN_IMAGE>" "${OVN_IMAGE}" \
+            "<OVN_IMAGE_TAG>" "${OVN_IMAGE_TAG}" \
+            "<OVN_KUBERNETES_UTILS_IMAGE_REPO>" "${OVN_KUBERNETES_UTILS_IMAGE_REPO}" \
+            "<OVN_KUBERNETES_UTILS_IMAGE_TAG>" "${OVN_KUBERNETES_UTILS_IMAGE_TAG}"
     fi
 
     # Update ovn-configuration.yaml for DPUDeployment
