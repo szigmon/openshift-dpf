@@ -250,6 +250,13 @@ done
 echo "Finished setting nvconfig parameters"
 """)
     ),
+    FileEntry(
+        path="/etc/sysconfig/openvswitch",
+        overwrite=True,
+        mode=600,
+        contents=FileContents(
+            inline="""OVS_USER_ID=\"root:root\"""")
+    ),
 ]
 
 SYSTEMD_UNITS: list[SystemdUnit] = [
