@@ -383,7 +383,7 @@ function enable_storage() {
         aicli update cluster "$CLUSTER_NAME" -P olm_operators='[{"name": "lvm"}]'
     else
         log [INFO] "Enable ODF operator"
-        aicli update cluster "$CLUSTER_NAME" -P olm_operators='[{"name": "odf"}]'
+        aicli update cluster "$CLUSTER_NAME" -P olm_operators='[{"name": "lso"}]'
     fi
 }
 

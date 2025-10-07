@@ -247,6 +247,7 @@ function start_cluster_installation() {
     wait_for_cluster_status "installed"
     log "INFO" "Cluster installation completed successfully"
     get_kubeconfig
+    create_odf_cluster
 }
 
 function get_kubeconfig() {
@@ -327,6 +328,31 @@ function apply_lso_for_multinode() {
         log "ERROR" "LSO manifest not found: ${MANIFESTS_DIR}/cluster-installation/lso-419.yaml"
         return 1
     fi
+}
+
+# Create ODF cluster as a workaround for OCS cluster creation issue
+# This is a temporary solution until the OCS cluster creation with LSO 4.19 will be fixed
+function create_odf_cluster() {
+        # Only apply LSO for multi-node clusters (VM_COUNT > 1)
+    if [ "$VM_COUNT" -le 1 ]; then
+        log "INFO" "Single-node cluster detected, skipping ODF cluster creation"
+        return 0
+    fi
+    local max_retries="${1:-60}"
+    local sleep_time="${2:-10}"
+    
+    log "INFO" "Applying ODF subscription..."
+    oc apply -f manifests/odf/odf-subscription.yaml
+    log "INFO" "Waiting for any ODF StorageCluster to exist..."
+
+    # Use retry function from utils.sh to check if StorageCluster exists
+    if retry "$max_retries" "$sleep_time" oc get storagecluster -A >/dev/null 2>&1; then
+        log "INFO" "ODF StorageCluster exists"
+    else
+        log "ERROR" "Timeout waiting for ODF StorageCluster"
+        return 1
+    fi
+    oc apply -f manifests/odf/odf-cluster.yaml
 }
 
 # -----------------------------------------------------------------------------
