@@ -25,7 +25,7 @@ spec:
             
             [Service]
             Type=oneshot
-            ExecStart=/usr/local/bin/apply-nmstate-bridge.sh
+            ExecStart=/usr/local/bin/apply-nmstate-bridge.sh <NODES_MTU>
             RemainAfterExit=yes
             
             [Install]
