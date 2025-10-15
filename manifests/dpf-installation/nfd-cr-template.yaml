@@ -34,7 +34,7 @@ spec:
   rules:
     - name: "DPU-detection-rule"
       labels:
-        "dpu-enabled": "true"
+        "dpu-enabled": ""
       matchFeatures:
         - feature: pci.device
           matchExpressions:
