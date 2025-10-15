@@ -14,6 +14,6 @@ metadata:
 spec:
   channel: stable
   name: local-storage-operator
-  source: redhat-operators-v419
+  source: redhat-operators-v420
   sourceNamespace: openshift-marketplace
   installPlanApproval: Automatic

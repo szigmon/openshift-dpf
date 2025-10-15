@@ -321,11 +321,11 @@ function apply_lso_for_multinode() {
     
     # Apply LSO manifest
     log "INFO" "Applying Local Storage Operator manifest..."
-    if [ -f "${MANIFESTS_DIR}/cluster-installation/lso-419.yaml" ]; then
-        oc apply -f "${MANIFESTS_DIR}/cluster-installation/lso-419.yaml"
+    if [ -f "${MANIFESTS_DIR}/cluster-installation/lso-420.yaml" ]; then
+        oc apply -f "${MANIFESTS_DIR}/cluster-installation/lso-420.yaml"
         log "INFO" "Local Storage Operator applied successfully"
     else
-        log "ERROR" "LSO manifest not found: ${MANIFESTS_DIR}/cluster-installation/lso-419.yaml"
+        log "ERROR" "LSO manifest not found: ${MANIFESTS_DIR}/cluster-installation/lso-420.yaml"
         return 1
     fi
 }

@@ -83,7 +83,7 @@ function prepare_cluster_manifests() {
         "ovn-values-with-injector.yaml"
         "nfd-subscription.yaml"
         "sriov-subscription.yaml"
-        "lso-419.yaml"
+        "lso-420.yaml"
     )
 
     
@@ -108,12 +108,6 @@ function prepare_cluster_manifests() {
     # Configure cluster components
     log [INFO] "Configuring cluster installation..."
     
-    # Check if cluster is already installed
-    if check_cluster_installed; then
-        log [INFO] "Skipping configuration updates as cluster is already installed"
-    else
-        aicli update installconfig "$CLUSTER_NAME" -P network_type=NVIDIA-OVN
-    fi
 
     # Always copy Cert-Manager manifest (required for DPF operator)
     log [INFO] "Copying Cert-Manager manifest (required for DPF operator)..."
@@ -126,7 +120,6 @@ function prepare_cluster_manifests() {
         log "INFO" "Removed Helm values files from generated directory"
     fi
 
-    generate_ovn_manifests
     enable_storage
     
     # Install manifests to cluster
@@ -147,7 +140,7 @@ function deploy_core_operator_sources() {
     mkdir -p "$GENERATED_DIR"
     for f in "$MANIFESTS_DIR/cluster-installation/nfd-subscription.yaml" \
              "$MANIFESTS_DIR/cluster-installation/sriov-subscription.yaml" \
-             "$MANIFESTS_DIR/cluster-installation/4.19-cataloguesource.yaml"; do
+             "$MANIFESTS_DIR/cluster-installation/4.20-cataloguesource.yaml"; do
         if [ -f "$f" ]; then
             cp "$f" "$GENERATED_DIR/"
             sed -i "s|<CATALOG_SOURCE_NAME>|$CATALOG_SOURCE_NAME|g" "$GENERATED_DIR/$(basename "$f")"
@@ -314,6 +307,8 @@ function update_ovn_mtu_in_value_file() {
     fi
 }
 
+# Not used anymore
+# Saving it for possible future use
 function generate_ovn_manifests() {
     log [INFO] "Generating OVN manifests for cluster installation..."
     
@@ -350,10 +345,14 @@ function generate_ovn_manifests() {
         -e "s|<SERVICE_CIDR>|$SERVICE_CIDR|" \
         -e "s|<DPU_P0_VF1>|${DPU_OVN_VF:-ens7f0v1}|" \
         -e "s|<DPU_P0>|$DPU_INTERFACE|" \
+        -e "s|<OVN_KUBERNETES_IMAGE_REPO>|$OVN_KUBERNETES_IMAGE_REPO|" \
+        -e "s|<OVN_KUBERNETES_IMAGE_TAG>|$OVN_KUBERNETES_IMAGE_TAG|" \
+        -e "s|<OVN_KUBERNETES_UTILS_IMAGE_REPO>|$OVN_KUBERNETES_UTILS_IMAGE_REPO|" \
+        -e "s|<OVN_KUBERNETES_UTILS_IMAGE_TAG>|$OVN_KUBERNETES_UTILS_IMAGE_TAG|" \
         "$HELM_CHARTS_DIR/ovn-values.yaml" > "$GENERATED_DIR/temp/ovn-values-resolved.yaml"
     
     log [INFO] "Generating OVN manifests from helm template..."
-    if ! helm template -n ovn-kubernetes ovn-kubernetes \
+    if ! helm template -n ${OVNK_NAMESPACE} ovn-kubernetes \
         "$GENERATED_DIR/temp/ovn-kubernetes-chart" \
         -f "$GENERATED_DIR/temp/ovn-values-resolved.yaml" \
         > "$GENERATED_DIR/ovn-manifests.yaml"; then

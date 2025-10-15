@@ -110,7 +110,7 @@ OPENSHIFT_VERSION=4.18.4
 Default values:
 - CLUSTER_NAME: doca-cluster
 - BASE_DOMAIN: okoyl.xyz
-- OPENSHIFT_VERSION: 4.19.0-ec.3
+- OPENSHIFT_VERSION: 4.20.0-rc.3
 
 ### Switching Between Kamaji and Hypershift
 
