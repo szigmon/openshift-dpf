@@ -44,6 +44,7 @@ helm template -n ${OVNK_NAMESPACE} ovn-kubernetes-resource-injector \
     --set commonManifests.enabled=false \
     | oc apply -f -
 
+exit 1
 rm -rf "$GENERATED_DIR/ovn-injector"
 
 

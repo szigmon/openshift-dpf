@@ -83,7 +83,7 @@ function prepare_cluster_manifests() {
         "ovn-values-with-injector.yaml"
         "nfd-subscription.yaml"
         "sriov-subscription.yaml"
-        "lso-419.yaml"
+        "lso-420.yaml"
     )
 
     
@@ -140,7 +140,7 @@ function deploy_core_operator_sources() {
     mkdir -p "$GENERATED_DIR"
     for f in "$MANIFESTS_DIR/cluster-installation/nfd-subscription.yaml" \
              "$MANIFESTS_DIR/cluster-installation/sriov-subscription.yaml" \
-             "$MANIFESTS_DIR/cluster-installation/4.19-cataloguesource.yaml"; do
+             "$MANIFESTS_DIR/cluster-installation/4.20-cataloguesource.yaml"; do
         if [ -f "$f" ]; then
             cp "$f" "$GENERATED_DIR/"
             sed -i "s|<CATALOG_SOURCE_NAME>|$CATALOG_SOURCE_NAME|g" "$GENERATED_DIR/$(basename "$f")"
