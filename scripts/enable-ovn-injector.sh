@@ -35,8 +35,8 @@ helm template -n ${OVNK_NAMESPACE} ovn-kubernetes-resource-injector \
     --set ovn-kubernetes-resource-injector.enabled=true \
     --set ovn-kubernetes-resource-injector.resourceName="${INJECTOR_RESOURCE_NAME}" \
     --set ovn-kubernetes-resource-injector.nadName=dpf-ovn-kubernetes \
-    --set ovn-kubernetes-resource-injector.image.repository="${OVN_KUBERNETES_UTILS_IMAGE_REPO}"  \
-    --set ovn-kubernetes-resource-injector.image.tag="${OVN_KUBERNETES_UTILS_IMAGE_TAG}" \
+    --set ovn-kubernetes-resource-injector.controllerManager.webhook.image.repository="${OVN_KUBERNETES_UTILS_IMAGE_REPO}"  \
+    --set ovn-kubernetes-resource-injector.controllerManager.webhook.image.tag="${OVN_KUBERNETES_UTILS_IMAGE_TAG}" \
     --set nodeWithDPUManifests.enabled=false \
     --set nodeWithoutDPUManifests.enabled=false \
     --set dpuManifests.enabled=false \
