@@ -27,7 +27,7 @@ mkdir -p "$GENERATED_DIR/ovn-injector"
 INJECTOR_RESOURCE_NAME="${INJECTOR_RESOURCE_NAME:-openshift.io/bf3-p0-vfs}"
 
 helm pull "${OVN_CHART_URL}/ovn-kubernetes-chart" \
-    --version "${DPF_VERSION}" \
+    --version "${INJECTOR_CHART_VERSION}" \
     --untar -d "$GENERATED_DIR/ovn-injector"
 
 helm template -n ${OVNK_NAMESPACE} ovn-kubernetes-resource-injector \
