@@ -136,7 +136,7 @@ spec:
           matchLabels:
             app: sriov-test-worker
       nodeSelector:
-        feature.node.kubernetes.io/dpu-enabled: "true"
+        feature.node.kubernetes.io/dpu-enabled: ""
       containers:
       - name: nginx
         securityContext:
@@ -216,7 +216,7 @@ spec:
           matchLabels:
             app: sriov-test-worker-hostnetwork
       nodeSelector:
-        feature.node.kubernetes.io/dpu-enabled: "true"
+        feature.node.kubernetes.io/dpu-enabled: ""
       hostNetwork: true
       containers:
       - name: nginx
