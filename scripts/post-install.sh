@@ -25,13 +25,14 @@ HBN_OVN_NETWORK=${HBN_OVN_NETWORK:-"10.0.120.0/22"}
 # Ensure directories exist
 mkdir -p "${GENERATED_POST_INSTALL_DIR}"
 
-# List of files that need special processing
+# List of files that need special processing (excluded from direct copy)
 SPECIAL_FILES=(
     "bfb.yaml"
     "hbn-ovn-ipam.yaml"
     "dpu-service-nads.yaml"
     "dpuflavor-1500.yaml"
     "dpuflavor-9000.yaml"
+    "dpuflavor.yaml"
     "sriov-policy.yaml"
     "ovn-template.yaml"
     "ovn-configuration.yaml"
@@ -42,37 +43,6 @@ SPECIAL_FILES=(
     "dpu-node-ipam-controller.yaml"
     "dpudeployment.yaml"
 )
-
-# Function to check if a file is in the special files list
-is_special_file() {
-    local filename=$1
-    for special_file in "${SPECIAL_FILES[@]}"; do
-        if [[ "${filename}" == "${special_file}" ]]; then
-            return 0
-        fi
-    done
-    return 1
-}
-
-# Function to update a file with multiple replacements
-update_file_multi_replace() {
-    local source_file=$1
-    local target_file=$2
-    shift 2
-    local pairs=("$@")
-
-    log [INFO] "Updating ${source_file} with multiple replacements..."
-    cp "${source_file}" "${target_file}"
-    local i=0
-    while [ $i -lt ${#pairs[@]} ]; do
-        local placeholder="${pairs[$i]}"
-        local value="${pairs[$((i+1))]}"
-        sed -i "s|${placeholder}|${value}|g" "${target_file}"
-        log [INFO] "Replaced ${placeholder} with ${value} in ${target_file}"
-        i=$((i+2))
-    done
-    log [INFO] "Updated ${source_file} with all replacements successfully"
-}
 
 # Function to update BFB manifest
 function update_bfb_manifest() {
@@ -114,6 +84,12 @@ function update_hbn_ovn_manifests() {
             "${POST_INSTALL_DIR}/ovn-template.yaml" \
             "${GENERATED_POST_INSTALL_DIR}/ovn-template.yaml" \
             "<DPF_VERSION>" "${DPF_VERSION}" \
+            "<OVN_CHART_VERSION>" "${OVN_CHART_VERSION}" \
+            "<OVN_TEMPLATE_CHART_URL>" "${OVN_TEMPLATE_CHART_URL}" \
+            "<OVN_KUBERNETES_IMAGE_REPO>" "${OVN_KUBERNETES_IMAGE_REPO}" \
+            "<OVN_KUBERNETES_IMAGE_TAG>" "${OVN_KUBERNETES_IMAGE_TAG}" \
+            "<OVN_KUBERNETES_UTILS_IMAGE_REPO>" "${OVN_KUBERNETES_UTILS_IMAGE_REPO}" \
+            "<OVN_KUBERNETES_UTILS_IMAGE_TAG>" "${OVN_KUBERNETES_UTILS_IMAGE_TAG}" \
             "<OVN_CHART_URL>" "${OVN_CHART_URL}"
     fi
 
@@ -154,19 +130,18 @@ function update_vf_configuration() {
     local vf_range_upper=$((NUM_VFS - 1))
 
     if [ "$NODES_MTU" == "1500" ]; then
-        mtu_file="dpuflavor-1500.yaml"
-        mtu_desc="MTU 1500"
+        mtu_source_file="dpuflavor-1500.yaml"
     else
-        mtu_file="dpuflavor-9000.yaml"
-        mtu_desc="MTU 9000"
+        mtu_source_file="dpuflavor-9000.yaml"
     fi
 
-    log "INFO" "Applying $mtu_file for $mtu_desc"
+    log "INFO" "Creating unified dpuflavor.yaml from $mtu_source_file for MTU $NODES_MTU"
+    
+    # Copy and process the appropriate source file as dpuflavor.yaml
     update_file_multi_replace \
-        "${POST_INSTALL_DIR}/$mtu_file" \
-        "${GENERATED_POST_INSTALL_DIR}/$mtu_file" \
-        "<NUM_VFS>" \
-        "${NUM_VFS}"
+        "${POST_INSTALL_DIR}/$mtu_source_file" \
+        "${GENERATED_POST_INSTALL_DIR}/dpuflavor.yaml" \
+        "<NUM_VFS>" "${NUM_VFS}"
     
     # Update sriov-policy.yaml
 
@@ -236,22 +211,6 @@ function update_service_templates() {
     log [INFO] "Service template versions updated successfully"
 }
 
-function update_flavor_in_yaml() {
-  if [ ! -f "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
-    log "ERROR" "File not found: ${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
-    return 1
-  fi
-
-  local flavor="flavor-$NODES_MTU" 
-
-  log "INFO" "Updating flavor in to $new_flavor"
-  sed -i "s|flavor: .*|flavor: $flavor|g" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml" || {
-    log "ERROR" "Failed to update flavor in ${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
-    return 1
-  }
-
-  log "INFO" "Successfully updated flavor in ${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
-}
 
 
 function update_dpu_service_nad() {
@@ -288,19 +247,9 @@ function prepare_post_installation() {
     if [ -f "${POST_INSTALL_DIR}/dpudeployment.yaml" ]; then
         cp "${POST_INSTALL_DIR}/dpudeployment.yaml" "${GENERATED_POST_INSTALL_DIR}/dpudeployment.yaml"
     fi
-    update_flavor_in_yaml
 
-    # Copy remaining manifests
-    for file in "${POST_INSTALL_DIR}"/*.yaml; do
-        if [ -f "$file" ]; then
-            local filename=$(basename "$file")
-            # Skip files we've already processed
-            if ! is_special_file "${filename}"; then
-                log [INFO] "Copying manifest: ${filename}"
-                cp "$file" "${GENERATED_POST_INSTALL_DIR}/${filename}"
-            fi
-        fi
-    done
+    # Copy remaining manifests using utility function (exclude special files)
+    copy_manifests_with_exclusions "${POST_INSTALL_DIR}" "${GENERATED_POST_INSTALL_DIR}" "${SPECIAL_FILES[@]}"
     
     log [INFO] "Post-installation manifest preparation completed successfully"
 }
@@ -397,7 +346,7 @@ function redeploy() {
         return 1
     fi
 
-    oc delete -f "${GENERATED_POST_INSTALL_DIR}/dpuflavor-1500.yaml" || true
+    oc delete -f "${GENERATED_POST_INSTALL_DIR}/dpuflavor.yaml" || true
 
     apply_post_installation
 

@@ -3,3 +3,4 @@ imagePullSecrets:
 kamajiEtcdDefrag:
   enabled: false
 isOpenshift: true
+enableNodeFeatureRules: false

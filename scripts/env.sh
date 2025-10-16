@@ -67,12 +67,12 @@ HBN_OVN_NETWORK=${HBN_OVN_NETWORK:-"10.0.120.0/22"}
 # HBN Service Template Configuration
 HBN_HELM_REPO_URL=${HBN_HELM_REPO_URL:-"https://helm.ngc.nvidia.com/nvidia/doca"}
 HBN_HELM_CHART_VERSION=${HBN_HELM_CHART_VERSION:-"1.0.3"}
-HBN_IMAGE_REPO=${HBN_IMAGE_REPO:-"nvcr.io/nvidia/doca/doca_hbn"}
-HBN_IMAGE_TAG=${HBN_IMAGE_TAG:-"3.1.0-doca3.1.0"}
+HBN_IMAGE_REPO=${HBN_IMAGE_REPO:-"quay.io/eelgaev/doca_hbn"}
+HBN_IMAGE_TAG=${HBN_IMAGE_TAG:-"release-3.1.0.7-doca3.1.0-RHTP"}
 
 # DTS Service Template Configuration
 DTS_HELM_REPO_URL=${DTS_HELM_REPO_URL:-"https://helm.ngc.nvidia.com/nvidia/doca"}
-DTS_HELM_CHART_VERSION=${DTS_HELM_CHART_VERSION:-"1.0.8"}
+DTS_HELM_CHART_VERSION=${DTS_HELM_CHART_VERSION:-"1.22.1"}
 
 # Cluster Configuration
 CLUSTER_NAME=${CLUSTER_NAME:-"doca"}
@@ -108,11 +108,30 @@ BRIDGE_NAME=${BRIDGE_NAME:-br0}
 SKIP_BRIDGE_CONFIG=${SKIP_BRIDGE_CONFIG:-"false"}
 
 # DPF Configuration
-DPF_VERSION=${DPF_VERSION:-"v25.7.0-beta.4"}
+DPF_VERSION=${DPF_VERSION:-"v25.7.1-rc.1"}
+INJECTOR_CHART_VERSION=${INJECTOR_CHART_VERSION:-${DPF_VERSION}}
 
 # Helm Chart URLs - OCI registry format for v25.7+
 DPF_HELM_REPO_URL=${DPF_HELM_REPO_URL:-"oci://ghcr.io/nvidia"}
 OVN_CHART_URL=${OVN_CHART_URL:-"oci://ghcr.io/nvidia"}
+OVN_TEMPLATE_CHART_URL=${OVN_TEMPLATE_CHART_URL:-${OVN_CHART_URL}}
+
+# OVN Image Configuration
+OVN_IMAGE=${OVN_IMAGE:-"quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256"}
+OVN_IMAGE_TAG=${OVN_IMAGE_TAG:-"780d11fac73412276b312b3f7c879b5e63da9687c7c8e79fc142e9c6e2f7c4cf"}
+
+# OVN-Kubernetes DPF Utils Image Configuration
+OVN_KUBERNETES_UTILS_IMAGE_REPO=${OVN_KUBERNETES_UTILS_IMAGE_REPO:-"nvcr.io/nvidia/doca/ovn-kubernetes-dpf-utils"}
+OVN_KUBERNETES_UTILS_IMAGE_TAG=${OVN_KUBERNETES_UTILS_IMAGE_TAG:-"v25.7.1-rc.1"}
+
+OVN_CHART_VERSION=${OVN_CHART_VERSION:-${DPF_VERSION}}
+
+# OVN Image Configuration
+OVN_KUBERNETES_IMAGE_REPO=${OVN_KUBERNETES_IMAGE_REPO:-"quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256"}
+OVN_KUBERNETES_IMAGE_TAG=${OVN_KUBERNETES_IMAGE_TAG:-"780d11fac73412276b312b3f7c879b5e63da9687c7c8e79fc142e9c6e2f7c4cf"}
+
+# OVN-Kubernetes Namespace
+OVNK_NAMESPACE=${OVNK_NAMESPACE:-"openshift-ovn-kubernetes"}
 
 NFD_OPERAND_IMAGE=${NFD_OPERAND_IMAGE:-"quay.io/itsoiref/nfd:latest"}
 

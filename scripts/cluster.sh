@@ -20,6 +20,7 @@ source "$(dirname "$0")/env.sh"
 
 # Source common utilities
 source "$(dirname "${BASH_SOURCE[0]}")/utils.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/update-etc-hosts.sh"
 
 function validate_vips() {
     if [ -z "${API_VIP}" ] || [ "${API_VIP}" = "[]" ]; then
@@ -45,19 +46,6 @@ function validate_vips() {
     else
         log "ERROR" "Invalid INGRESS_VIP: ${INGRESS_VIP}"
         exit 1
-    fi
-}
-
-
-update_worker_manifest() {
-    local file="manifests/cluster-installation/99-worker-bridge.yaml"
-
-    if [ "${NODES_MTU}" != "1500" ]; then
-        log "INFO" "Setting ExecStart to include MTU: ${NODES_MTU}"
-        sed -i -E "s|(ExecStart=/usr/local/bin/apply-nmstate-bridge.sh)([[:space:]]*[0-9]*)?|\1 ${NODES_MTU}|" "$file"
-    else
-        log "INFO" "Resetting ExecStart to default (no MTU arg)"
-        sed -i -E "s|(ExecStart=/usr/local/bin/apply-nmstate-bridge.sh)([[:space:]]*[0-9]*)?|\1|" "$file"
     fi
 }
 
@@ -176,7 +164,6 @@ function check_create_cluster() {
                 "${CLUSTER_NAME}"
         fi
         
-        update_worker_manifest
         log "INFO" "Cluster ${CLUSTER_NAME} created successfully"
     else
         log "INFO" "Cluster ${CLUSTER_NAME} already exists"
@@ -239,10 +226,14 @@ function start_cluster_installation() {
     log "INFO" "Waiting for cluster to be ready..."
     wait_for_cluster_status "ready"
     aicli start cluster ${CLUSTER_NAME}
+    log "INFO" "Waiting for cluster to be finalizing..."
+    wait_for_cluster_status "finalizing"
+    apply_lso_for_multinode
     log "INFO" "Waiting for installation to complete..."
     wait_for_cluster_status "installed"
     log "INFO" "Cluster installation completed successfully"
     get_kubeconfig
+    create_odf_cluster
 }
 
 function get_kubeconfig() {
@@ -296,37 +287,99 @@ function clean_all() {
     log "Full cleanup complete"
 }
 
+function apply_lso_for_multinode() {
+    log "INFO" "Checking if LSO should be applied for multi-node cluster..."
+    
+    # Only apply LSO for multi-node clusters (VM_COUNT > 1)
+    if [ "$VM_COUNT" -le 1 ]; then
+        log "INFO" "Single-node cluster detected, skipping LSO installation"
+        return 0
+    fi
+    
+    log "INFO" "Multi-node cluster detected (VM_COUNT=${VM_COUNT}), applying Local Storage Operator..."
+    
+    # Get kubeconfig
+    get_kubeconfig
+    
+    # Update /etc/hosts with API endpoint
+    log "INFO" "Updating /etc/hosts with API endpoint..."
+    update_etc_hosts
+    
+    # Apply LSO manifest
+    log "INFO" "Applying Local Storage Operator manifest..."
+    if [ -f "${MANIFESTS_DIR}/cluster-installation/lso-419.yaml" ]; then
+        oc apply -f "${MANIFESTS_DIR}/cluster-installation/lso-419.yaml"
+        log "INFO" "Local Storage Operator applied successfully"
+    else
+        log "ERROR" "LSO manifest not found: ${MANIFESTS_DIR}/cluster-installation/lso-419.yaml"
+        return 1
+    fi
+}
+
+# Create ODF cluster as a workaround for OCS cluster creation issue
+# This is a temporary solution until the OCS cluster creation with LSO 4.19 will be fixed
+function create_odf_cluster() {
+    # Only apply LSO for multi-node clusters (VM_COUNT > 1)
+    if [ "$VM_COUNT" -le 1 ]; then
+        log "INFO" "Single-node cluster detected, skipping ODF cluster creation"
+        return 0
+    fi
+    local max_retries="${1:-60}"
+    local sleep_time="${2:-10}"
+    
+    log "INFO" "Applying ODF subscription..."
+    oc apply -f manifests/odf/odf-subscription.yaml
+    log "INFO" "Waiting for any ODF StorageCluster to exist..."
+
+    # Use retry function from utils.sh to check if StorageCluster exists
+    if retry "$max_retries" "$sleep_time" oc get storagecluster -A >/dev/null 2>&1; then
+        log "INFO" "ODF StorageCluster exists"
+    else
+        log "ERROR" "Timeout waiting for ODF StorageCluster"
+        return 1
+    fi
+    oc apply -f manifests/odf/odf-cluster.yaml
+}
+
 # -----------------------------------------------------------------------------
 # ISO management functions
 # -----------------------------------------------------------------------------
 
 function create_day2_cluster() {
-    # Create a day2 cluster for adding worker nodes to existing cluster
-    local day2_cluster="${CLUSTER_NAME}-day2"
+    # Move cluster to day2 mode for adding worker nodes to existing cluster
+    log "INFO" "Checking cluster ${CLUSTER_NAME} for day2 transition..."
 
-    # Check if main cluster exists
+    # Get cluster ID and status in a single call
+    local cluster_id cluster_status
+    read -r cluster_id cluster_status <<< "$(aicli -o json info cluster "${CLUSTER_NAME}" | jq -r '[.id, .status] | @tsv')"
 
-    # Get OpenShift version of the main cluster
-    openshift_version=$(aicli info cluster "${CLUSTER_NAME}" -f openshift_version -v)
-    if [ -z "${openshift_version}" ]; then
-        log "ERROR" "Failed to retrieve OpenShift version for cluster ${CLUSTER_NAME}. Ensure the cluster is exists and properly configured."
+    if [ -z "${cluster_id}" ] || [ -z "${cluster_status}" ]; then
+        log "ERROR" "Cluster ${CLUSTER_NAME} not found or failed to retrieve cluster information"
         return 1
     fi
 
-    # Check if day2 cluster already exists
-    if ! aicli info cluster ${day2_cluster} >/dev/null 2>&1; then
-        log "INFO" "Creating day2 cluster for adding nodes to ${CLUSTER_NAME}"
-        # Create day2 cluster
-        aicli create cluster \
-            -P openshift_version="${openshift_version}" \
-            -P public_key="${SSH_KEY}" \
-            "${day2_cluster}" >/dev/null 2>&1
+    log "INFO" "Found cluster ${CLUSTER_NAME} (ID: ${cluster_id}, Status: ${cluster_status})"
 
-        log "INFO" "Day2 cluster created successfully: ${day2_cluster}"
-    else
-        log "INFO" "Day2 cluster ${day2_cluster} already exists"
+    # Check if cluster is already in adding-hosts status (day2 mode)
+    if [ "${cluster_status}" = "adding-hosts" ]; then
+        log "INFO" "Cluster ${CLUSTER_NAME} was already moved to day2 mode"
+        return 0
     fi
 
+    # Check if cluster is installed
+    if [ "${cluster_status}" != "installed" ]; then
+        log "ERROR" "Cannot move cluster ${CLUSTER_NAME} to day2 mode. Cluster must be installed first (current status: ${cluster_status})"
+        return 1
+    fi
+
+    # Move cluster to day2 mode
+    log "INFO" "Moving cluster ${CLUSTER_NAME} (ID: ${cluster_id}) to day2 mode..."
+    if ! aicli update cluster "${cluster_id}" -P day2=true -P infraenv=false; then
+        log "ERROR" "Failed to update cluster ${CLUSTER_NAME} to day2 mode"
+        return 1
+    fi
+
+    log "INFO" "Cluster ${CLUSTER_NAME} successfully moved to day2 mode"
     return 0
 }
 
@@ -348,8 +401,6 @@ function get_iso() {
             return 0
         fi
     fi
-
-    [ "${cluster_type}" = "day2" ] && cluster_name="${cluster_name}-day2"
 
     log "INFO" "Getting ISO URL..."
     local iso_url="$(aicli info iso "${cluster_name}" -s)"

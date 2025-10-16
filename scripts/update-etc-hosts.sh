@@ -138,32 +138,40 @@ update_hosts_file() {
 }
 
 # Main function
-main() {
-    local ip=$1
+update_etc_hosts() {
     local fqdn=${HOST_CLUSTER_API}
     local vm_prefix="${VM_PREFIX}"
-    local final_ip=$ip
-
-    if ! check_ip_reachable "$ip"; then
-        echo "Warning: IP $ip is not reachable"
-        if [ -n "$vm_prefix" ]; then
-            echo "Attempting to find VM IP for prefix: $vm_prefix"
-            local vm_ip=$(find_vm_ip "$vm_prefix")
-            if [ -n "$vm_ip" ]; then
-                echo "Found VM IP: $vm_ip"
-                final_ip=$vm_ip
-            else
-                echo "Error: Could not find VM IP for prefix $vm_prefix"
-                echo "Using original IP: $ip"
-            fi
+    local final_ip=""
+    
+    check_root
+    
+    # If VM_COUNT > 1 (multi-node), use API_VIP
+    if [ "$VM_COUNT" -gt 1 ]; then
+        echo "INFO: Multi-node cluster detected (VM_COUNT=${VM_COUNT}), using API_VIP: ${API_VIP}"
+        final_ip=${API_VIP}
+    else
+        # Single-node cluster: find VM IP
+        echo "INFO: Single-node cluster detected (VM_COUNT=${VM_COUNT}), finding VM IP for prefix: ${vm_prefix}"
+        
+        if [ -z "$vm_prefix" ]; then
+            echo "Error: VM_PREFIX not set for single-node cluster"
+            return 1
+        fi
+        
+        local vm_ip=$(find_vm_ip "$vm_prefix")
+        if [ -n "$vm_ip" ]; then
+            echo "Found VM IP: $vm_ip"
+            final_ip=$vm_ip
         else
-            echo "No VM prefix provided. Using original IP."
+            echo "Error: Could not find VM IP for prefix $vm_prefix"
+            return 1
         fi
     fi
 
     update_hosts_file "$final_ip" "$fqdn"
 }
 
-# Script execution starts here
-check_root
-main "$@"
+# If script is executed directly (not sourced), run the function
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    update_etc_hosts "$@"
+fi
