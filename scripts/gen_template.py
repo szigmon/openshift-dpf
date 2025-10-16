@@ -591,7 +591,7 @@ mtu={mtu}
             if 'inline' in file.contents.__dict__ and file.contents.inline:
                 file.contents.inline = file.contents.inline.replace(
                     "[ethernet]\n",
-                    f"[ethernet]\nmtu=9000\n"
+                    f"[ethernet]\nmtu=9216\n"
                 )
     
 
