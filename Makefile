@@ -12,13 +12,14 @@ DPF_SCRIPT := scripts/dpf.sh
 VM_SCRIPT := scripts/vm.sh
 UTILS_SCRIPT := scripts/utils.sh
 POST_INSTALL_SCRIPT := scripts/post-install.sh
+NFS_SERVICE_SCRIPT := scripts/nfs-service.sh
 
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
         redeploy-dpu enable-ovn-injector deploy-argocd deploy-maintenance-operator configure-flannel \
-        deploy-core-operator-sources
+        deploy-core-operator-sources setup-nfs-server
 
 all: 
 	@mkdir -p logs
@@ -154,6 +155,9 @@ install-hypershift:
 install-helm:
 	@$(TOOLS_SCRIPT) install-helm
 
+setup-nfs-server:
+	@$(NFS_SERVICE_SCRIPT)
+
 help:
 	@echo "Available targets:"
 	@echo "Cluster Management:"
@@ -236,6 +240,13 @@ help:
 	@echo "Post-installation Configuration:"
 	@echo "  BFB_URL          - URL for BFB file (default: http://10.8.2.236/bfb/rhcos_4.19.0-ec.4_installer_2025-04-23_07-48-42.bfb)"
 	@echo "  HBN_OVN_NETWORK  - Network for HBN OVN IPAM (default: 10.0.120.0/22)"
+	@echo ""
+	@echo "NFS Server Setup:"
+	@echo "  setup-nfs-server - Setup NFS server with systemd service and firewall configuration"
+	@echo "                     Environment variables:"
+	@echo "                       NFS_EXPORT_DIR     - Export directory path (default: /nfs/exports)"
+	@echo "                       NFS_EXPORT_OPTIONS - Export options (default: rw,sync,no_root_squash,no_subtree_check)"
+	@echo "                       NFS_ALLOWED_NETWORK - Allowed network/host (default: *)"
 	@echo ""
 	@echo "Wait Configuration:"
 	@echo "  MAX_RETRIES      - Maximum number of retries for status checks (default: $(MAX_RETRIES))"
