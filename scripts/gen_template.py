@@ -56,7 +56,8 @@ FILES_PLAIN: list[FileEntry] = [
         overwrite=True,
         mode=755,
         contents=FileContents(
-            source="data:text/plain;charset=utf-8;base64," + "{{.OVSRawScript}}"
+            source="data:text/plain;charset=utf-8;base64," +
+            "{{.OVSRawScript}}"
         )
     ),
     FileEntry(
@@ -93,66 +94,7 @@ OVS_DOCA="yes"
 """
         )
     ),
-    FileEntry(
-        path="/etc/NetworkManager/system-connections/p0.nmconnection",
-        overwrite=True,
-        mode=600,
-        contents=FileContents(
-            inline="""[connection]
-id=p0
-type=ethernet
-interface-name=p0
 
-[ethernet]
-mtu=9216
-"""
-        )
-    ),
-    FileEntry(
-        path="/etc/NetworkManager/system-connections/p1.nmconnection",
-        overwrite=True,
-        mode=600,
-        contents=FileContents(
-            inline="""[connection]
-id=p1
-type=ethernet
-interface-name=p1
-
-[ethernet]
-mtu=9216
-"""
-        )
-    ),
-    FileEntry(
-        path="/etc/NetworkManager/system-connections/pf0hpf.nmconnection",
-        overwrite=True,
-        mode=600,
-        contents=FileContents(
-            inline="""[connection]
-id=pf0hpf
-type=ethernet
-interface-name=pf0hpf
-
-[ethernet]
-mtu=9216
-"""
-        )
-    ),
-    FileEntry(
-        path="/etc/NetworkManager/system-connections/pf1hpf.nmconnection",
-        overwrite=True,
-        mode=600,
-        contents=FileContents(
-            inline="""[connection]
-id=pf1hpf
-type=ethernet
-interface-name=pf1hpf
-
-[ethernet]
-mtu=9216
-"""
-        )
-    ),
     FileEntry(
         path="/etc/NetworkManager/system-connections/pf0vf0.nmconnection",
         overwrite=True,
@@ -166,7 +108,6 @@ master=br-comm-ch
 slave-type=bridge
 
 [ethernet]
-mtu=9216
 
 [bridge-port]"""
         )
@@ -420,11 +361,13 @@ def get_ignition_token_secret(cluster_name: str, namespace: str) -> str:
     # Get token secrets
     ignition_token_secrets = execute_oc_command(
         namespace,
-        ["get", "secret", "--no-headers", "-o", "custom-columns=NAME:.metadata.name"]
+        ["get", "secret", "--no-headers", "-o",
+            "custom-columns=NAME:.metadata.name"]
     )
 
     # Find token-doca secret
-    secrets: list[str] = [line for line in ignition_token_secrets.splitlines() if f"token-{cluster_name}" in line]
+    secrets: list[str] = [line for line in ignition_token_secrets.splitlines(
+    ) if f"token-{cluster_name}" in line]
     if not secrets:
         raise Exception("No token secrets found.")
     ignition_token_secret: str = secrets[0]
@@ -432,7 +375,8 @@ def get_ignition_token_secret(cluster_name: str, namespace: str) -> str:
     # Get ignition token
     ignition_token = execute_oc_command(
         namespace,
-        ["get", "secret", ignition_token_secret, "-o", "jsonpath={.data.token}"]
+        ["get", "secret", ignition_token_secret,
+            "-o", "jsonpath={.data.token}"]
     )
     return ignition_token
 
@@ -453,16 +397,20 @@ def pull_ignition(cluster_name: str, hc_namespace: str) -> dict:
         # Get ignition endpoint
         ignition_endpoint = execute_oc_command(
             hc_namespace,
-            ["get", "hc", cluster_name, "-o", "jsonpath={.status.ignitionEndpoint}"]
+            ["get", "hc", cluster_name, "-o",
+                "jsonpath={.status.ignitionEndpoint}"]
         )
         ignition_token = get_ignition_token_secret(cluster_name, namespace)
 
         # Download ignition file
-        conn = http.client.HTTPSConnection(ignition_endpoint, context=ssl._create_unverified_context())
-        conn.request("GET", "/ignition", headers={"Authorization": f"Bearer {ignition_token}"})
+        conn = http.client.HTTPSConnection(
+            ignition_endpoint, context=ssl._create_unverified_context())
+        conn.request("GET", "/ignition",
+                     headers={"Authorization": f"Bearer {ignition_token}"})
         response = conn.getresponse()
         if response.status != 200:
-            raise Exception(f"Failed to pull ignition file: {response.status} {response.reason}")
+            raise Exception(
+                f"Failed to pull ignition file: {response.status} {response.reason}")
         data = response.read()
         print("Downloaded ignition file successfully.")
         # Return the response content as JSON
@@ -497,7 +445,8 @@ def encode_ignition(ign: dict) -> str:
         str: The base64 encoded ignition file
     """
     # Encode the ignition file to base64
-    gzipped_ign = gzip.compress(json.dumps(ign, separators=(',', ':')).encode('utf-8'))
+    gzipped_ign = gzip.compress(json.dumps(
+        ign, separators=(',', ':')).encode('utf-8'))
     return base64.b64encode(gzipped_ign).decode()
 
 
@@ -587,6 +536,66 @@ def add_systemd_units(ign: dict) -> None:
         })
 
 
+def mtu9000_enable() -> None:
+    """
+    Adds MTU 9000 configuration files to the FILES list.
+    """
+    
+    global FILES
+
+    def nminterface(name: str, mtu: int) -> str:
+        return f"""[connection]
+id={name}
+type=ethernet
+interface-name={name}
+
+[ethernet]
+mtu={mtu}
+"""
+
+    FILES = [*FILES,
+             FileEntry(
+                 path="/etc/NetworkManager/system-connections/p0.nmconnection",
+                 overwrite=True,
+                 mode=600,
+                 contents=FileContents(
+                     inline=nminterface("p0", 9216)
+                 )),
+             FileEntry(
+                 path="/etc/NetworkManager/system-connections/p1.nmconnection",
+                 overwrite=True,
+                 mode=600,
+                 contents=FileContents(
+                     inline=nminterface("p1", 9216)
+                 )
+             ),
+             FileEntry(
+                 path="/etc/NetworkManager/system-connections/pf0hpf.nmconnection",
+                 overwrite=True,
+                 mode=600,
+                 contents=FileContents(
+                     inline=nminterface("pf0hpf", 9216)
+                 )
+             ),
+             FileEntry(
+                 path="/etc/NetworkManager/system-connections/pf1hpf.nmconnection",
+                 overwrite=True,
+                 mode=600,
+                 contents=FileContents(
+                     inline=nminterface("pf1hpf", 9216)
+                 )
+             )]
+    
+    for file in FILES:
+        if file.path == "/etc/NetworkManager/system-connections/pf0vf0.nmconnection":
+            if 'inline' in file.contents.__dict__ and file.contents.inline:
+                file.contents.inline = file.contents.inline.replace(
+                    "[ethernet]\n",
+                    f"[ethernet]\nmtu=9000\n"
+                )
+    
+
+
 def create_bfb_template_cm(ign: dict, configmap_path: str) -> None:
     """Write ConfigMap to disk."""
     # Create ignition template
@@ -608,13 +617,21 @@ data:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate OpenShift/DPF ignition template')
+    parser = argparse.ArgumentParser(
+        description='Generate OpenShift/DPF ignition template')
+    parser.add_argument('--mtu9000', action='store_true',
+                        help='Enable MTU 9000 configuration')
     parser.add_argument('--cluster', '-c', type=str, default='doca',
                         help='Name of the cluster to pull ignition from')
     parser.add_argument('--hosted-clusters-namespace', '-hc', type=str, default='clusters',
                         help='Namespace for hosted clusters (default: clusters)')
-    parser.add_argument('--output-file', '-f', type=str, default='hcp_template.yaml',)
+    parser.add_argument('--output-file', '-f', type=str,
+                        default='hcp_template.yaml',)
     args = parser.parse_args()
+
+    if args.mtu9000:
+        print("Enabling MTU 9000 configuration...")
+        mtu9000_enable()
 
     # Check KUBECONFIG environment variable
     kubeconfig = os.environ.get('KUBECONFIG')
