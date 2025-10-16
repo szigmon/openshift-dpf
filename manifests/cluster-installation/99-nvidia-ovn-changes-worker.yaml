@@ -15,4 +15,5 @@ spec:
         - name: openvswitch.service
           enabled: false
           mask: true
-
+        - name: wait-for-br-ex-up.service
+          enabled: false
