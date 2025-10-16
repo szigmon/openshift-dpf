@@ -137,6 +137,14 @@ NFD_OPERAND_IMAGE=${NFD_OPERAND_IMAGE:-"quay.io/itsoiref/nfd:latest"}
 
 HOST_CLUSTER_API=${HOST_CLUSTER_API:-"api.$CLUSTER_NAME.$BASE_DOMAIN"}
 
+# NFS Configuration
+# NFS_SERVER_NODE_IP: IP address of external NFS server
+#   - For VM_COUNT < 3: Uses internal NFS (HOST_CLUSTER_API), this variable is ignored
+#   - For VM_COUNT >= 3 with BFB_STORAGE_CLASS=nfs-client: MUST be set to external NFS server IP
+# NFS_PATH: Path exported by NFS server. Defaults to "/"
+NFS_SERVER_NODE_IP=${NFS_SERVER_NODE_IP:-""}
+NFS_PATH=${NFS_PATH:-"/"}
+
 if [ "${VM_COUNT}" -lt 2 ]; then
   ETCD_STORAGE_CLASS=${ETCD_STORAGE_CLASS:-"lvms-vg1"}
   BFB_STORAGE_CLASS=${BFB_STORAGE_CLASS:-"nfs-client"}

@@ -91,21 +91,3 @@ spec:
         - name: nfs-data-storage
           persistentVolumeClaim:
             claimName: nfs-server-data
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nfs-client-hostnet-pv
-spec:
-  capacity:
-    storage: 10Gi
-  volumeMode: Filesystem
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Delete
-  mountOptions:
-    - hard
-  nfs:
-    path: /
-    server: <NFS_SERVER_NODE_IP>
-    readOnly: false
