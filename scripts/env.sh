@@ -182,3 +182,10 @@ PRIMARY_IFACE=${PRIMARY_IFACE:-enp1s0}
 
 # OLM Catalog Source Configuration
 CATALOG_SOURCE_NAME=${CATALOG_SOURCE_NAME:-"redhat-operators"}
+
+# MetalLB Configuration (for multi-node clusters)
+METALLB_IP_POOL_START=${METALLB_IP_POOL_START:-""}
+METALLB_IP_POOL_END=${METALLB_IP_POOL_END:-${METALLB_IP_POOL_START}}
+METALLB_IP_POOL_NAME=${METALLB_IP_POOL_NAME:-"cluster-network"}
+
+HYPERSHIFT_API_IP=${HYPERSHIFT_API_IP:-${METALLB_IP_POOL_START}}  # Optional: Specific IP for Hypershift API server LoadBalancer

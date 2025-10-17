@@ -50,6 +50,63 @@ function deploy_nfd() {
 }
 
 
+function deploy_metallb() {
+    # Only deploy MetalLB for multi-node clusters
+    if [ "${VM_COUNT}" -le 1 ]; then
+        log [INFO] "Single-node cluster detected (VM_COUNT=${VM_COUNT}). Skipping MetalLB deployment."
+        return 0
+    fi
+    
+    log [INFO] "Multi-node cluster detected (VM_COUNT=${VM_COUNT}). Deploying MetalLB for LoadBalancer support..."
+    
+    # Validate required MetalLB configuration
+    if [ -z "${METALLB_IP_POOL_START}" ] || [ -z "${METALLB_IP_POOL_END}" ]; then
+        log [ERROR] "MetalLB IP pool not configured. Please set METALLB_IP_POOL_START and METALLB_IP_POOL_END"
+        return 1
+    fi
+    
+    get_kubeconfig
+    
+    # Check if MetalLB subscription already exists
+    if oc get subscription -n openshift-operators metallb-operator &>/dev/null; then
+        log [INFO] "MetalLB subscription already exists. Skipping subscription deployment."
+    else
+        log [INFO] "Deploying MetalLB subscription..."
+        mkdir -p "$GENERATED_DIR"
+        
+        # Process subscription template
+        process_template \
+            "${MANIFESTS_DIR}/metallb/metallb-subscription.yaml" \
+            "${GENERATED_DIR}/metallb-subscription.yaml" \
+            "<CATALOG_SOURCE_NAME>" "${CATALOG_SOURCE_NAME}"
+        
+        apply_manifest "${GENERATED_DIR}/metallb-subscription.yaml" true  
+    fi
+    
+    # Wait for MetalLB operator pods to be ready
+    log [INFO] "Waiting for MetalLB operator to be ready..."
+    wait_for_pods "openshift-operators" "control-plane=controller-manager" "status.phase=Running" "1/1" 60 5
+    
+    log [INFO] "Creating MetalLB instance and IP address pool..."
+    
+    # Build IP pool range
+    local ip_pool_range="${METALLB_IP_POOL_START}-${METALLB_IP_POOL_END}"
+    
+    # Process MetalLB objects template
+    process_template \
+        "${MANIFESTS_DIR}/metallb/metallb-objects.yaml" \
+        "${GENERATED_DIR}/metallb-objects.yaml" \
+        "<METALLB_IP_POOL_NAME>" "${METALLB_IP_POOL_NAME}" \
+        "<METALLB_IP_POOL_RANGE>" "${ip_pool_range}" \
+        "<HOSTED_CONTROL_PLANE_NAMESPACE>" "${HOSTED_CONTROL_PLANE_NAMESPACE}"
+    
+    # Apply MetalLB objects
+    retry 5 10 apply_manifest "${GENERATED_DIR}/metallb-objects.yaml" true
+            
+    log [INFO] "MetalLB deployment completed successfully!"
+    log [INFO] "LoadBalancer services will use IP pool: ${METALLB_IP_POOL_START}-${METALLB_IP_POOL_END}"
+}
+
 function apply_scc() {
     local scc_file="$GENERATED_DIR/scc.yaml"
     if [ -f "$scc_file" ]; then
@@ -131,6 +188,12 @@ function deploy_hypershift() {
         install_hypershift
     fi
 
+    # Deploy MetalLB for multi-node clusters to support LoadBalancer services
+    if [ "${VM_COUNT}" -gt 1 ]; then
+        log [INFO] "Deploying MetalLB for LoadBalancer support in Hypershift..."
+        deploy_metallb
+    fi
+
     log [INFO] "Checking if Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists..."
     if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
         log [INFO] "Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists. Skipping creation."
@@ -139,26 +202,36 @@ function deploy_hypershift() {
         log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
         
-        # Build hypershift command with conditional multi-network flag
-        local multi_network_flag=""
+        # Build hypershift command with conditional flags
+        local hypershift_args=(
+            "create" "cluster" "none"
+            "--name=${HOSTED_CLUSTER_NAME}"
+            "--base-domain=${BASE_DOMAIN}"
+            "--release-image=${OCP_RELEASE_IMAGE}"
+            "--ssh-key=${SSH_KEY}"
+            "--pull-secret=${OPENSHIFT_PULL_SECRET}"
+            "--disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning"
+            "--network-type=Other"
+            "--etcd-storage-class=${ETCD_STORAGE_CLASS}"
+            "--node-selector=node-role.kubernetes.io/master=\"\""
+            "--node-pool-replicas=0"
+            "--node-upgrade-type=Replace"
+        )
 
         if [ "${ENABLE_HCP_MULTUS}" != "true" ]; then
-            multi_network_flag="--disable-multi-network"
+            hypershift_args+=("--disable-multi-network")
+        fi
+
+        # For multi-node clusters (VM_COUNT > 1), use LoadBalancer for API server
+        if [ "${VM_COUNT}" -gt 1 ]; then
+            hypershift_args+=("--expose-through-load-balancer")
+            #hypershift_args+=("--external-api-server-address=${HYPERSHIFT_API_IP}")
+            log [INFO] "Multi-node cluster detected (VM_COUNT=${VM_COUNT}). Using LoadBalancer for API server."
+            
         fi
 
         log [INFO] "Creating hosted cluster with HCP multus enabled ${ENABLE_HCP_MULTUS}..."
-        hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
-          --base-domain="${BASE_DOMAIN}" \
-          --release-image="${OCP_RELEASE_IMAGE}" \
-          --ssh-key="${SSH_KEY}" \
-          --pull-secret="${OPENSHIFT_PULL_SECRET}" \
-          --disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning \
-          ${multi_network_flag} \
-          --network-type=Other \
-          --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
-          --node-selector='node-role.kubernetes.io/master=""' \
-          --node-pool-replicas=0 \
-          --node-upgrade-type=Replace
+        hypershift "${hypershift_args[@]}"
     fi
 
     if [ -n "${CNO_HCP_IMAGE}" ]; then
@@ -169,6 +242,7 @@ function deploy_hypershift() {
     oc -n ${HOSTED_CONTROL_PLANE_NAMESPACE} get pods
     log [INFO] "Waiting for etcd pods..."
     wait_for_pods ${HOSTED_CONTROL_PLANE_NAMESPACE} "app=etcd" "status.phase=Running" "3/3" 60 10
+    
     configure_hypershift
     create_ignition_template
 }
@@ -447,6 +521,9 @@ function main() {
             deploy-nfd)
                 deploy_nfd
                 ;;
+            deploy-metallb)
+                deploy_metallb
+                ;;
             deploy-argocd)
                 deploy_argocd
                 ;;
@@ -467,7 +544,7 @@ function main() {
                 ;;
             *)
                 log [INFO] "Unknown command: $command"
-                log [INFO] "Available commands: deploy-nfd, deploy-argocd, deploy-maintenance-operator, apply-dpf, deploy-hypershift"
+                log [INFO] "Available commands: deploy-nfd, deploy-metallb, deploy-argocd, deploy-maintenance-operator, apply-dpf, deploy-hypershift"
                 exit 1
                 ;;
         esac
