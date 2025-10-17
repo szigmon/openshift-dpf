@@ -50,6 +50,71 @@ function deploy_nfd() {
 }
 
 
+function deploy_metallb() {
+    # Only deploy MetalLB for multi-node clusters
+    if [ "${VM_COUNT}" -le 1 ]; then
+        log [INFO] "Single-node cluster detected (VM_COUNT=${VM_COUNT}). Skipping MetalLB deployment."
+        return 0
+    fi
+    
+    log [INFO] "Multi-node cluster detected (VM_COUNT=${VM_COUNT}). Deploying MetalLB for LoadBalancer support..."
+    
+    # Validate required MetalLB configuration
+    if [ -z "${METALLB_IP_POOL_START}" ] || [ -z "${METALLB_IP_POOL_END}" ]; then
+        log [ERROR] "MetalLB IP pool not configured. Please set METALLB_IP_POOL_START and METALLB_IP_POOL_END"
+        return 1
+    fi
+    
+    if [ -z "${METALLB_INGRESS_IP}" ]; then
+        log [ERROR] "MetalLB ingress IP not configured. Please set METALLB_INGRESS_IP"
+        return 1
+    fi
+    
+    get_kubeconfig
+    
+    # Check if MetalLB subscription already exists
+    if oc get subscription -n openshift-operators metallb-operator &>/dev/null; then
+        log [INFO] "MetalLB subscription already exists. Skipping subscription deployment."
+        return 0
+    fi
+    
+    log [INFO] "Deploying MetalLB subscription..."
+    mkdir -p "$GENERATED_DIR"
+    
+    # Process subscription template
+    sed -e "s|<CATALOG_SOURCE_NAME>|${CATALOG_SOURCE_NAME}|g" \
+        "${MANIFESTS_DIR}/metallb/metallb-subscription.yaml" > "${GENERATED_DIR}/metallb-subscription.yaml"
+    
+    apply_manifest "${GENERATED_DIR}/metallb-subscription.yaml" true
+    
+    # Wait for MetalLB operator pods to be ready
+    log [INFO] "Waiting for MetalLB operator to be ready..."
+    wait_for_pods "openshift-operators" "control-plane=controller-manager" "status.phase=Running" "1/1" 60 5
+    
+    log [INFO] "Creating MetalLB instance and IP address pool..."
+    
+    # Build IP pool range
+    local ip_pool_range="${METALLB_IP_POOL_START}-${METALLB_IP_POOL_END}"
+    
+    # Process MetalLB objects template
+    sed -e "s|<METALLB_IP_POOL_NAME>|${METALLB_IP_POOL_NAME}|g" \
+        -e "s|<METALLB_IP_POOL_RANGE>|${ip_pool_range}|g" \
+        -e "s|<METALLB_INGRESS_IP>|${METALLB_INGRESS_IP}|g" \
+        "${MANIFESTS_DIR}/metallb/metallb-objects.yaml" > "${GENERATED_DIR}/metallb-objects.yaml"
+    
+    # Apply MetalLB objects
+    retry 5 10 apply_manifest "${GENERATED_DIR}/metallb-objects.yaml" true
+    
+    log [INFO] "Waiting for MetalLB controller to be ready..."
+    wait_for_pods "metallb-system" "component=controller" "status.phase=Running" "1/1" 60 5
+    
+    log [INFO] "Waiting for MetalLB speaker pods to be ready..."
+    wait_for_pods "metallb-system" "component=speaker" "status.phase=Running" "1/1" 60 5
+    
+    log [INFO] "MetalLB deployment completed successfully!"
+    log [INFO] "LoadBalancer services will use IP pool: ${METALLB_IP_POOL_START}-${METALLB_IP_POOL_END}"
+}
+
 function apply_scc() {
     local scc_file="$GENERATED_DIR/scc.yaml"
     if [ -f "$scc_file" ]; then
@@ -131,6 +196,12 @@ function deploy_hypershift() {
         install_hypershift
     fi
 
+    # Deploy MetalLB for multi-node clusters to support LoadBalancer services
+    if [ "${VM_COUNT}" -gt 1 ]; then
+        log [INFO] "Deploying MetalLB for LoadBalancer support in Hypershift..."
+        deploy_metallb
+    fi
+
     log [INFO] "Checking if Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists..."
     if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
         log [INFO] "Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists. Skipping creation."
@@ -139,26 +210,40 @@ function deploy_hypershift() {
         log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
         
-        # Build hypershift command with conditional multi-network flag
-        local multi_network_flag=""
+        # Build hypershift command with conditional flags
+        local hypershift_args=(
+            "create" "cluster" "none"
+            "--name=${HOSTED_CLUSTER_NAME}"
+            "--base-domain=${BASE_DOMAIN}"
+            "--release-image=${OCP_RELEASE_IMAGE}"
+            "--ssh-key=${SSH_KEY}"
+            "--pull-secret=${OPENSHIFT_PULL_SECRET}"
+            "--disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning"
+            "--network-type=Other"
+            "--etcd-storage-class=${ETCD_STORAGE_CLASS}"
+            "--node-selector=node-role.kubernetes.io/master=\"\""
+            "--node-pool-replicas=0"
+            "--node-upgrade-type=Replace"
+        )
 
         if [ "${ENABLE_HCP_MULTUS}" != "true" ]; then
-            multi_network_flag="--disable-multi-network"
+            hypershift_args+=("--disable-multi-network")
+        fi
+
+        # For multi-node clusters (VM_COUNT > 1), use LoadBalancer for API server
+        if [ "${VM_COUNT}" -gt 1 ]; then
+            hypershift_args+=("--api-server-address=LoadBalancer")
+            log [INFO] "Multi-node cluster detected (VM_COUNT=${VM_COUNT}). Using LoadBalancer for API server."
+            
+            # Add MetalLB IP annotation if specific IP is requested
+            if [ -n "${HYPERSHIFT_API_IP}" ]; then
+                hypershift_args+=("--annotations" "hypershift.openshift.io/kube-apiserver-service-annotations={\"metallb.universe.tf/loadBalancerIPs\":\"${HYPERSHIFT_API_IP}\"}")
+                log [INFO] "Configuring Hypershift API server with specific IP: ${HYPERSHIFT_API_IP}"
+            fi
         fi
 
         log [INFO] "Creating hosted cluster with HCP multus enabled ${ENABLE_HCP_MULTUS}..."
-        hypershift create cluster none --name="${HOSTED_CLUSTER_NAME}" \
-          --base-domain="${BASE_DOMAIN}" \
-          --release-image="${OCP_RELEASE_IMAGE}" \
-          --ssh-key="${SSH_KEY}" \
-          --pull-secret="${OPENSHIFT_PULL_SECRET}" \
-          --disable-cluster-capabilities=ImageRegistry,Insights,Console,openshift-samples,Ingress,NodeTuning \
-          ${multi_network_flag} \
-          --network-type=Other \
-          --etcd-storage-class="${ETCD_STORAGE_CLASS}" \
-          --node-selector='node-role.kubernetes.io/master=""' \
-          --node-pool-replicas=0 \
-          --node-upgrade-type=Replace
+        hypershift "${hypershift_args[@]}"
     fi
 
     if [ -n "${CNO_HCP_IMAGE}" ]; then
@@ -169,8 +254,46 @@ function deploy_hypershift() {
     oc -n ${HOSTED_CONTROL_PLANE_NAMESPACE} get pods
     log [INFO] "Waiting for etcd pods..."
     wait_for_pods ${HOSTED_CONTROL_PLANE_NAMESPACE} "app=etcd" "status.phase=Running" "3/3" 60 10
+    
+    # Verify Hypershift API LoadBalancer IP if configured
+    if [ "${VM_COUNT}" -gt 1 ] && [ -n "${HYPERSHIFT_API_IP}" ]; then
+        verify_hypershift_api_ip
+    fi
+    
     configure_hypershift
     create_ignition_template
+}
+
+function verify_hypershift_api_ip() {
+    log [INFO] "Verifying Hypershift API server IP assignment: ${HYPERSHIFT_API_IP}..."
+    
+    # Wait for the kube-apiserver LoadBalancer service to get an external IP
+    local api_service_name="kube-apiserver"
+    local max_wait=60
+    local count=0
+    
+    log [INFO] "Waiting for Hypershift API LoadBalancer to be assigned IP..."
+    while [ $count -lt $max_wait ]; do
+        if oc get service -n ${HOSTED_CONTROL_PLANE_NAMESPACE} ${api_service_name} &>/dev/null; then
+            local external_ip=$(oc get service -n ${HOSTED_CONTROL_PLANE_NAMESPACE} ${api_service_name} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+            
+            if [ -n "$external_ip" ] && [ "$external_ip" != "null" ]; then
+                if [ "$external_ip" == "${HYPERSHIFT_API_IP}" ]; then
+                    log [INFO] "✅ Hypershift API LoadBalancer successfully assigned IP: ${external_ip}"
+                    return 0
+                else
+                    log [WARN] "⚠️  Hypershift API LoadBalancer assigned IP: ${external_ip} (expected: ${HYPERSHIFT_API_IP})"
+                    log [WARN] "MetalLB may have assigned a different IP from the pool"
+                    return 0
+                fi
+            fi
+        fi
+        count=$((count + 1))
+        sleep 5
+    done
+    
+    log [WARN] "Timeout waiting for Hypershift API LoadBalancer IP assignment"
+    log [WARN] "Check the service manually: oc get service -n ${HOSTED_CONTROL_PLANE_NAMESPACE} ${api_service_name}"
 }
 
 function add_cno_image_override() {
@@ -447,6 +570,9 @@ function main() {
             deploy-nfd)
                 deploy_nfd
                 ;;
+            deploy-metallb)
+                deploy_metallb
+                ;;
             deploy-argocd)
                 deploy_argocd
                 ;;
@@ -467,7 +593,7 @@ function main() {
                 ;;
             *)
                 log [INFO] "Unknown command: $command"
-                log [INFO] "Available commands: deploy-nfd, deploy-argocd, deploy-maintenance-operator, apply-dpf, deploy-hypershift"
+                log [INFO] "Available commands: deploy-nfd, deploy-metallb, deploy-argocd, deploy-maintenance-operator, apply-dpf, deploy-hypershift"
                 exit 1
                 ;;
         esac
