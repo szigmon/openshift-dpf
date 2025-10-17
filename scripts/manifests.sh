@@ -51,7 +51,7 @@ function prepare_nfs() {
         nfs_path="/"
         sed -e "s|<STORAGECLASS_NAME>|${ETCD_STORAGE_CLASS}|g" \
             -e "s|<NFS_PATH>|${nfs_path}|g" \
-            "${MANIFESTS_DIR}/nfs/nfs-sno.yaml" > "${GENERATED_DIR}/nfs-sno.yaml"
+            "${MANIFESTS_DIR}/nfs/nfso.yaml" > "${GENERATED_DIR}/nfs.yaml"
 
     else
         if [ -z "${NFS_SERVER_NODE_IP}" ]; then
