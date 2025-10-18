@@ -57,6 +57,16 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
         node-role.kubernetes.io/control-plane: ""
+      <NODE_AFFINITY>
+      initContainers:  # <-- Add this whole block
+        - name: set-volume-permissions
+          image: quay.io/itsoiref/nfs-server-alpine:latest
+          command: ["sh", "-c", "chown 65534:65534 /exports && chmod 777 /exports"]
+          securityContext:
+            runAsUser: 0  # Run as root
+          volumeMounts:
+          - name: nfs-data-storage
+            mountPath: /exports
       containers:
         - name: nfs-server
           image: quay.io/itsoiref/nfs-server-alpine:latest

@@ -73,23 +73,24 @@ function deploy_metallb() {
     get_kubeconfig
     
     # Check if MetalLB subscription already exists
-    if oc get subscription -n openshift-operators metallb-operator &>/dev/null; then
+    if oc get subscription -n metallb-system metallb-operator &>/dev/null; then
         log [INFO] "MetalLB subscription already exists. Skipping subscription deployment."
-        return 0
+    else
+        log [INFO] "Deploying MetalLB subscription..."
+        mkdir -p "$GENERATED_DIR"
+        
+        # Process subscription template
+        process_template \
+            "${MANIFESTS_DIR}/metallb/metallb-subscription.yaml" \
+            "${GENERATED_DIR}/metallb-subscription.yaml" \
+            "<CATALOG_SOURCE_NAME>" "${CATALOG_SOURCE_NAME}"
+        
+        apply_manifest "${GENERATED_DIR}/metallb-subscription.yaml" true  
     fi
-    
-    log [INFO] "Deploying MetalLB subscription..."
-    mkdir -p "$GENERATED_DIR"
-    
-    # Process subscription template
-    sed -e "s|<CATALOG_SOURCE_NAME>|${CATALOG_SOURCE_NAME}|g" \
-        "${MANIFESTS_DIR}/metallb/metallb-subscription.yaml" > "${GENERATED_DIR}/metallb-subscription.yaml"
-    
-    apply_manifest "${GENERATED_DIR}/metallb-subscription.yaml" true
     
     # Wait for MetalLB operator pods to be ready
     log [INFO] "Waiting for MetalLB operator to be ready..."
-    wait_for_pods "openshift-operators" "control-plane=controller-manager" "status.phase=Running" "1/1" 60 5
+    wait_for_pods "metallb-system" "control-plane=controller-manager" "status.phase=Running" "1/1" 60 5
     
     log [INFO] "Creating MetalLB instance and IP address pool..."
     
@@ -97,20 +98,16 @@ function deploy_metallb() {
     local ip_pool_range="${METALLB_IP_POOL_START}-${METALLB_IP_POOL_END}"
     
     # Process MetalLB objects template
-    sed -e "s|<METALLB_IP_POOL_NAME>|${METALLB_IP_POOL_NAME}|g" \
-        -e "s|<METALLB_IP_POOL_RANGE>|${ip_pool_range}|g" \
-        -e "s|<METALLB_INGRESS_IP>|${METALLB_INGRESS_IP}|g" \
-        "${MANIFESTS_DIR}/metallb/metallb-objects.yaml" > "${GENERATED_DIR}/metallb-objects.yaml"
+    process_template \
+        "${MANIFESTS_DIR}/metallb/metallb-objects.yaml" \
+        "${GENERATED_DIR}/metallb-objects.yaml" \
+        "<METALLB_IP_POOL_NAME>" "${METALLB_IP_POOL_NAME}" \
+        "<METALLB_IP_POOL_RANGE>" "${ip_pool_range}" \
+        "<METALLB_INGRESS_IP>" "${METALLB_INGRESS_IP}"
     
     # Apply MetalLB objects
     retry 5 10 apply_manifest "${GENERATED_DIR}/metallb-objects.yaml" true
-    
-    log [INFO] "Waiting for MetalLB controller to be ready..."
-    wait_for_pods "metallb-system" "component=controller" "status.phase=Running" "1/1" 60 5
-    
-    log [INFO] "Waiting for MetalLB speaker pods to be ready..."
-    wait_for_pods "metallb-system" "component=speaker" "status.phase=Running" "1/1" 60 5
-    
+            
     log [INFO] "MetalLB deployment completed successfully!"
     log [INFO] "LoadBalancer services will use IP pool: ${METALLB_IP_POOL_START}-${METALLB_IP_POOL_END}"
 }
@@ -232,7 +229,7 @@ function deploy_hypershift() {
 
         # For multi-node clusters (VM_COUNT > 1), use LoadBalancer for API server
         if [ "${VM_COUNT}" -gt 1 ]; then
-            hypershift_args+=("--api-server-address=LoadBalancer")
+            hypershift_args+=("--expose-through-load-balancer")
             log [INFO] "Multi-node cluster detected (VM_COUNT=${VM_COUNT}). Using LoadBalancer for API server."
             
             # Add MetalLB IP annotation if specific IP is requested
