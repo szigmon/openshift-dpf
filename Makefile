@@ -246,7 +246,6 @@ help:
 	@echo "  METALLB_IP_POOL_START - Start IP for MetalLB pool (required for multi-node)"
 	@echo "  METALLB_IP_POOL_END   - End IP for MetalLB pool (required for multi-node)"
 	@echo "  METALLB_IP_POOL_NAME  - Name for IP pool (default: cluster-network)"
-	@echo "  METALLB_INGRESS_IP    - IP for ingress LoadBalancer (required for multi-node)"
 	@echo "  HYPERSHIFT_API_IP     - Specific IP for Hypershift API server (optional, must be in pool)"
 	@echo ""
 	@echo "Post-installation Configuration:"

@@ -65,11 +65,6 @@ function deploy_metallb() {
         return 1
     fi
     
-    if [ -z "${METALLB_INGRESS_IP}" ]; then
-        log [ERROR] "MetalLB ingress IP not configured. Please set METALLB_INGRESS_IP"
-        return 1
-    fi
-    
     get_kubeconfig
     
     # Check if MetalLB subscription already exists
@@ -102,8 +97,7 @@ function deploy_metallb() {
         "${MANIFESTS_DIR}/metallb/metallb-objects.yaml" \
         "${GENERATED_DIR}/metallb-objects.yaml" \
         "<METALLB_IP_POOL_NAME>" "${METALLB_IP_POOL_NAME}" \
-        "<METALLB_IP_POOL_RANGE>" "${ip_pool_range}" \
-        "<METALLB_INGRESS_IP>" "${METALLB_INGRESS_IP}"
+        "<METALLB_IP_POOL_RANGE>" "${ip_pool_range}"
     
     # Apply MetalLB objects
     retry 5 10 apply_manifest "${GENERATED_DIR}/metallb-objects.yaml" true
