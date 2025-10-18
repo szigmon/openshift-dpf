@@ -85,7 +85,7 @@ function deploy_metallb() {
     
     # Wait for MetalLB operator pods to be ready
     log [INFO] "Waiting for MetalLB operator to be ready..."
-    wait_for_pods "metallb-system" "control-plane=controller-manager" "status.phase=Running" "1/1" 60 5
+    wait_for_pods "openshift-operators" "control-plane=controller-manager" "status.phase=Running" "1/1" 60 5
     
     log [INFO] "Creating MetalLB instance and IP address pool..."
     
