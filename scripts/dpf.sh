@@ -78,8 +78,7 @@ function deploy_metallb() {
         process_template \
             "${MANIFESTS_DIR}/metallb/metallb-subscription.yaml" \
             "${GENERATED_DIR}/metallb-subscription.yaml" \
-            "<CATALOG_SOURCE_NAME>" "${CATALOG_SOURCE_NAME}" \
-            "<HOSTED_CONTROL_PLANE_NAMESPACE>" "${HOSTED_CONTROL_PLANE_NAMESPACE}"
+            "<CATALOG_SOURCE_NAME>" "${CATALOG_SOURCE_NAME}"
         
         apply_manifest "${GENERATED_DIR}/metallb-subscription.yaml" true  
     fi
@@ -98,7 +97,8 @@ function deploy_metallb() {
         "${MANIFESTS_DIR}/metallb/metallb-objects.yaml" \
         "${GENERATED_DIR}/metallb-objects.yaml" \
         "<METALLB_IP_POOL_NAME>" "${METALLB_IP_POOL_NAME}" \
-        "<METALLB_IP_POOL_RANGE>" "${ip_pool_range}"
+        "<METALLB_IP_POOL_RANGE>" "${ip_pool_range}" \
+        "<HOSTED_CONTROL_PLANE_NAMESPACE>" "${HOSTED_CONTROL_PLANE_NAMESPACE}"
     
     # Apply MetalLB objects
     retry 5 10 apply_manifest "${GENERATED_DIR}/metallb-objects.yaml" true
@@ -224,7 +224,8 @@ function deploy_hypershift() {
 
         # For multi-node clusters (VM_COUNT > 1), use LoadBalancer for API server
         if [ "${VM_COUNT}" -gt 1 ]; then
-            hypershift_args+=("--external-api-server-address=${HYPERSHIFT_API_IP}")
+            hypershift_args+=("--expose-through-load-balancer")
+            #hypershift_args+=("--external-api-server-address=${HYPERSHIFT_API_IP}")
             log [INFO] "Multi-node cluster detected (VM_COUNT=${VM_COUNT}). Using LoadBalancer for API server."
             
             # # Add MetalLB IP annotation if specific IP is requested
