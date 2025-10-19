@@ -68,7 +68,7 @@ function deploy_metallb() {
     get_kubeconfig
     
     # Check if MetalLB subscription already exists
-    if oc get subscription -n metallb-system metallb-operator &>/dev/null; then
+    if oc get subscription -n openshift-operators metallb-operator &>/dev/null; then
         log [INFO] "MetalLB subscription already exists. Skipping subscription deployment."
     else
         log [INFO] "Deploying MetalLB subscription..."
@@ -78,7 +78,8 @@ function deploy_metallb() {
         process_template \
             "${MANIFESTS_DIR}/metallb/metallb-subscription.yaml" \
             "${GENERATED_DIR}/metallb-subscription.yaml" \
-            "<CATALOG_SOURCE_NAME>" "${CATALOG_SOURCE_NAME}"
+            "<CATALOG_SOURCE_NAME>" "${CATALOG_SOURCE_NAME}" \
+            "<HOSTED_CONTROL_PLANE_NAMESPACE>" "${HOSTED_CONTROL_PLANE_NAMESPACE}"
         
         apply_manifest "${GENERATED_DIR}/metallb-subscription.yaml" true  
     fi
@@ -223,14 +224,14 @@ function deploy_hypershift() {
 
         # For multi-node clusters (VM_COUNT > 1), use LoadBalancer for API server
         if [ "${VM_COUNT}" -gt 1 ]; then
-            hypershift_args+=("--expose-through-load-balancer")
+            hypershift_args+=("--external-api-server-address=${HYPERSHIFT_API_IP}")
             log [INFO] "Multi-node cluster detected (VM_COUNT=${VM_COUNT}). Using LoadBalancer for API server."
             
-            # Add MetalLB IP annotation if specific IP is requested
-            if [ -n "${HYPERSHIFT_API_IP}" ]; then
-                hypershift_args+=("--annotations" "hypershift.openshift.io/kube-apiserver-service-annotations={\"metallb.universe.tf/loadBalancerIPs\":\"${HYPERSHIFT_API_IP}\"}")
-                log [INFO] "Configuring Hypershift API server with specific IP: ${HYPERSHIFT_API_IP}"
-            fi
+            # # Add MetalLB IP annotation if specific IP is requested
+            # if [ -n "${HYPERSHIFT_API_IP}" ]; then
+            #     hypershift_args+=("--annotations" "hypershift.openshift.io/kube-apiserver-service-annotations={\"metallb.universe.tf/loadBalancerIPs\":\"${HYPERSHIFT_API_IP}\"}")
+            #     log [INFO] "Configuring Hypershift API server with specific IP: ${HYPERSHIFT_API_IP}"
+            # fi
         fi
 
         log [INFO] "Creating hosted cluster with HCP multus enabled ${ENABLE_HCP_MULTUS}..."
@@ -246,10 +247,10 @@ function deploy_hypershift() {
     log [INFO] "Waiting for etcd pods..."
     wait_for_pods ${HOSTED_CONTROL_PLANE_NAMESPACE} "app=etcd" "status.phase=Running" "3/3" 60 10
     
-    # Verify Hypershift API LoadBalancer IP if configured
-    if [ "${VM_COUNT}" -gt 1 ] && [ -n "${HYPERSHIFT_API_IP}" ]; then
-        verify_hypershift_api_ip
-    fi
+    # # Verify Hypershift API LoadBalancer IP if configured
+    # if [ "${VM_COUNT}" -gt 1 ] && [ -n "${HYPERSHIFT_API_IP}" ]; then
+    #     verify_hypershift_api_ip
+    # fi
     
     configure_hypershift
     create_ignition_template
