@@ -77,17 +77,62 @@ function prepare_nfs() {
     #     nfs_server_ip="${NFS_SERVER_NODE_IP}"
     # fi
 
-    
+    if [[ "${VM_COUNT}" -lt 2 ]]; then
+        # For SNO clusters, deploy internal NFS server without specific node affinity
+        log "INFO" "Deploying NFS for SNO cluster"
+        node_affinity=""
+    else
+        # For multi-node clusters, deploy internal NFS server on a specific master
+        log "INFO" "Deploying NFS for multi-node cluster on a specific master"
+
+        # Get a random master node hostname and IP
+        log "INFO" "Selecting a random master node for NFS deployment"
+        selected_master_node=$(oc get nodes -l node-role.kubernetes.io/control-plane -o jsonpath='{.items[0].metadata.name}')
+
+        if [ -z "${selected_master_node}" ]; then
+            log "ERROR" "Failed to retrieve master node hostname"
+            return 1
+        fi
+       
+        log "INFO" "Selected master node: ${selected_master_node}"
+
+        # Get the internal IP of the selected master
+        selected_master_ip=$(oc get node "${selected_master_node}" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
+
+        if [ -z "${selected_master_ip}" ]; then
+            log "ERROR" "Failed to retrieve IP address for master node: ${selected_master_node}"
+            return 1
+        fi
+
+        log "INFO" "Selected master IP: ${selected_master_ip}"
+
+        # Build node affinity YAML block (properly indented with 6 spaces)
+        node_affinity="affinity:\\
+        nodeAffinity:\\
+          requiredDuringSchedulingIgnoredDuringExecution:\\
+            nodeSelectorTerms:\\
+            - matchExpressions:\\
+              - key: kubernetes.io/hostname\\
+                operator: In\\
+                values:\\
+                - ${selected_master_node}"
+
+        # Set HOST_CLUSTER_API to the selected master IP
+        HOST_CLUSTER_API="${selected_master_ip}"
+    fi
+
+
     update_file_multi_replace \
         "${MANIFESTS_DIR}/nfs/nfs.yaml" \
         "${GENERATED_DIR}/nfs.yaml" \
-        "<STORAGECLASS_NAME>" "${ETCD_STORAGE_CLASS}"
+        "<STORAGECLASS_NAME>" "${ETCD_STORAGE_CLASS}" \
+        "<NODE_AFFINITY>" "${node_affinity}"
 
 
     update_file_multi_replace \
         "${MANIFESTS_DIR}/nfs/nfs-pv.yaml" \
         "${GENERATED_DIR}/nfs-pv.yaml" \
-        "<NFS_SERVER_NODE_IP>" "${nfs_server_ip}" \
+        "<NFS_SERVER_NODE_IP>" "${HOST_CLUSTER_API}" \
         "<NFS_PATH>" "${nfs_path}"
 }
 
