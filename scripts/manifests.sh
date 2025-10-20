@@ -41,34 +41,49 @@ function prepare_manifests() {
 
 function prepare_nfs() {
     local nfs_path="${NFS_PATH:-/}"
+    nfs_path="/"
     local nfs_server_ip=${HOST_CLUSTER_API}
     
-    if [[ "${VM_COUNT}" -lt 3 ]]; then
-        if [ -z "${ETCD_STORAGE_CLASS}" ]; then
-            log "ERROR" "ETCD_STORAGE_CLASS is not set but required for internal NFS deployment"
-            return 1
-        fi
-        nfs_path="/"
-        sed -e "s|<STORAGECLASS_NAME>|${ETCD_STORAGE_CLASS}|g" \
-            -e "s|<NFS_PATH>|${nfs_path}|g" \
-            "${MANIFESTS_DIR}/nfs/nfso.yaml" > "${GENERATED_DIR}/nfs.yaml"
-
-    else
-        if [ -z "${NFS_SERVER_NODE_IP}" ]; then
-            log "ERROR" "NFS_SERVER_NODE_IP is not set but required for external NFS deployment"
-            return 1
-        fi
-        nfs_path="${NFS_PATH}"
-
-            # Larger cluster with explicit NFS configuration: require external NFS server
-        if [ -z "${NFS_SERVER_NODE_IP}" ]; then
-            log "ERROR" "NFS_SERVER_NODE_IP must be set when using BFB_STORAGE_CLASS=nfs-client on clusters with VM_COUNT >= 3"
-            log "ERROR" "Please export NFS_SERVER_NODE_IP with your external NFS server IP address"
-            return 1
-        fi
-        log "INFO" "Using external NFS server: ${nfs_server_ip}:${NFS_PATH}"
-        nfs_server_ip="${NFS_SERVER_NODE_IP}"
+    
+    if [ -z "${ETCD_STORAGE_CLASS}" ]; then
+        log "ERROR" "ETCD_STORAGE_CLASS is not set but required for internal NFS deployment"
+        return 1
     fi
+    
+    # if [[ "${VM_COUNT}" -lt 3 ]]; then
+    #     if [ -z "${ETCD_STORAGE_CLASS}" ]; then
+    #         log "ERROR" "ETCD_STORAGE_CLASS is not set but required for internal NFS deployment"
+    #         return 1
+    #     fi
+    #     nfs_path="/"
+    #     sed -e "s|<STORAGECLASS_NAME>|${ETCD_STORAGE_CLASS}|g" \
+    #         -e "s|<NFS_PATH>|${nfs_path}|g" \
+    #         "${MANIFESTS_DIR}/nfs/nfs.yaml" > "${GENERATED_DIR}/nfs.yaml"
+
+    # else
+    #     if [ -z "${NFS_SERVER_NODE_IP}" ]; then
+    #         log "ERROR" "NFS_SERVER_NODE_IP is not set but required for external NFS deployment"
+    #         return 1
+    #     fi
+    #     nfs_path="${NFS_PATH}"
+
+    #         # Larger cluster with explicit NFS configuration: require external NFS server
+    #     if [ -z "${NFS_SERVER_NODE_IP}" ]; then
+    #         log "ERROR" "NFS_SERVER_NODE_IP must be set when using BFB_STORAGE_CLASS=nfs-client on clusters with VM_COUNT >= 3"
+    #         log "ERROR" "Please export NFS_SERVER_NODE_IP with your external NFS server IP address"
+    #         return 1
+    #     fi
+    #     log "INFO" "Using external NFS server: ${nfs_server_ip}:${NFS_PATH}"
+    #     nfs_server_ip="${NFS_SERVER_NODE_IP}"
+    # fi
+
+    
+    update_file_multi_replace \
+        "${MANIFESTS_DIR}/nfs/nfs.yaml" \
+        "${GENERATED_DIR}/nfs.yaml" \
+        "<STORAGECLASS_NAME>" "${ETCD_STORAGE_CLASS}"
+
+
     update_file_multi_replace \
         "${MANIFESTS_DIR}/nfs/nfs-pv.yaml" \
         "${GENERATED_DIR}/nfs-pv.yaml" \
