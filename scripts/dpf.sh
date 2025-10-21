@@ -60,8 +60,9 @@ function deploy_metallb() {
     log [INFO] "Multi-node cluster detected (VM_COUNT=${VM_COUNT}). Deploying MetalLB for LoadBalancer support..."
     
     # Validate required MetalLB configuration
-    if [ -z "${METALLB_IP_POOL_START}" ] || [ -z "${METALLB_IP_POOL_END}" ]; then
-        log [ERROR] "MetalLB IP pool not configured. Please set METALLB_IP_POOL_START and METALLB_IP_POOL_END"
+    if [ -z "${HYPERSHIFT_API_IP}" ]; then
+        log [ERROR] "MetalLB IP not configured. Please set HYPERSHIFT_API_IP"
+        log [ERROR] "Example: export HYPERSHIFT_API_IP=\"192.168.125.160\""
         return 1
     fi
     
@@ -89,22 +90,18 @@ function deploy_metallb() {
     
     log [INFO] "Creating MetalLB instance and IP address pool..."
     
-    # Build IP pool range
-    local ip_pool_range="${METALLB_IP_POOL_START}-${METALLB_IP_POOL_END}"
-    
     # Process MetalLB objects template
     process_template \
         "${MANIFESTS_DIR}/metallb/metallb-objects.yaml" \
         "${GENERATED_DIR}/metallb-objects.yaml" \
-        "<METALLB_IP_POOL_NAME>" "${METALLB_IP_POOL_NAME}" \
-        "<METALLB_IP_POOL_RANGE>" "${ip_pool_range}" \
+        "<HYPERSHIFT_API_IP>" "${HYPERSHIFT_API_IP}" \
         "<HOSTED_CONTROL_PLANE_NAMESPACE>" "${HOSTED_CONTROL_PLANE_NAMESPACE}"
     
     # Apply MetalLB objects
     retry 5 10 apply_manifest "${GENERATED_DIR}/metallb-objects.yaml" true
             
     log [INFO] "MetalLB deployment completed successfully!"
-    log [INFO] "LoadBalancer services will use IP pool: ${METALLB_IP_POOL_START}-${METALLB_IP_POOL_END}"
+    log [INFO] "Hypershift API LoadBalancer will use IP: ${HYPERSHIFT_API_IP}"
 }
 
 function apply_scc() {
@@ -225,11 +222,11 @@ function deploy_hypershift() {
         # For multi-node clusters (VM_COUNT > 1), use LoadBalancer for API server
         if [ "${VM_COUNT}" -gt 1 ]; then
             hypershift_args+=("--expose-through-load-balancer")
-            #hypershift_args+=("--external-api-server-address=${HYPERSHIFT_API_IP}")
             log [INFO] "Multi-node cluster detected (VM_COUNT=${VM_COUNT}). Using LoadBalancer for API server."
-            
         fi
-
+        if [ -n "${HYPERSHIFT_API_IP}" ]; then
+            hypershift_args+=("--annotations=hypershift.openshift.io/api-server-address=${HYPERSHIFT_API_IP}")
+        fi
         log [INFO] "Creating hosted cluster with HCP multus enabled ${ENABLE_HCP_MULTUS}..."
         hypershift "${hypershift_args[@]}"
     fi

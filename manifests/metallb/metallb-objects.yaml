@@ -8,12 +8,12 @@ metadata:
 apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
 metadata:
-  name: <METALLB_IP_POOL_NAME>
+  name: hypershift-api-pool
   namespace: openshift-operators
 spec:
   autoAssign: true
   addresses:
-    - <METALLB_IP_POOL_RANGE>
+    - <HYPERSHIFT_API_IP>/32
   serviceAllocation:
     namespaces:
       - <HOSTED_CONTROL_PLANE_NAMESPACE>
@@ -21,8 +21,8 @@ spec:
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement
 metadata:
-  name: advertise-<METALLB_IP_POOL_NAME>
+  name: advertise-hypershift-api
   namespace: openshift-operators
 spec:
   ipAddressPools:
-  - <METALLB_IP_POOL_NAME>
+  - hypershift-api-pool
