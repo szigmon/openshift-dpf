@@ -228,12 +228,12 @@ function start_cluster_installation() {
     aicli start cluster ${CLUSTER_NAME}
     log "INFO" "Waiting for cluster to be finalizing..."
     wait_for_cluster_status "finalizing"
-    apply_lso_for_multinode
     log "INFO" "Waiting for installation to complete..."
     wait_for_cluster_status "installed"
     log "INFO" "Cluster installation completed successfully"
     get_kubeconfig
-    create_odf_cluster
+    deploy_lso
+    deploy_odf
 }
 
 function get_kubeconfig() {
@@ -287,58 +287,94 @@ function clean_all() {
     log "Full cleanup complete"
 }
 
-function apply_lso_for_multinode() {
-    log "INFO" "Checking if LSO should be applied for multi-node cluster..."
-    
-    # Only apply LSO for multi-node clusters (VM_COUNT > 1)
-    if [ "$VM_COUNT" -le 1 ]; then
-        log "INFO" "Single-node cluster detected, skipping LSO installation"
+function deploy_lso() {
+    # Only deploy LSO for multi-node clusters
+    if [ "${VM_COUNT}" -le 1 ]; then
+        log "INFO" "Single-node cluster detected (VM_COUNT=${VM_COUNT}). Skipping LSO deployment."
         return 0
     fi
     
-    log "INFO" "Multi-node cluster detected (VM_COUNT=${VM_COUNT}), applying Local Storage Operator..."
+    log "INFO" "Multi-node cluster detected (VM_COUNT=${VM_COUNT}). Deploying Local Storage Operator..."
     
-    # Get kubeconfig
     get_kubeconfig
     
-    # Update /etc/hosts with API endpoint
-    log "INFO" "Updating /etc/hosts with API endpoint..."
-    update_etc_hosts
-    
-    # Apply LSO manifest
-    log "INFO" "Applying Local Storage Operator manifest..."
-    if [ -f "${MANIFESTS_DIR}/cluster-installation/lso-419.yaml" ]; then
-        oc apply -f "${MANIFESTS_DIR}/cluster-installation/lso-419.yaml"
-        log "INFO" "Local Storage Operator applied successfully"
+    # Check if LSO subscription already exists
+    if oc get subscription -n openshift-local-storage local-storage-operator &>/dev/null; then
+        log "INFO" "LSO subscription already exists. Skipping subscription deployment."
     else
-        log "ERROR" "LSO manifest not found: ${MANIFESTS_DIR}/cluster-installation/lso-419.yaml"
-        return 1
+        log "INFO" "Deploying LSO subscription..."
+        mkdir -p "$GENERATED_DIR"
+        
+        # Process subscription template
+        process_template \
+            "${MANIFESTS_DIR}/cluster-installation/lso/lso-subscription.yaml" \
+            "${GENERATED_DIR}/lso-subscription.yaml" \
+            "<CATALOG_SOURCE_NAME>" "${CATALOG_SOURCE_NAME}"
+        
+        apply_manifest "${GENERATED_DIR}/lso-subscription.yaml" true
     fi
+    
+    # Wait for LSO operator pods to be ready
+    log "INFO" "Waiting for LSO operator to be ready..."
+    wait_for_pods "openshift-local-storage" "name=local-storage-operator" "status.phase=Running" "1/1" 60 5
+    
+
+    apply_manifest "${MANIFESTS_DIR}/cluster-installation/lso/lso-volumes.yaml" false
+    
+    log "INFO" "LSO deployment completed successfully!"
+    log "INFO" "Local storage will use block devices on nodes"
 }
+
+
+
+
 
 # Create ODF cluster as a workaround for OCS cluster creation issue
 # This is a temporary solution until the OCS cluster creation with LSO 4.19 will be fixed
-function create_odf_cluster() {
-    # Only apply LSO for multi-node clusters (VM_COUNT > 1)
-    if [ "$VM_COUNT" -le 1 ]; then
-        log "INFO" "Single-node cluster detected, skipping ODF cluster creation"
+function deploy_odf() {
+    # Only deploy ODF for multi-node clusters
+    if [ "${VM_COUNT}" -le 1 ]; then
+        log "INFO" "Single-node cluster detected (VM_COUNT=${VM_COUNT}). Skipping ODF deployment."
         return 0
     fi
-    local max_retries="${1:-60}"
-    local sleep_time="${2:-10}"
     
-    log "INFO" "Applying ODF subscription..."
-    oc apply -f manifests/odf/odf-subscription.yaml
-    log "INFO" "Waiting for any ODF StorageCluster to exist..."
-
-    # Use retry function from utils.sh to check if StorageCluster exists
-    if retry "$max_retries" "$sleep_time" oc get storagecluster -A >/dev/null 2>&1; then
-        log "INFO" "ODF StorageCluster exists"
+    log "INFO" "Multi-node cluster detected (VM_COUNT=${VM_COUNT}). Deploying OpenShift Data Foundation..."
+    
+    get_kubeconfig
+    
+    # Check if ODF subscription already exists
+    if oc get subscription -n openshift-storage odf-operator &>/dev/null; then
+        log "INFO" "ODF subscription already exists. Skipping subscription deployment."
     else
-        log "ERROR" "Timeout waiting for ODF StorageCluster"
+        log "INFO" "Deploying ODF subscription..."
+        apply_manifest "${MANIFESTS_DIR}/odf/odf-subscription.yaml" true
+    fi
+    
+    # Wait for ODF operator to create StorageCluster CRD
+    log "INFO" "Waiting for ODF StorageCluster CRD to be available..."
+    local max_retries=60
+    local sleep_time=10
+    
+    if retry 60 10 oc get storagecluster -A >/dev/null 2>&1; then
+        log "INFO" "ODF StorageCluster CRD is available"
+    else
+        log "ERROR" "Timeout waiting for ODF StorageCluster CRD"
         return 1
     fi
-    oc apply -f manifests/odf/odf-cluster.yaml
+    
+    apply_manifest "${MANIFESTS_DIR}/odf/odf-cluster.yaml" false
+    
+    # Wait for StorageCluster to be ready
+    log "INFO" "Waiting for ODF StorageCluster to be Ready..."
+    if retry 120 10 bash -c 'oc get storagecluster -n openshift-storage ocs-storagecluster -o jsonpath="{.status.phase}" 2>/dev/null | grep -q "^Ready$"'; then
+        log "INFO" "✅ ODF StorageCluster is Ready"
+    else
+        log "ERROR" "Timeout waiting for ODF StorageCluster to be Ready"
+        log "ERROR" "Check status manually: oc get storagecluster -n openshift-storage ocs-storagecluster"
+        return 1
+    fi
+    
+    log "INFO" "ODF deployment completed successfully!"
 }
 
 # -----------------------------------------------------------------------------
@@ -462,10 +498,16 @@ function main() {
         create-day2-cluster)
             create_day2_cluster
             ;;
+        deploy-lso)
+            deploy_lso
+            ;;
+        deploy-odf)
+            deploy_odf
+            ;;
         *)
             log "Unknown command: $command"
             log "Available commands: check-create-cluster, delete-cluster, cluster-install,"
-            log "  wait-for-status, get-kubeconfig, clean-all, download-iso, create-day2-cluster, get-day2-iso"
+            log "  wait-for-status, get-kubeconfig, clean-all, download-iso, create-day2-cluster, get-day2-iso, deploy-lso, deploy-odf"
             exit 1
             ;;
     esac

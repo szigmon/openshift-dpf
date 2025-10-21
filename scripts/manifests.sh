@@ -41,38 +41,81 @@ function prepare_manifests() {
 
 function prepare_nfs() {
     local nfs_path="${NFS_PATH:-/}"
-    local nfs_server_ip=${HOST_CLUSTER_API}
     
-    if [[ "${VM_COUNT}" -lt 3 ]]; then
-        if [ -z "${ETCD_STORAGE_CLASS}" ]; then
-            log "ERROR" "ETCD_STORAGE_CLASS is not set but required for internal NFS deployment"
-            return 1
-        fi
-        nfs_path="/"
-        sed -e "s|<STORAGECLASS_NAME>|${ETCD_STORAGE_CLASS}|g" \
-            -e "s|<NFS_PATH>|${nfs_path}|g" \
-            "${MANIFESTS_DIR}/nfs/nfso.yaml" > "${GENERATED_DIR}/nfs.yaml"
+    # Ensure generated directory exists
+    mkdir -p "$GENERATED_DIR"
 
-    else
-        if [ -z "${NFS_SERVER_NODE_IP}" ]; then
-            log "ERROR" "NFS_SERVER_NODE_IP is not set but required for external NFS deployment"
-            return 1
-        fi
-        nfs_path="${NFS_PATH}"
-
-            # Larger cluster with explicit NFS configuration: require external NFS server
-        if [ -z "${NFS_SERVER_NODE_IP}" ]; then
-            log "ERROR" "NFS_SERVER_NODE_IP must be set when using BFB_STORAGE_CLASS=nfs-client on clusters with VM_COUNT >= 3"
-            log "ERROR" "Please export NFS_SERVER_NODE_IP with your external NFS server IP address"
-            return 1
-        fi
-        log "INFO" "Using external NFS server: ${nfs_server_ip}:${NFS_PATH}"
-        nfs_server_ip="${NFS_SERVER_NODE_IP}"
+    if [ "${NFS_SERVER_NODE_IP}" != "" ]; then
+        log "INFO" "Using external NFS server: ${NFS_SERVER_NODE_IP}:${nfs_path}"
+        update_file_multi_replace \
+            "${MANIFESTS_DIR}/nfs/nfs-pv.yaml" \
+            "${GENERATED_DIR}/nfs-pv.yaml" \
+            "<NFS_SERVER_NODE_IP>" "${NFS_SERVER_NODE_IP}" \
+            "<NFS_PATH>" "${nfs_path}"
+        return 0
     fi
+
+    if [ -z "${ETCD_STORAGE_CLASS}" ]; then
+        log "ERROR" "ETCD_STORAGE_CLASS is not set but required for internal NFS deployment"
+        return 1
+    fi
+
+    if [[ "${VM_COUNT}" -lt 2 ]]; then
+        # For SNO clusters, deploy internal NFS server without specific node affinity
+        log "INFO" "Deploying NFS for SNO cluster"
+        node_affinity=""
+    else
+        # For multi-node clusters, deploy internal NFS server on a specific master
+        log "INFO" "Deploying NFS for multi-node cluster on a specific master"
+
+        # Get a random master node hostname and IP
+        log "INFO" "Selecting a random master node for NFS deployment"
+        selected_master_node=$(oc get nodes -l node-role.kubernetes.io/control-plane -o jsonpath='{.items[0].metadata.name}')
+
+        if [ -z "${selected_master_node}" ]; then
+            log "ERROR" "Failed to retrieve master node hostname"
+            return 1
+        fi
+       
+        log "INFO" "Selected master node: ${selected_master_node}"
+
+        # Get the internal IP of the selected master
+        selected_master_ip=$(oc get node "${selected_master_node}" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
+
+        if [ -z "${selected_master_ip}" ]; then
+            log "ERROR" "Failed to retrieve IP address for master node: ${selected_master_node}"
+            return 1
+        fi
+
+        log "INFO" "Selected master IP: ${selected_master_ip}"
+
+        # Build node affinity YAML block (properly indented with 6 spaces)
+        node_affinity="affinity:\\
+        nodeAffinity:\\
+          requiredDuringSchedulingIgnoredDuringExecution:\\
+            nodeSelectorTerms:\\
+            - matchExpressions:\\
+              - key: kubernetes.io/hostname\\
+                operator: In\\
+                values:\\
+                - ${selected_master_node}"
+
+        # Set HOST_CLUSTER_API to the selected master IP
+        HOST_CLUSTER_API="${selected_master_ip}"
+    fi
+
+
+    update_file_multi_replace \
+        "${MANIFESTS_DIR}/nfs/nfs.yaml" \
+        "${GENERATED_DIR}/nfs.yaml" \
+        "<STORAGECLASS_NAME>" "${ETCD_STORAGE_CLASS}" \
+        "<NODE_AFFINITY>" "${node_affinity}"
+
+
     update_file_multi_replace \
         "${MANIFESTS_DIR}/nfs/nfs-pv.yaml" \
         "${GENERATED_DIR}/nfs-pv.yaml" \
-        "<NFS_SERVER_NODE_IP>" "${nfs_server_ip}" \
+        "<NFS_SERVER_NODE_IP>" "${HOST_CLUSTER_API}" \
         "<NFS_PATH>" "${nfs_path}"
 }
 
@@ -89,7 +132,6 @@ function prepare_cluster_manifests() {
         "ovn-values-with-injector.yaml"
         "nfd-subscription.yaml"
         "sriov-subscription.yaml"
-        "lso-419.yaml"
         "99-worker-bridge.yaml"
     )
 
@@ -408,8 +450,9 @@ function enable_storage() {
         log [INFO] "Enable LVM operator"
         aicli update cluster "$CLUSTER_NAME" -P olm_operators='[{"name": "lvm"}]'
     else
-        log [INFO] "Enable ODF operator"
-        aicli update cluster "$CLUSTER_NAME" -P olm_operators='[{"name": "lso"}]'
+        log [INFO] "Skipping storage operator configuration as OLM issues with LSO operator in RC.3"
+        # log [INFO] "Enable ODF operator"
+        # aicli update cluster "$CLUSTER_NAME" -P olm_operators='[{"name": "lso"}, {"name": "odf"}]'
     fi
 }
 
@@ -434,11 +477,14 @@ function main() {
             prepare_manifests "dpf"
             ;;
         apply-lso)
-            apply_lso_for_multinode
+            deploy_lso
+            ;;
+        prepare-nfs)
+            prepare_nfs
             ;;
         *)
             log [INFO] "Unknown command: $command"
-            log [INFO] "Available commands: prepare-manifests, prepare-dpf-manifests, apply-lso, deploy-core-operator-sources, generate-ovn-manifests"
+            log [INFO] "Available commands: prepare-manifests, prepare-dpf-manifests, apply-lso, deploy-core-operator-sources, generate-ovn-manifests, prepare-nfs"
             exit 1
             ;;
     esac
