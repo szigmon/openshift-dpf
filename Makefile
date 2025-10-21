@@ -19,7 +19,7 @@ NFS_SERVICE_SCRIPT := scripts/nfs-service.sh
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
         redeploy-dpu enable-ovn-injector deploy-argocd deploy-maintenance-operator configure-flannel \
-        deploy-core-operator-sources setup-nfs-server deploy-metallb
+        deploy-core-operator-sources setup-nfs-server deploy-metallb deploy-lso deploy-odf prepare-nfs
 
 all: 
 	@mkdir -p logs
@@ -152,6 +152,15 @@ deploy-nfd:
 deploy-metallb:
 	@$(DPF_SCRIPT) deploy-metallb
 
+deploy-lso:
+	@$(CLUSTER_SCRIPT) deploy-lso
+
+deploy-odf:
+	@$(CLUSTER_SCRIPT) deploy-odf
+
+prepare-nfs:
+	@$(MANIFESTS_SCRIPT) prepare-nfs
+
 install-hypershift:
 	@$(TOOLS_SCRIPT) install-hypershift
 
@@ -195,6 +204,9 @@ help:
 	@echo "  update-etc-hosts - Update /etc/hosts with cluster entries"
 	@echo "  deploy-nfd       - Deploy NFD operator directly from source"
 	@echo "  deploy-metallb   - Deploy MetalLB operator for LoadBalancer support (multi-node only)"
+	@echo "  deploy-lso       - Deploy Local Storage Operator for block storage (multi-node only)"
+	@echo "  deploy-odf       - Deploy OpenShift Data Foundation for distributed storage (multi-node only)"
+	@echo "  prepare-nfs      - Prepare NFS manifests (internal or external NFS based on configuration)"
 	@echo "  upgrade-dpf       - Interactive DPF operator upgrade (user-friendly wrapper for prepare-dpf-manifests)"
 	@echo "  prepare-dpu-files - Prepare post-installation manifests with custom values"
 	@echo "  deploy-dpu-services - Deploy DPU services to the cluster"
@@ -242,10 +254,11 @@ help:
 	@echo "  BFB_STORAGE_CLASS - StorageClass for BFB PVC (default: $(BFB_STORAGE_CLASS))"
 	@echo ""
 	@echo "MetalLB Configuration (multi-node clusters only):"
-	@echo "  METALLB_IP_POOL_START - Start IP for MetalLB pool (required for multi-node)"
-	@echo "  METALLB_IP_POOL_END   - End IP for MetalLB pool (required for multi-node)"
-	@echo "  METALLB_IP_POOL_NAME  - Name for IP pool (default: cluster-network)"
-	@echo "  HYPERSHIFT_API_IP     - Specific IP for Hypershift API server (optional, must be in pool)"
+	@echo "  HYPERSHIFT_API_IP     - IP address for Hypershift API server LoadBalancer (required for multi-node)"
+	@echo ""
+	@echo "NFS Configuration:"
+	@echo "  NFS_SERVER_NODE_IP    - External NFS server IP (if set, uses external NFS; otherwise internal)"
+	@echo "  NFS_PATH              - NFS export path (default: /)"
 	@echo ""
 	@echo "Post-installation Configuration:"
 	@echo "  BFB_URL          - URL for BFB file (default: http://10.8.2.236/bfb/rhcos_4.19.0-ec.4_installer_2025-04-23_07-48-42.bfb)"
