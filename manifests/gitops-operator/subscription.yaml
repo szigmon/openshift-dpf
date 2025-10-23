@@ -28,3 +28,7 @@ spec:
   source: redhat-operators
   sourceNamespace: openshift-marketplace
   startingCSV: openshift-gitops-operator.<GITOPS_OPERATOR_VERSION>
+  config:
+    env:
+    - name: ARGOCD_CLUSTER_CONFIG_NAMESPACES
+      value: "openshift-gitops,dpf-operator-system"
