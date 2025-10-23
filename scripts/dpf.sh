@@ -57,11 +57,6 @@ function deploy_metallb() {
         return 0
     fi
     
-    if [ "${VM_COUNT}" -le 1 ]; then
-        log [WARN] "HYPERSHIFT_API_IP is set but VM_COUNT=${VM_COUNT}. MetalLB is only needed for multi-node clusters."
-        log [WARN] "Skipping MetalLB deployment."
-        return 0
-    fi
     
     log [INFO] "Deploying MetalLB for Hypershift API LoadBalancer: ${HYPERSHIFT_API_IP}..."
     
@@ -222,13 +217,10 @@ function deploy_hypershift() {
         fi
 
         # For multi-node clusters with HYPERSHIFT_API_IP, use LoadBalancer for API server
-        if [ "${VM_COUNT}" -gt 1 ] && [ -n "${HYPERSHIFT_API_IP}" ]; then
+        if [ -n "${HYPERSHIFT_API_IP}" ]; then
             hypershift_args+=("--expose-through-load-balancer")
-            hypershift_args+=("--annotations" "hypershift.openshift.io/kube-apiserver-service-annotations={\"metallb.universe.tf/loadBalancerIPs\":\"${HYPERSHIFT_API_IP}\"}")
             log [INFO] "Multi-node cluster with HYPERSHIFT_API_IP. Using LoadBalancer with IP: ${HYPERSHIFT_API_IP}"
-        elif [ "${VM_COUNT}" -gt 1 ]; then
-            log [INFO] "Multi-node cluster without HYPERSHIFT_API_IP. Using NodePort for API server."
-        fi
+        fi        
         log [INFO] "Creating hosted cluster with HCP multus enabled ${ENABLE_HCP_MULTUS}..."
         hypershift "${hypershift_args[@]}"
     fi
