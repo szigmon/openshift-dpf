@@ -25,3 +25,17 @@ spec:
   source: <CATALOG_SOURCE_NAME>
   sourceNamespace: openshift-marketplace
   installPlanApproval: Automatic
+  config:
+    # Tolerate the taint on the master nodes
+    tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+    # Force scheduling only on nodes with the control-plane label
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: "node-role.kubernetes.io/control-plane"
+              operator: "Exists"
