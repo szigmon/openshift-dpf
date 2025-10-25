@@ -359,7 +359,7 @@ function deploy_argocd() {
             "<GITOPS_OPERATOR_CHANNEL>" "$GITOPS_OPERATOR_CHANNEL" \
             "<GITOPS_OPERATOR_VERSION>" "$GITOPS_OPERATOR_VERSION"
         apply_manifest "$GENERATED_DIR/gitops-operator-subscription.yaml"
-        wait_for_pods "openshift-gitops-operator" "name=gitops-operator-controller-manager" "status.phase=Running" "1/1" 60 10
+        
 
         # Prefer CSV readiness over pod label matching for stability
         if ! retry 60 10 bash -c "oc get csv -n openshift-gitops-operator -o jsonpath='{.items[*].status.phase}' | grep -q Succeeded"; then
@@ -367,15 +367,16 @@ function deploy_argocd() {
             return 1
         fi
     else
-        log [INFO] "GitOps operator already exists."
+        log [INFO] "GitOps operator subscription already exists."
     fi
+    wait_for_pods "openshift-gitops-operator" "control-plane=gitops-operator" "status.phase=Running" "2/2" 60 10
 
     log [INFO] "Creating ArgoCD instance..."
     # Ensure target namespace exists before applying CR
     oc get ns dpf-operator-system &>/dev/null || oc create ns dpf-operator-system
 
     apply_manifest "${MANIFESTS_DIR}/gitops-operator/argocd.yaml"
-    wait_for_pods "dpf-operator-system" "app.kubernetes.io/part-of=argocd" "status.phase=Running" "1/1" 60 10
+    wait_for_pods "dpf-operator-system" "app.kubernetes.io/name=argocd-application-controller" "status.phase=Running" "1/1" 60 10
 
     log [INFO] "GitOps operator deployment complete!"
 }
