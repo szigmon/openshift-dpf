@@ -210,16 +210,18 @@ function deploy_hypershift() {
             "--node-selector=node-role.kubernetes.io/master=\"\""
             "--node-pool-replicas=0"
             "--node-upgrade-type=Replace"
+            "--expose-through-load-balancer"
+            "--control-plane-availability-policy=HighlyAvailable"
+            "--infra-availability-policy=HighlyAvailable"
         )
 
         if [ "${ENABLE_HCP_MULTUS}" != "true" ]; then
             hypershift_args+=("--disable-multi-network")
         fi
 
-        # For multi-node clusters with HYPERSHIFT_API_IP, use LoadBalancer for API server
+        # Log HYPERSHIFT_API_IP if configured (LoadBalancer is now always enabled)
         if [ -n "${HYPERSHIFT_API_IP}" ]; then
-            hypershift_args+=("--expose-through-load-balancer")
-            log [INFO] "Multi-node cluster with HYPERSHIFT_API_IP. Using LoadBalancer with IP: ${HYPERSHIFT_API_IP}"
+            log [INFO] "Multi-node cluster with HYPERSHIFT_API_IP configured: ${HYPERSHIFT_API_IP}"
         fi        
         log [INFO] "Creating hosted cluster with HCP multus enabled ${ENABLE_HCP_MULTUS}..."
         hypershift "${hypershift_args[@]}"
