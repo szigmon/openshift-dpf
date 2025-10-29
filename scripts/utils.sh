@@ -116,24 +116,43 @@ function wait_for_secret_with_data() {
 function wait_for_pods() {
     local namespace=$1
     local label=$2
-    local selector=$3
-    local expected_state=$4
-    local max_attempts=$5
-    local delay=$6
+    local max_attempts=$3
+    local delay=$4
 
     for i in $(seq 1 "$max_attempts"); do
         # Display pod status (allow this to fail without exiting)
-        oc get pods -n "$namespace" -l "$label" --field-selector "$selector" 2>&1 || true
-        if oc get pods -n "$namespace" -l "$label" --field-selector "$selector" 2>/dev/null | grep -q "$expected_state"; then
-            log "INFO" "$label pods are ready"
+        oc get pods -n "$namespace" -l "$label" 2>&1 || true
+        
+        # Check if any pods exist with the label
+        local pod_count
+        pod_count=$(oc get pods -n "$namespace" -l "$label" --no-headers 2>/dev/null | wc -l)
+        
+        if [[ "$pod_count" -eq 0 ]]; then
+            log "INFO" "No pods found with label $label yet (attempt $i/$max_attempts)..."
+            sleep "$delay"
+            continue
+        fi
+        
+        # Check if all pods are ready (all containers up and ready)
+        # Get Ready condition status for all pods and count "True" values
+        local ready_pods
+        ready_pods=$(oc get pods -n "$namespace" -l "$label" -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}' 2>/dev/null | grep -o "True" | wc -l || echo "0")
+        
+        # Ensure ready_pods is a valid number
+        ready_pods=$(echo "$ready_pods" | tr -d '[:space:]')
+        [[ -z "$ready_pods" ]] && ready_pods=0
+        
+        if [[ "$ready_pods" -eq "$pod_count" ]]; then
+            log "INFO" "All $pod_count $label pods are ready (all containers running)"
             return 0
         fi
-        log "INFO" "Waiting for $label pods (attempt $i/$max_attempts)..."
+        
+        log "INFO" "Waiting for $label pods to be ready: $ready_pods/$pod_count ready (attempt $i/$max_attempts)..."
         sleep "$delay"
     done
 
-    log "ERROR" "$label pods failed to become ready"
-    oc get pods -n "$namespace"
+    log "ERROR" "$label pods failed to become ready after $max_attempts attempts"
+    oc get pods -n "$namespace" -l "$label"
     oc describe pod -n "$namespace" -l "$label"
     exit 1
 }

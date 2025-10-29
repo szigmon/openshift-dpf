@@ -316,7 +316,7 @@ function deploy_lso() {
     
     # Wait for LSO operator pods to be ready
     log "INFO" "Waiting for LSO operator to be ready..."
-    wait_for_pods "openshift-local-storage" "name=local-storage-operator" "status.phase=Running" "1/1" 60 5
+    wait_for_pods "openshift-local-storage" "name=local-storage-operator" 60 5
     
 
     apply_manifest "${MANIFESTS_DIR}/cluster-installation/lso/lso-volumes.yaml" false

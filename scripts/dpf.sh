@@ -80,7 +80,7 @@ function deploy_metallb() {
     
     # Wait for MetalLB operator pods to be ready
     log [INFO] "Waiting for MetalLB operator to be ready..."
-    wait_for_pods "openshift-operators" "control-plane=controller-manager" "status.phase=Running" "1/1" 60 5
+    wait_for_pods "openshift-operators" "control-plane=controller-manager" 60 5
     
     log [INFO] "Creating MetalLB instance and IP address pool..."
     
@@ -156,7 +156,7 @@ function deploy_cert_manager() {
         fi
         
         # Wait for webhook pod in cert-manager namespace
-        wait_for_pods "cert-manager" "app.kubernetes.io/component=webhook" "status.phase=Running" "1/1" 30 5
+        wait_for_pods "cert-manager" "app.kubernetes.io/component=webhook" 30 5
         log [INFO] "Waiting for cert-manager to stabilize..."
         sleep 5
     fi
@@ -192,7 +192,7 @@ function deploy_hypershift() {
     if oc get hostedcluster -n ${CLUSTERS_NAMESPACE} ${HOSTED_CLUSTER_NAME} &>/dev/null; then
         log [INFO] "Hypershift hosted cluster ${HOSTED_CLUSTER_NAME} already exists. Skipping creation."
     else
-        wait_for_pods "hypershift" "app=operator" "status.phase=Running" "1/1" 30 5
+        wait_for_pods "hypershift" "app=operator" 30 5
         log [INFO] "Creating Hypershift hosted cluster ${HOSTED_CLUSTER_NAME}..."
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
         
@@ -243,7 +243,7 @@ function deploy_hypershift() {
     log [INFO] "Checking hosted control plane pods..."
     oc -n ${HOSTED_CONTROL_PLANE_NAMESPACE} get pods
     log [INFO] "Waiting for etcd pods..."
-    wait_for_pods ${HOSTED_CONTROL_PLANE_NAMESPACE} "app=etcd" "status.phase=Running" "3/3" 60 10
+    wait_for_pods ${HOSTED_CONTROL_PLANE_NAMESPACE} "app=etcd" 60 10
     
     configure_hypershift
     create_ignition_template
@@ -370,7 +370,6 @@ function deploy_argocd() {
             "<GITOPS_OPERATOR_CHANNEL>" "$GITOPS_OPERATOR_CHANNEL" \
             "<GITOPS_OPERATOR_VERSION>" "$GITOPS_OPERATOR_VERSION"
         apply_manifest "$GENERATED_DIR/gitops-operator-subscription.yaml"
-        
 
         # Prefer CSV readiness over pod label matching for stability
         if ! retry 60 10 bash -c "oc get csv -n openshift-gitops-operator -o jsonpath='{.items[*].status.phase}' | grep -q Succeeded"; then
@@ -378,17 +377,18 @@ function deploy_argocd() {
             return 1
         fi
     else
-        log [INFO] "GitOps operator subscription already exists."
+        log [INFO] "GitOps operator already exists."
     fi
-    wait_for_pods "openshift-gitops-operator" "control-plane=gitops-operator" "status.phase=Running" "2/2" 60 10
+    
+    wait_for_pods "openshift-gitops-operator" "control-plane=gitops-operator" 60 10
 
     log [INFO] "Creating ArgoCD instance..."
     # Ensure target namespace exists before applying CR
     oc get ns dpf-operator-system &>/dev/null || oc create ns dpf-operator-system
 
     apply_manifest "${MANIFESTS_DIR}/gitops-operator/argocd.yaml"
-    wait_for_pods "dpf-operator-system" "app.kubernetes.io/name=argocd-application-controller" "status.phase=Running" "1/1" 60 10
-
+    wait_for_pods "dpf-operator-system" "app.kubernetes.io/name=argocd-application-controller" 60 10
+    
     log [INFO] "GitOps operator deployment complete!"
 }
 
@@ -507,7 +507,7 @@ function apply_dpf() {
     apply_scc
     deploy_hosted_cluster
 
-    wait_for_pods "dpf-operator-system" "dpu.nvidia.com/component=dpf-operator-controller-manager" "status.phase=Running" "1/1" 30 5
+    wait_for_pods "dpf-operator-system" "dpu.nvidia.com/component=dpf-operator-controller-manager" 30 5
 
     log [INFO] "DPF deployment complete"
 }
