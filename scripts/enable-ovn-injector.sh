@@ -49,7 +49,7 @@ rm -rf "$GENERATED_DIR/ovn-injector"
 
 # Wait for injector to be ready
 log [INFO] "Waiting for OVN injector deployment to be ready..."
-wait_for_pods "${OVNK_NAMESPACE}" "app.kubernetes.io/name=ovn-kubernetes-resource-injector" "status.phase=Running" "Running" 30 10
+wait_for_pods "${OVNK_NAMESPACE}" "app.kubernetes.io/name=ovn-kubernetes-resource-injector" 30 10
 
 # Verify NAD creation
 if oc get net-attach-def -n "${OVNK_NAMESPACE}" dpf-ovn-kubernetes &>/dev/null; then
