@@ -197,12 +197,6 @@ function deploy_hypershift() {
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
         
         # Build hypershift command with conditional flags
-        # Detect cluster type: multi-node if HYPERSHIFT_API_IP is set OR VM_COUNT > 1
-        local is_multi_node=false
-        if [ -n "${HYPERSHIFT_API_IP}" ] || [ "${VM_COUNT}" -gt 1 ]; then
-            is_multi_node=true
-        fi
-
         local hypershift_args=(
             "create" "cluster" "none"
             "--name=${HOSTED_CLUSTER_NAME}"
@@ -218,22 +212,22 @@ function deploy_hypershift() {
             "--node-upgrade-type=Replace"
         )
 
-        # Set availability policies based on cluster type
-        if [ "$is_multi_node" = true ]; then
+        # Set availability policies based on VM_COUNT only
+        if [ "${VM_COUNT}" -gt 1 ]; then
             hypershift_args+=("--control-plane-availability-policy=HighlyAvailable")
             hypershift_args+=("--infra-availability-policy=HighlyAvailable")
-            log [INFO] "Multi-node cluster detected. Using HighlyAvailable policies."
+            log [INFO] "Multi-node cluster (VM_COUNT=${VM_COUNT}). Using HighlyAvailable policies."
         else
             hypershift_args+=("--control-plane-availability-policy=SingleReplica")
             hypershift_args+=("--infra-availability-policy=SingleReplica")
-            log [INFO] "Single-node cluster detected. Using SingleReplica policies."
+            log [INFO] "Single-node cluster (VM_COUNT=${VM_COUNT}). Using SingleReplica policies."
         fi
 
         if [ "${ENABLE_HCP_MULTUS}" != "true" ]; then
             hypershift_args+=("--disable-multi-network")
         fi
 
-        # For multi-node clusters with HYPERSHIFT_API_IP, use LoadBalancer for API server
+        # HYPERSHIFT_API_IP controls LoadBalancer usage, independent of cluster type
         if [ -n "${HYPERSHIFT_API_IP}" ]; then
             hypershift_args+=("--expose-through-load-balancer")
             log [INFO] "Using LoadBalancer with IP: ${HYPERSHIFT_API_IP}"
