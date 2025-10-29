@@ -197,6 +197,12 @@ function deploy_hypershift() {
         oc create ns "${HOSTED_CONTROL_PLANE_NAMESPACE}" || true
         
         # Build hypershift command with conditional flags
+        # Detect cluster type: multi-node if HYPERSHIFT_API_IP is set OR VM_COUNT > 1
+        local is_multi_node=false
+        if [ -n "${HYPERSHIFT_API_IP}" ] || [ "${VM_COUNT}" -gt 1 ]; then
+            is_multi_node=true
+        fi
+
         local hypershift_args=(
             "create" "cluster" "none"
             "--name=${HOSTED_CLUSTER_NAME}"
@@ -212,6 +218,17 @@ function deploy_hypershift() {
             "--node-upgrade-type=Replace"
         )
 
+        # Set availability policies based on cluster type
+        if [ "$is_multi_node" = true ]; then
+            hypershift_args+=("--control-plane-availability-policy=HighlyAvailable")
+            hypershift_args+=("--infra-availability-policy=HighlyAvailable")
+            log [INFO] "Multi-node cluster detected. Using HighlyAvailable policies."
+        else
+            hypershift_args+=("--control-plane-availability-policy=SingleReplica")
+            hypershift_args+=("--infra-availability-policy=SingleReplica")
+            log [INFO] "Single-node cluster detected. Using SingleReplica policies."
+        fi
+
         if [ "${ENABLE_HCP_MULTUS}" != "true" ]; then
             hypershift_args+=("--disable-multi-network")
         fi
@@ -219,7 +236,7 @@ function deploy_hypershift() {
         # For multi-node clusters with HYPERSHIFT_API_IP, use LoadBalancer for API server
         if [ -n "${HYPERSHIFT_API_IP}" ]; then
             hypershift_args+=("--expose-through-load-balancer")
-            log [INFO] "Multi-node cluster with HYPERSHIFT_API_IP. Using LoadBalancer with IP: ${HYPERSHIFT_API_IP}"
+            log [INFO] "Using LoadBalancer with IP: ${HYPERSHIFT_API_IP}"
         fi        
         log [INFO] "Creating hosted cluster with HCP multus enabled ${ENABLE_HCP_MULTUS}..."
         hypershift "${hypershift_args[@]}"
