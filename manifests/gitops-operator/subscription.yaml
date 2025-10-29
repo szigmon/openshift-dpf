@@ -32,3 +32,7 @@ spec:
     env:
     - name: ARGOCD_CLUSTER_CONFIG_NAMESPACES
       value: "openshift-gitops,dpf-operator-system"
+    - name: CONTROLLER_CLUSTER_ROLE
+      value: "cluster-admin"
+    - name: SERVER_CLUSTER_ROLE
+      value: "cluster-admin"
