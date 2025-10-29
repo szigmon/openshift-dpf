@@ -14,12 +14,15 @@ UTILS_SCRIPT := scripts/utils.sh
 POST_INSTALL_SCRIPT := scripts/post-install.sh
 NFS_SERVICE_SCRIPT := scripts/nfs-service.sh
 
+# Sanity tests script:
+SANITY_CHECKS_SCRIPT := scripts/dpf-sanity-checks.sh
+
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
         redeploy-dpu enable-ovn-injector deploy-argocd deploy-maintenance-operator configure-flannel \
-        deploy-core-operator-sources setup-nfs-server deploy-metallb deploy-lso deploy-odf prepare-nfs
+        deploy-core-operator-sources setup-nfs-server deploy-metallb deploy-lso deploy-odf prepare-nfs run-dpf-sanity
 
 all: 
 	@mkdir -p logs
@@ -169,6 +172,11 @@ install-helm:
 
 setup-nfs-server:
 	@$(NFS_SERVICE_SCRIPT)
+
+run-dpf-sanity:
+	@echo "Running $(SANITY_CHECKS_SCRIPT) ..."
+	@chmod +x $(SANITY_CHECKS_SCRIPT)
+	@$(SANITY_CHECKS_SCRIPT)
 
 help:
 	@echo "Available targets:"
