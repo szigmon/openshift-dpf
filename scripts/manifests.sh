@@ -393,9 +393,9 @@ function generate_ovn_manifests() {
     local API_SERVER="api.$CLUSTER_NAME.$BASE_DOMAIN:6443"
     
     # Pull and template OVN chart
-    log [INFO] "Pulling OVN chart ${DPF_VERSION}..."
+    log [INFO] "Pulling OVN chart ${OVN_CHART_VERSION}..."
     if ! helm pull "${OVN_CHART_URL}/ovn-kubernetes-chart" \
-        --version "${DPF_VERSION}" \
+        --version "${OVN_CHART_VERSION}" \
         --untar -d "$GENERATED_DIR/temp"; then
         log [ERROR] "Failed to pull OVN chart ${DPF_VERSION}"
         return 1
