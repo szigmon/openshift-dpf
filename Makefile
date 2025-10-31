@@ -14,12 +14,17 @@ UTILS_SCRIPT := scripts/utils.sh
 POST_INSTALL_SCRIPT := scripts/post-install.sh
 NFS_SERVICE_SCRIPT := scripts/nfs-service.sh
 
+# walid added:
+SANITY-SCRIPT := scripts/dpf-sanity-checks.sh
+SANITY-SCRIPT-CONFIG-FILE:= scripts/dpf-sanity-checks.cfg
+
+# walid added "run-dpf-sanity" to end of .PHONY list
 .PHONY: all clean check-cluster create-cluster prepare-manifests generate-ovn update-paths help delete-cluster verify-files \
         download-iso fix-yaml-spacing create-vms delete-vms enable-storage cluster-install wait-for-ready \
         wait-for-installed wait-for-status cluster-start clean-all deploy-dpf kubeconfig deploy-nfd \
         install-hypershift install-helm deploy-dpu-services prepare-dpu-files upgrade-dpf create-day2-cluster get-day2-iso \
         redeploy-dpu enable-ovn-injector deploy-argocd deploy-maintenance-operator configure-flannel \
-        deploy-core-operator-sources setup-nfs-server deploy-metallb deploy-lso deploy-odf prepare-nfs
+        deploy-core-operator-sources setup-nfs-server deploy-metallb deploy-lso deploy-odf prepare-nfs run-dpf-sanity
 
 all: 
 	@mkdir -p logs
@@ -169,6 +174,12 @@ install-helm:
 
 setup-nfs-server:
 	@$(NFS_SERVICE_SCRIPT)
+
+# walid added
+run-dpf-sanity:
+	@echo "Running $(SANITY-SCRIPT) with $(SANITY-SCRIPT-CONFIG-FILE) config file ..."
+	@chmod +x $(SANITY-SCRIPT)
+	@$(SANITY-SCRIPT) $(SANITY-SCRIPT-CONFIG-FILE)
 
 help:
 	@echo "Available targets:"
