@@ -463,9 +463,12 @@ function enable_storage() {
         log [INFO] "Enable LVM operator"
         aicli update cluster "$CLUSTER_NAME" -P olm_operators='[{"name": "lvm"}]'
     else
-        log [INFO] "Skipping storage operator configuration as OLM issues with LSO operator in RC.3"
-        # log [INFO] "Enable ODF operator"
-        # aicli update cluster "$CLUSTER_NAME" -P olm_operators='[{"name": "lso"}, {"name": "odf"}]'
+        if [ "${USE_V419_WORKAROUND}" = "false" ]; then
+            log [INFO] "Enable ODF operator via assisted installer OLM"
+            aicli update cluster "$CLUSTER_NAME" -P olm_operators='[{"name": "lso"}, {"name": "odf"}]'
+        else
+            log [INFO] "Skipping assisted installer OLM (using v4.19 workaround)"
+        fi
     fi
 }
 
