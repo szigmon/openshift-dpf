@@ -183,6 +183,14 @@ PRIMARY_IFACE=${PRIMARY_IFACE:-enp1s0}
 # OLM Catalog Source Configuration
 CATALOG_SOURCE_NAME=${CATALOG_SOURCE_NAME:-"redhat-operators"}
 
+USE_V419_WORKAROUND=${USE_V419_WORKAROUND:-"false"}
+
+if [[ "${USE_V419_WORKAROUND}" == "true" ]]; then
+    CATALOG_SOURCE_NAME="redhat-operators-v419"
+else
+    CATALOG_SOURCE_NAME="redhat-operators"
+fi
+
 # MetalLB Configuration (for multi-node clusters)
 # HYPERSHIFT_API_IP: IP address for Hypershift API server LoadBalancer (required for multi-node with Hypershift)
 HYPERSHIFT_API_IP=${HYPERSHIFT_API_IP:-""}

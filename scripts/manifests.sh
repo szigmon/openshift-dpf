@@ -200,18 +200,31 @@ update_worker_manifest() {
 }
 
 function deploy_core_operator_sources() {
-    log [INFO] "Deploying NFD and SR-IOV subscriptions and CatalogSource..."
+    log [INFO] "Deploying NFD and SR-IOV subscriptions..."
+    log [INFO] "Using catalog source: ${CATALOG_SOURCE_NAME}"
+    log [INFO] "Using v4.19 workaround: ${USE_V419_WORKAROUND}"
 
     mkdir -p "$GENERATED_DIR"
+
     for f in "$MANIFESTS_DIR/cluster-installation/nfd-subscription.yaml" \
-             "$MANIFESTS_DIR/cluster-installation/sriov-subscription.yaml" \
-             "$MANIFESTS_DIR/cluster-installation/4.19-cataloguesource.yaml"; do
+             "$MANIFESTS_DIR/cluster-installation/sriov-subscription.yaml"; do
         if [ -f "$f" ]; then
             cp "$f" "$GENERATED_DIR/"
             sed -i "s|<CATALOG_SOURCE_NAME>|$CATALOG_SOURCE_NAME|g" "$GENERATED_DIR/$(basename "$f")"
             apply_manifest "$GENERATED_DIR/$(basename "$f")" true
         fi
     done
+
+    if [[ "${USE_V419_WORKAROUND}" == "true" ]]; then
+        log [INFO] "Deploying v4.19 catalog source (workaround enabled)"
+        local catalog_file="$MANIFESTS_DIR/cluster-installation/4.19-cataloguesource.yaml"
+        if [ -f "$catalog_file" ]; then
+            apply_manifest "$catalog_file" true
+        fi
+    else
+        log [INFO] "Skipping v4.19 catalog source deployment (using standard OLM)"
+    fi
+
     log [INFO] "Core operator sources deployed."
 }
 

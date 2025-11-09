@@ -346,8 +346,16 @@ function deploy_odf() {
     if oc get subscription -n openshift-storage odf-operator &>/dev/null; then
         log "INFO" "ODF subscription already exists. Skipping subscription deployment."
     else
-        log "INFO" "Deploying ODF subscription..."
-        apply_manifest "${MANIFESTS_DIR}/odf/odf-subscription.yaml" true
+        log "INFO" "Deploying ODF subscription using catalog: ${CATALOG_SOURCE_NAME}"
+
+        # Generate ODF subscription from template
+        mkdir -p "$GENERATED_DIR"
+        process_template \
+            "${MANIFESTS_DIR}/odf/odf-subscription.yaml" \
+            "${GENERATED_DIR}/odf-subscription.yaml" \
+            "<CATALOG_SOURCE_NAME>" "${CATALOG_SOURCE_NAME}"
+
+        apply_manifest "${GENERATED_DIR}/odf-subscription.yaml" true
     fi
     
     # Wait for ODF operator to create StorageCluster CRD
