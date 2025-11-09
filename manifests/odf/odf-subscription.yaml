@@ -26,7 +26,7 @@ metadata:
 spec:
   channel: stable-4.19
   name: odf-operator
-  source: redhat-operators-v419
+  source: <CATALOG_SOURCE_NAME>
   sourceNamespace: openshift-marketplace
   installPlanApproval: Automatic
   config:
