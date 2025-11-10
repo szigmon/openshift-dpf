@@ -482,12 +482,22 @@ function apply_dpf() {
         # OCI registry format (v25.7+)
         CHART_URL="${DPF_HELM_REPO_URL}/dpf-operator"
         HELM_ARGS="--version ${DPF_VERSION}"
+    elif [[ "$DPF_HELM_REPO_URL" == *"helm.ngc.nvidia.com"* ]]; then
+        # NGC Helm repository format (v25.7.1+)
+        log "INFO" "Adding NGC Helm repository..."
+        helm repo add nvidia-doca "${DPF_HELM_REPO_URL}" --force-update >/dev/null 2>&1 || {
+            log "ERROR" "Failed to add NGC Helm repository"
+            return 1
+        }
+        helm repo update nvidia-doca >/dev/null 2>&1
+        CHART_URL="nvidia-doca/dpf-operator"
+        HELM_ARGS="--version ${DPF_VERSION}"
     else
-        # Legacy NGC format (v25.4 and older)
+        # Legacy NGC format (v25.4 and older - direct .tgz URL)
         CHART_URL="${DPF_HELM_REPO_URL}-${DPF_VERSION}.tgz"
         HELM_ARGS=""
     fi
-    
+
     # Install without --wait for immediate feedback
     if helm upgrade --install dpf-operator \
         "${CHART_URL}" \
