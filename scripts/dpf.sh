@@ -439,6 +439,10 @@ function apply_dpf() {
         deploy_argocd
         deploy_maintenance_operator
     fi
+
+    log "INFO" "Enabling IP forwarding for OVN Kubernetes..."
+    oc patch network.operator.openshift.io cluster --type=merge -p \
+    '{"spec":{"defaultNetwork":{ "ovnKubernetesConfig":{"gatewayConfig":{"ipForwarding":"Global"}}}}}'
     
     deploy_nfd
     
