@@ -489,7 +489,10 @@ function apply_dpf() {
             log "ERROR" "Failed to add NGC Helm repository"
             return 1
         }
-        helm repo update nvidia-doca >/dev/null 2>&1
+        helm repo update nvidia-doca >/dev/null 2>&1 || {
+            log "ERROR" "Failed to update NGC Helm repository index"
+            return 1
+        }
         CHART_URL="nvidia-doca/dpf-operator"
         HELM_ARGS="--version ${DPF_VERSION}"
     else
