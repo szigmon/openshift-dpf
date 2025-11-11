@@ -30,13 +30,20 @@ helm pull "${OVN_CHART_URL}/ovn-kubernetes-chart" \
     --version "${INJECTOR_CHART_VERSION}" \
     --untar -d "$GENERATED_DIR/ovn-injector"
 
+injector_image_params=()
+if [ -n "${INJECTOR_IMAGE:-}" ]; then
+    injector_image_params=(
+        --set "ovn-kubernetes-resource-injector.controllerManager.webhook.image.repository=${INJECTOR_IMAGE%:*}"
+        --set "ovn-kubernetes-resource-injector.controllerManager.webhook.image.tag=${INJECTOR_IMAGE#*:}"
+    )
+fi
+
 helm template -n ${OVNK_NAMESPACE} ovn-kubernetes-resource-injector \
     "$GENERATED_DIR/ovn-injector/ovn-kubernetes-chart" \
     --set ovn-kubernetes-resource-injector.enabled=true \
     --set ovn-kubernetes-resource-injector.resourceName="${INJECTOR_RESOURCE_NAME}" \
     --set ovn-kubernetes-resource-injector.nadName=dpf-ovn-kubernetes \
-    --set ovn-kubernetes-resource-injector.controllerManager.webhook.image.repository="${OVN_KUBERNETES_UTILS_IMAGE_REPO}"  \
-    --set ovn-kubernetes-resource-injector.controllerManager.webhook.image.tag="${OVN_KUBERNETES_UTILS_IMAGE_TAG}" \
+    "${injector_image_params[@]}" \
     --set nodeWithDPUManifests.enabled=false \
     --set nodeWithoutDPUManifests.enabled=false \
     --set dpuManifests.enabled=false \

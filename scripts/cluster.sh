@@ -232,8 +232,11 @@ function start_cluster_installation() {
     wait_for_cluster_status "installed"
     log "INFO" "Cluster installation completed successfully"
     get_kubeconfig
-    deploy_lso
-    deploy_odf
+    if [ "${USE_V419_WORKAROUND}" == "true" ]; then
+        log "INFO" "Using v4.19 workaround. Deploying LSO and ODF..."
+        deploy_lso
+        deploy_odf
+    fi
 }
 
 function get_kubeconfig() {
