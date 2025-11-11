@@ -133,6 +133,7 @@ function prepare_cluster_manifests() {
         "nfd-subscription.yaml"
         "sriov-subscription.yaml"
         "99-worker-bridge.yaml"
+        "4.19-cataloguesource.yaml"
     )
 
     
