@@ -176,7 +176,7 @@ function deploy_hypershift() {
         log [INFO] "Hypershift operator already installed. Skipping deployment."
     else
         log [INFO] "Installing latest hypershift operator"
-        install_hypershift
+        ensure_hypershift_installed
     fi
 
     # Deploy MetalLB if HYPERSHIFT_API_IP is configured (multi-node clusters only)

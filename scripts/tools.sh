@@ -30,6 +30,15 @@ function install_helm() {
     log "INFO" "Helm installation complete. Installed version: $(helm version --short)"
 }
 
+function ensure_hypershift_installed() {
+    if ! command -v hypershift &> /dev/null; then
+      log "INFO" "Hypershift not found. Installing hypershift..."
+      install_hypershift
+    else
+      log "INFO" "Hypershift is already installed. Version: $(hypershift -v)"
+    fi
+}
+
 function install_hypershift() {
     log "INFO" "Installing Hypershift binary and operator..."
 
@@ -76,10 +85,10 @@ function main() {
 
     case "$command" in
         install-helm)
-            install_helm
+            ensure_helm_installed
             ;;
         install-hypershift)
-            install_hypershift
+            ensure_hypershift_installed
             ;;
         *)
             log "Unknown command: $command"
