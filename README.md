@@ -1,3 +1,13 @@
+# ⚠️ REPOSITORY ARCHIVED ⚠️
+
+> **This repository has been archived and moved to a new location:**
+>
+> **🔗 New location: https://github.com/rh-ecosystem-edge/openshift-dpf**
+>
+> Please use the new repository for the latest updates, issues, and contributions.
+
+---
+
 # OpenShift DPF Deployment
 Complete automation for deploying and managing NVIDIA DPF (Data Processing Framework) on OpenShift clusters.
 
